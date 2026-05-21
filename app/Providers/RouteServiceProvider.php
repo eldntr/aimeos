@@ -45,6 +45,8 @@ class RouteServiceProvider extends ServiceProvider
     {
         $this->configureRateLimiting();
 
+        Route::pattern('site', '^(?!profile|login|register|logout|dashboard|forgot-password|reset-password|verify-email|confirm-password|ready)[A-Za-z0-9\.\-]+');
+
         $this->routes(function () {
             Route::prefix('api')
                 ->middleware('api')
@@ -52,6 +54,14 @@ class RouteServiceProvider extends ServiceProvider
 
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
+        });
+
+        $this->app->booted(function () {
+            foreach (Route::getRoutes() as $route) {
+                if (in_array('site', $route->parameterNames())) {
+                    $route->where('site', '^(?!profile|login|register|logout|dashboard|forgot-password|reset-password|verify-email|confirm-password|ready)[A-Za-z0-9\.\-]+');
+                }
+            }
         });
     }
 

@@ -13,8 +13,20 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+use App\Http\Controllers\ProfileController;
+
 Route::get('/ready', function() {
     return 'OK';
+});
+
+Route::middleware('auth')->group(function () {
+    Route::get('/dashboard', function () {
+        return view('dashboard');
+    })->name('dashboard');
+
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
 $params = [];
@@ -30,7 +42,7 @@ if( env( 'SHOP_MULTILOCALE' ) )
 if( env( 'SHOP_MULTISHOP' ) )
 {
     $conf['prefix'] .= '/{site}';
-    $conf['where']['site'] = '[A-Za-z0-9\.\-]+';
+    $conf['where']['site'] = '^(?!profile|login|register|logout|dashboard|forgot-password|reset-password|verify-email|confirm-password|ready)[A-Za-z0-9\.\-]+';
 }
 
 if( $conf['prefix'] )
@@ -44,12 +56,16 @@ Route::group($conf ?? [], function() {
     require __DIR__.'/auth.php';
 });
 
+Route::group(['middleware' => ['web']], function() {
+    require __DIR__.'/auth.php';
+});
+
 if( env( 'SHOP_MULTIROUTE' ) )
 {
     Route::group( $conf + ['middleware' => ['web']], function() {
         Route::match( ['GET', 'POST'], '/{path?}', array(
             'as' => 'aimeos_resolve',
             'uses' => 'Aimeos\Shop\Controller\ResolveController@indexAction'
-        ) )->where( ['locale' => '[a-z]{2}(\_[A-Z]{2})?', 'site' => '[A-Za-z0-9\.\-]+'], 'path', '.*' );
+        ) )->where( ['locale' => '[a-z]{2}(\_[A-Z]{2})?', 'site' => '^(?!profile|login|register|logout|dashboard|forgot-password|reset-password|verify-email|confirm-password|ready)[A-Za-z0-9\.\-]+'], 'path', '.*' );
     });
 }

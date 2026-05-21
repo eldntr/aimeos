@@ -26,5 +26,8 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="SHOP_REGISTRATION" value="false"/>
+        <env name="SHOP_MULTISHOP" value="false"/>
+        <env name="MAIL_FROM_ADDRESS" value="hello@example.com"/>
     </php>
 </phpunit>
