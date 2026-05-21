@@ -3,38 +3,49 @@
 namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 abstract class TestCase extends BaseTestCase
 {
     use CreatesApplication;
-    use RefreshDatabase;
 
-    /**
-     * Track if Aimeos setup has been run for testing.
-     *
-     * @var bool
-     */
-    protected static bool $aimeosSetupRun = false;
-
-    /**
-     * Refresh a conventional cache_db database.
-     *
-     * @return void
-     */
-    protected function refreshDatabase()
+    protected function setUp(): void
     {
-        if (! \Illuminate\Foundation\Testing\RefreshDatabaseState::$migrated) {
-            $this->artisan('migrate:fresh', $this->migrateFreshUsing());
+        parent::setUp();
 
-            $this->artisan('aimeos:setup');
-            $this->artisan('db:seed');
+        // Get IDs of test users to clean up their customer list relationships first
+        $testUserIds = DB::table('users')
+            ->where('email', 'like', '%@example.com')
+            ->orWhere('email', 'like', '%@example.org')
+            ->pluck('id');
 
-            $this->app[\Illuminate\Contracts\Console\Kernel::class]->setArtisan(null);
+        if ($testUserIds->isNotEmpty()) {
+            DB::table('mshop_customer_list')
+                ->whereIn('parentid', $testUserIds)
+                ->delete();
 
-            \Illuminate\Foundation\Testing\RefreshDatabaseState::$migrated = true;
+            DB::table('users')
+                ->whereIn('id', $testUserIds)
+                ->delete();
         }
 
-        $this->beginDatabaseTransaction();
+        // Clean up test sites and their associated data
+        $sites = DB::table('mshop_locale_site')
+            ->where('code', 'like', 'testsite%')
+            ->get();
+
+        foreach ($sites as $site) {
+            DB::table('mshop_customer_list')
+                ->where('siteid', $site->siteid)
+                ->delete();
+
+            DB::table('mshop_group')
+                ->where('siteid', $site->siteid)
+                ->delete();
+
+            DB::table('mshop_locale_site')
+                ->where('siteid', $site->siteid)
+                ->delete();
+        }
     }
 }

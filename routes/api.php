@@ -1,7 +1,10 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\PasswordController;
+use App\Http\Controllers\ProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,6 +17,22 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+// Public routes
+Route::post('/register', [RegisteredUserController::class, 'store']);
+Route::post('/register/customer', [RegisteredUserController::class, 'registerCustomer']);
+Route::post('/register/seller', [RegisteredUserController::class, 'registerSeller']);
+Route::post('/register/admin', [RegisteredUserController::class, 'registerAdmin']);
+Route::post('/login', [AuthenticatedSessionController::class, 'store']);
+
+Route::get('/docs', function () {
+    return view('swagger');
+});
+
+// Protected routes
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
+    Route::get('/profile', [ProfileController::class, 'show']);
+    Route::put('/profile', [ProfileController::class, 'update']);
+    Route::put('/password', [PasswordController::class, 'update']);
+    Route::delete('/profile', [ProfileController::class, 'destroy']);
 });
