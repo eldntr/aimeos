@@ -242,6 +242,12 @@ class ApiTest extends TestCase
             'email' => 'seller.api@example.com',
             'password' => 'password123',
             'password_confirmation' => 'password123',
+            'name' => 'John Doe',
+            'telephone' => '08123456789',
+            'address' => 'Jl. Sudirman No. 1',
+            'bank_account_number' => '1234567890',
+            'bank_account_name' => 'John Doe',
+            'bank_name' => 'Bank BCA',
         ];
 
         $response = $this->postJson('/api/register/seller', $data);
@@ -260,10 +266,19 @@ class ApiTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'email' => 'seller.api@example.com',
+            'telephone' => '08123456789',
+            'address1' => 'Jl. Sudirman No. 1',
         ]);
 
         $user = User::where('email', 'seller.api@example.com')->first();
         $this->assertNotNull($user);
+
+        $this->assertDatabaseHas('seller_bank_details', [
+            'user_id' => $user->id,
+            'bank_account_number' => '1234567890',
+            'bank_account_name' => 'John Doe',
+            'bank_name' => 'Bank BCA',
+        ]);
 
         // Check if the site was created
         $this->assertDatabaseHas('mshop_locale_site', [
@@ -338,6 +353,99 @@ class ApiTest extends TestCase
             'domain' => 'group',
             'siteid' => $defaultSite->siteid,
         ]);
+    }
+    public function test_existing_customer_can_register_as_seller(): void
+    {
+        // 1. Create a customer
+        $customerData = [
+            'name' => 'Existing Customer',
+            'email' => 'upgrade.test@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ];
+        $this->postJson('/api/register/customer', $customerData)->assertStatus(201);
+        
+        $user = User::where('email', 'upgrade.test@example.com')->first();
+        $this->assertNotNull($user);
+        $originalSiteId = $user->siteid;
+
+        // 2. Register as a seller with the same email
+        $sellerData = [
+            'code' => 'testsiteapi-upgrade',
+            'email' => 'upgrade.test@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'name' => 'Existing Customer Updated',
+            'telephone' => '08987654321',
+            'address' => 'Jl. Thamrin No. 2',
+            'bank_account_number' => '0987654321',
+            'bank_account_name' => 'Existing Customer',
+            'bank_name' => 'Bank Mandiri',
+        ];
+        
+        $response = $this->postJson('/api/register/seller', $sellerData);
+        $response->assertStatus(201);
+        
+        $user->refresh();
+        $this->assertNotEquals($originalSiteId, $user->siteid);
+        $this->assertEquals('Existing Customer Updated', $user->name);
+        $this->assertEquals('08987654321', $user->telephone);
+        $this->assertEquals('Jl. Thamrin No. 2', $user->address1);
+
+        $this->assertDatabaseHas('seller_bank_details', [
+            'user_id' => $user->id,
+            'bank_account_number' => '0987654321',
+            'bank_account_name' => 'Existing Customer',
+            'bank_name' => 'Bank Mandiri',
+        ]);
+        
+        // 3. Check if seller group was applied on new siteid
+        $site = \Illuminate\Support\Facades\DB::table('mshop_locale_site')
+            ->where('code', 'testsiteapi-upgrade')
+            ->first();
+        $this->assertEquals($site->siteid, $user->siteid);
+        
+        $adminGroup = \Illuminate\Support\Facades\DB::table('mshop_group')
+            ->where('code', 'admin')
+            ->where('siteid', $site->siteid)
+            ->first();
+            
+        $this->assertDatabaseHas('users_list', [
+            'parentid' => $user->id,
+            'refid' => $adminGroup->id,
+            'domain' => 'group',
+            'siteid' => $site->siteid,
+        ]);
+    }
+
+    public function test_existing_user_cannot_register_with_invalid_password(): void
+    {
+        // 1. Create a customer
+        $customerData = [
+            'name' => 'Failed Upgrade Customer',
+            'email' => 'fail.upgrade@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ];
+        $this->postJson('/api/register/customer', $customerData)->assertStatus(201);
+
+        // 2. Try to register as a seller with wrong password
+        $sellerData = [
+            'code' => 'testsiteapi-fail',
+            'email' => 'fail.upgrade@example.com',
+            'password' => 'wrongpassword',
+            'password_confirmation' => 'wrongpassword',
+            'name' => 'Fail Name',
+            'telephone' => '000',
+            'address' => 'Fail Address',
+            'bank_account_number' => '000',
+            'bank_account_name' => 'Fail',
+            'bank_name' => 'Fail Bank',
+        ];
+        
+        $response = $this->postJson('/api/register/seller', $sellerData);
+        $response->assertStatus(422)
+                 ->assertJsonValidationErrors(['email']);
     }
 }
 

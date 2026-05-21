@@ -22,6 +22,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'email',
         'password',
         'siteid',
+        'telephone',
+        'address1',
     ];
 
     /**
@@ -42,4 +44,12 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    /**
+     * Get the bank details associated with the seller.
+     */
+    public function bankDetail()
+    {
+        return $this->hasOne(SellerBankDetail::class);
+    }
 }

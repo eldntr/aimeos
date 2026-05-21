@@ -149,7 +149,7 @@ class RegisteredUserController extends Controller
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'email' => ['required', 'string', 'email', 'max:255'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
@@ -158,14 +158,25 @@ class RegisteredUserController extends Controller
         $defaultSite = $siteManager->find('default');
         $siteId = $defaultSite->getSiteId();
 
-        $user = User::create([
-            'name' => strip_tags($request->name),
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'siteid' => $siteId,
-        ]);
+        $user = User::where('email', $request->email)->first();
 
-        event(new Registered($user));
+        if ($user) {
+            if (!Hash::check($request->password, $user->password)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'email' => __('auth.failed'),
+                ]);
+            }
+            $user->siteid = $siteId;
+            $user->save();
+        } else {
+            $user = User::create([
+                'name' => strip_tags($request->name),
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'siteid' => $siteId,
+            ]);
+            event(new Registered($user));
+        }
         Auth::login($user);
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -184,8 +195,14 @@ class RegisteredUserController extends Controller
     {
         $request->validate([
             'code' => ['required', 'string', 'max:255', 'unique:mshop_locale_site', 'regex:/^[a-z0-9\-]+(\.[a-z0-9\-]+)?$/i'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'email' => ['required', 'string', 'email', 'max:255'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'name' => ['required', 'string', 'max:255'],
+            'telephone' => ['required', 'string', 'max:255'],
+            'address' => ['required', 'string'],
+            'bank_account_number' => ['required', 'string', 'max:255'],
+            'bank_account_name' => ['required', 'string', 'max:255'],
+            'bank_name' => ['required', 'string', 'max:255'],
         ]);
 
         $context = app('aimeos.context')->get();
@@ -200,14 +217,39 @@ class RegisteredUserController extends Controller
 
         \Aimeos\Setup::use(new \Aimeos\Bootstrap())->context($context)->verbose('')->up($code);
 
-        $user = User::create([
-            'name' => strip_tags($code),
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'siteid' => $siteId,
-        ]);
+        $user = User::where('email', $request->email)->first();
 
-        event(new Registered($user));
+        if ($user) {
+            if (!Hash::check($request->password, $user->password)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'email' => __('auth.failed'),
+                ]);
+            }
+            $user->siteid = $siteId;
+            $user->name = strip_tags($request->name);
+            $user->telephone = strip_tags($request->telephone);
+            $user->address1 = strip_tags($request->address);
+            $user->save();
+        } else {
+            $user = User::create([
+                'name' => strip_tags($request->name),
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'siteid' => $siteId,
+                'telephone' => strip_tags($request->telephone),
+                'address1' => strip_tags($request->address),
+            ]);
+            event(new Registered($user));
+        }
+
+        $user->bankDetail()->updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'bank_account_number' => strip_tags($request->bank_account_number),
+                'bank_account_name' => strip_tags($request->bank_account_name),
+                'bank_name' => strip_tags($request->bank_name),
+            ]
+        );
         Auth::login($user);
 
         $context->setLocale(\Aimeos\MShop::create($context, 'locale')->bootstrap($code));
@@ -235,7 +277,7 @@ class RegisteredUserController extends Controller
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'email' => ['required', 'string', 'email', 'max:255'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
@@ -244,14 +286,25 @@ class RegisteredUserController extends Controller
         $defaultSite = $siteManager->find('default');
         $siteId = $defaultSite->getSiteId();
 
-        $user = User::create([
-            'name' => strip_tags($request->name),
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'siteid' => $siteId,
-        ]);
+        $user = User::where('email', $request->email)->first();
 
-        event(new Registered($user));
+        if ($user) {
+            if (!Hash::check($request->password, $user->password)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'email' => __('auth.failed'),
+                ]);
+            }
+            $user->siteid = $siteId;
+            $user->save();
+        } else {
+            $user = User::create([
+                'name' => strip_tags($request->name),
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'siteid' => $siteId,
+            ]);
+            event(new Registered($user));
+        }
         Auth::login($user);
 
         $context->setLocale(\Aimeos\MShop::create($context, 'locale')->bootstrap('default'));
