@@ -256,9 +256,24 @@ class RegisteredUserController extends Controller
         $customerManager = \Aimeos\MShop::create($context, 'customer');
         $groupManager = \Aimeos\MShop::create($context, 'group');
         $group = $groupManager->find('admin');
-        
-        $customer = $customerManager->get($user->id, ['group'])
-            ->setGroups([$group->getId()]);
+
+        try {
+            $customer = $customerManager->get($user->id, ['group']);
+        } catch (\Exception $e) { \Illuminate\Support\Facades\Log::error("Aimeos get() failed: " . $e->getMessage()); 
+            // Customer record not yet scoped to this site — search with broader filter
+            $filter = $customerManager->filter(true);
+            $filter->add($filter->compare('==', 'customer.id', $user->id));
+            $items = $customerManager->search($filter, ['group']);
+            $customer = $items->first();
+            if (!$customer) {
+                $customer = $customerManager->create();
+                $customer->setId($user->id);
+                $customer->setCode($user->email);
+                $customer->setLabel($user->name);
+            }
+        }
+
+        $customer->setGroups([$group->getId()]);
         $customerManager->save($customer);
 
         $token = $user->createToken('auth_token')->plainTextToken;

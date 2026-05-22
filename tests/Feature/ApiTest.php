@@ -447,5 +447,177 @@ class ApiTest extends TestCase
         $response->assertStatus(422)
                  ->assertJsonValidationErrors(['email']);
     }
-}
 
+    // =========================================================================
+    // Product API Tests — Public (Customer)
+    // =========================================================================
+
+    public function test_anyone_can_list_products(): void
+    {
+        $response = $this->getJson('/api/products');
+        $response->assertStatus(200)
+                 ->assertJsonStructure([
+                     'data',
+                     'meta' => ['site', 'page', 'perPage', 'count'],
+                 ]);
+    }
+
+    public function test_anyone_can_list_products_filtered_by_site(): void
+    {
+        $response = $this->getJson('/api/products?site=default');
+        $response->assertStatus(200)
+                 ->assertJsonPath('meta.site', 'default');
+    }
+
+    public function test_products_returns_404_for_invalid_site(): void
+    {
+        $response = $this->getJson('/api/products?site=nonexistent-site-xyz');
+        $response->assertStatus(404);
+    }
+
+    // =========================================================================
+    // Product API Tests — Seller CRUD
+    // =========================================================================
+
+    /**
+     * Helper: register a seller and return [user, token, siteCode].
+     */
+    private function registerSellerAndGetToken(string $suffix = 'prod'): array
+    {
+        $code = 'test-seller-' . $suffix;
+        $email = 'seller.' . $suffix . '@example.com';
+
+        $response = $this->postJson('/api/register/seller', [
+            'code'                => $code,
+            'email'               => $email,
+            'password'            => 'password123',
+            'password_confirmation' => 'password123',
+            'name'                => 'Seller ' . $suffix,
+            'telephone'           => '08100000000',
+            'address'             => 'Jl. Test No. 1',
+            'bank_account_number' => '1111111111',
+            'bank_account_name'   => 'Seller ' . $suffix,
+            'bank_name'           => 'Bank Test',
+        ]);
+
+        $response->assertStatus(201);
+        $data = $response->json();
+
+        return [
+            'user'  => User::where('email', $email)->first(),
+            'token' => $data['access_token'],
+            'code'  => $code,
+        ];
+    }
+
+    public function test_seller_can_create_product(): void
+    {
+        $seller = $this->registerSellerAndGetToken('create');
+
+        $response = $this->withToken($seller['token'])
+            ->postJson('/api/seller/products', [
+                'label'  => 'Produk Test Pertama',
+                'code'   => 'test-product-001',
+                'type'   => 'default',
+                'status' => 1,
+            ]);
+
+        $response->assertStatus(201)
+                 ->assertJsonStructure([
+                     'data' => ['id', 'code', 'label', 'type', 'status'],
+                 ])
+                 ->assertJsonPath('data.label', 'Produk Test Pertama')
+                 ->assertJsonPath('data.code', 'test-product-001');
+    }
+
+    public function test_seller_can_list_own_products(): void
+    {
+        $seller = $this->registerSellerAndGetToken('list');
+
+        // Create a product first
+        $this->withToken($seller['token'])
+            ->postJson('/api/seller/products', [
+                'label'  => 'Produk List Test',
+                'code'   => 'list-product-001',
+                'status' => 1,
+            ])->assertStatus(201);
+
+        $response = $this->withToken($seller['token'])
+            ->getJson('/api/seller/products');
+
+        $response->assertStatus(200)
+                 ->assertJsonStructure(['data'])
+                 ->assertJsonCount(1, 'data');
+    }
+
+    public function test_seller_can_update_product(): void
+    {
+        $seller = $this->registerSellerAndGetToken('update');
+
+        $create = $this->withToken($seller['token'])
+            ->postJson('/api/seller/products', [
+                'label'  => 'Before Update',
+                'code'   => 'update-product-001',
+                'status' => 1,
+            ]);
+        $create->assertStatus(201);
+        $productId = $create->json('data.id');
+
+        $response = $this->withToken($seller['token'])
+            ->patchJson("/api/seller/products/{$productId}", [
+                'label'  => 'After Update',
+                'status' => 0,
+            ]);
+
+        $response->assertStatus(200)
+                 ->assertJsonPath('data.label', 'After Update')
+                 ->assertJsonPath('data.status', 0);
+    }
+
+    public function test_seller_can_delete_product(): void
+    {
+        $seller = $this->registerSellerAndGetToken('delete');
+
+        $create = $this->withToken($seller['token'])
+            ->postJson('/api/seller/products', [
+                'label'  => 'Product To Delete',
+                'code'   => 'delete-product-001',
+                'status' => 1,
+            ]);
+        $create->assertStatus(201);
+        $productId = $create->json('data.id');
+
+        $response = $this->withToken($seller['token'])
+            ->deleteJson("/api/seller/products/{$productId}");
+
+        $response->assertStatus(200)
+                 ->assertJsonPath('message', 'Product deleted successfully.');
+
+        // Verify product is gone
+        $this->withToken($seller['token'])
+            ->getJson("/api/seller/products/{$productId}")
+            ->assertStatus(404);
+    }
+
+    public function test_customer_cannot_access_seller_endpoint(): void
+    {
+        // Register as a customer (siteid will be set to default site, not a seller site)
+        $this->postJson('/api/register/customer', [
+            'name'                  => 'Customer No Seller',
+            'email'                 => 'customer.noseller@example.com',
+            'password'              => 'password123',
+            'password_confirmation' => 'password123',
+        ])->assertStatus(201);
+
+        $customer = User::where('email', 'customer.noseller@example.com')->first();
+        $token = $customer->createToken('test')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->postJson('/api/seller/products', [
+                'label' => 'Unauthorized Product',
+                'code'  => 'unauth-product',
+            ]);
+
+        $response->assertStatus(403);
+    }
+}

@@ -5,6 +5,8 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\Seller\ProductController as SellerProductController;
 
 /*
 |--------------------------------------------------------------------------
@@ -24,6 +26,10 @@ Route::post('/register/seller', [RegisteredUserController::class, 'registerSelle
 Route::post('/register/admin', [RegisteredUserController::class, 'registerAdmin']);
 Route::post('/login', [AuthenticatedSessionController::class, 'store']);
 
+// Public product routes (customer browsing — no auth required)
+Route::get('/products', [ProductController::class, 'index']);
+Route::get('/products/{id}', [ProductController::class, 'show']);
+
 Route::get('/docs', function () {
     return view('swagger');
 });
@@ -35,4 +41,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/profile', [ProfileController::class, 'update']);
     Route::put('/password', [PasswordController::class, 'update']);
     Route::delete('/profile', [ProfileController::class, 'destroy']);
+
+    // Seller product management routes
+    Route::middleware('seller')->prefix('seller')->group(function () {
+        Route::get('/products', [SellerProductController::class, 'index']);
+        Route::post('/products', [SellerProductController::class, 'store']);
+        Route::get('/products/{id}', [SellerProductController::class, 'show']);
+        Route::patch('/products/{id}', [SellerProductController::class, 'update']);
+        Route::delete('/products/{id}', [SellerProductController::class, 'destroy']);
+    });
 });
+
