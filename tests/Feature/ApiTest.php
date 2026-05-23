@@ -3,7 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -237,6 +240,10 @@ class ApiTest extends TestCase
 
     public function test_register_seller_via_api(): void
     {
+        Http::fake([
+            '*' => Http::response(['upload_url' => 'http://fake', 'file_id' => '123'], 200)
+        ]);
+
         $data = [
             'code' => 'testsiteapi-seller',
             'email' => 'seller.api@example.com',
@@ -248,9 +255,10 @@ class ApiTest extends TestCase
             'bank_account_number' => '1234567890',
             'bank_account_name' => 'John Doe',
             'bank_name' => 'Bank BCA',
+            'ktp_image' => UploadedFile::fake()->image('ktp.jpg'),
         ];
 
-        $response = $this->postJson('/api/register/seller', $data);
+        $response = $this->post('/api/register/seller', $data);
 
         $response->assertStatus(201)
             ->assertJsonStructure([
@@ -268,10 +276,12 @@ class ApiTest extends TestCase
             'email' => 'seller.api@example.com',
             'telephone' => '08123456789',
             'address1' => 'Jl. Sudirman No. 1',
+            'seller_status' => 'pending',
         ]);
 
         $user = User::where('email', 'seller.api@example.com')->first();
         $this->assertNotNull($user);
+        $this->assertNotNull($user->ktp_url);
 
         $this->assertDatabaseHas('seller_bank_details', [
             'user_id' => $user->id,
@@ -370,6 +380,10 @@ class ApiTest extends TestCase
         $originalSiteId = $user->siteid;
 
         // 2. Register as a seller with the same email
+        Http::fake([
+            '*' => Http::response(['upload_url' => 'http://fake', 'file_id' => '123'], 200)
+        ]);
+
         $sellerData = [
             'code' => 'testsiteapi-upgrade',
             'email' => 'upgrade.test@example.com',
@@ -381,9 +395,10 @@ class ApiTest extends TestCase
             'bank_account_number' => '0987654321',
             'bank_account_name' => 'Existing Customer',
             'bank_name' => 'Bank Mandiri',
+            'ktp_image' => UploadedFile::fake()->image('ktp.jpg'),
         ];
         
-        $response = $this->postJson('/api/register/seller', $sellerData);
+        $response = $this->post('/api/register/seller', $sellerData);
         $response->assertStatus(201);
         
         $user->refresh();
@@ -431,19 +446,20 @@ class ApiTest extends TestCase
 
         // 2. Try to register as a seller with wrong password
         $sellerData = [
-            'code' => 'testsiteapi-fail',
+            'code' => 'testsiteapi-invpw',
             'email' => 'fail.upgrade@example.com',
             'password' => 'wrongpassword',
             'password_confirmation' => 'wrongpassword',
-            'name' => 'Fail Name',
-            'telephone' => '000',
-            'address' => 'Fail Address',
-            'bank_account_number' => '000',
-            'bank_account_name' => 'Fail',
-            'bank_name' => 'Fail Bank',
+            'name' => 'Existing Customer Updated',
+            'telephone' => '08987654321',
+            'address' => 'Jl. Thamrin No. 2',
+            'bank_account_number' => '0987654321',
+            'bank_account_name' => 'Existing Customer',
+            'bank_name' => 'Bank Mandiri',
+            'ktp_image' => UploadedFile::fake()->image('ktp.jpg'),
         ];
         
-        $response = $this->postJson('/api/register/seller', $sellerData);
+        $response = $this->withHeaders(['Accept' => 'application/json'])->post('/api/register/seller', $sellerData);
         $response->assertStatus(422)
                  ->assertJsonValidationErrors(['email']);
     }
@@ -479,6 +495,29 @@ class ApiTest extends TestCase
     // Product API Tests — Seller CRUD
     // =========================================================================
 
+    private function registerAdminAndGetToken(string $email): array
+    {
+        $response = $this->postJson('/api/register/admin', [
+            'name'                  => 'Admin User',
+            'email'                 => $email,
+            'password'              => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+        
+        $response->assertStatus(201);
+        $data = $response->json();
+        
+        $adminUser = \App\Models\User::where('email', $email)->first();
+        // Force siteid to empty (super admin / default site) for testing purposes
+        $adminUser->siteid = '';
+        $adminUser->save();
+
+        return [
+            'user'  => $adminUser,
+            'token' => $data['access_token'],
+        ];
+    }
+
     /**
      * Helper: register a seller and return [user, token, siteCode].
      */
@@ -487,7 +526,11 @@ class ApiTest extends TestCase
         $code = 'test-seller-' . $suffix;
         $email = 'seller.' . $suffix . '@example.com';
 
-        $response = $this->postJson('/api/register/seller', [
+        Http::fake([
+            '*' => Http::response(['upload_url' => 'http://fake', 'file_id' => '123'], 200)
+        ]);
+
+        $response = $this->post('/api/register/seller', [
             'code'                => $code,
             'email'               => $email,
             'password'            => 'password123',
@@ -498,13 +541,26 @@ class ApiTest extends TestCase
             'bank_account_number' => '1111111111',
             'bank_account_name'   => 'Seller ' . $suffix,
             'bank_name'           => 'Bank Test',
+            'ktp_image'           => UploadedFile::fake()->image('ktp.jpg'),
         ]);
 
+        if ($response->status() !== 201) {
+            dump($response->content());
+        }
         $response->assertStatus(201);
         $data = $response->json();
 
+        $user = User::where('email', $email)->first();
+        // Auto-approve for product tests
+        $user->seller_status = 'approved';
+        $user->save();
+
+        if (\Illuminate\Support\Facades\Auth::check()) {
+            \Illuminate\Support\Facades\Auth::setUser($user);
+        }
+
         return [
-            'user'  => User::where('email', $email)->first(),
+            'user'  => $user,
             'token' => $data['access_token'],
             'code'  => $code,
         ];
@@ -514,13 +570,22 @@ class ApiTest extends TestCase
     {
         $seller = $this->registerSellerAndGetToken('create');
 
+        Http::fake([
+            '*' => Http::response(['upload_url' => 'http://fake', 'file_id' => '123'], 200)
+        ]);
+
         $response = $this->withToken($seller['token'])
-            ->postJson('/api/seller/products', [
+            ->post('/api/seller/products', [
                 'label'  => 'Produk Test Pertama',
                 'code'   => 'test-product-001',
                 'type'   => 'default',
                 'status' => 1,
+                'images' => [UploadedFile::fake()->image('test.jpg')],
             ]);
+
+        if ($response->status() !== 201) {
+            dump($response->content());
+        }
 
         $response->assertStatus(201)
                  ->assertJsonStructure([
@@ -534,12 +599,17 @@ class ApiTest extends TestCase
     {
         $seller = $this->registerSellerAndGetToken('list');
 
+        Http::fake([
+            '*' => Http::response(['upload_url' => 'http://fake', 'file_id' => '123'], 200)
+        ]);
+
         // Create a product first
         $this->withToken($seller['token'])
-            ->postJson('/api/seller/products', [
+            ->post('/api/seller/products', [
                 'label'  => 'Produk List Test',
                 'code'   => 'list-product-001',
                 'status' => 1,
+                'images' => [UploadedFile::fake()->image('test.jpg')],
             ])->assertStatus(201);
 
         $response = $this->withToken($seller['token'])
@@ -554,11 +624,16 @@ class ApiTest extends TestCase
     {
         $seller = $this->registerSellerAndGetToken('update');
 
+        Http::fake([
+            '*' => Http::response(['upload_url' => 'http://fake', 'file_id' => '123'], 200)
+        ]);
+
         $create = $this->withToken($seller['token'])
-            ->postJson('/api/seller/products', [
+            ->post('/api/seller/products', [
                 'label'  => 'Before Update',
                 'code'   => 'update-product-001',
                 'status' => 1,
+                'images' => [UploadedFile::fake()->image('test.jpg')],
             ]);
         $create->assertStatus(201);
         $productId = $create->json('data.id');
@@ -578,11 +653,16 @@ class ApiTest extends TestCase
     {
         $seller = $this->registerSellerAndGetToken('delete');
 
+        Http::fake([
+            '*' => Http::response(['upload_url' => 'http://fake', 'file_id' => '123'], 200)
+        ]);
+
         $create = $this->withToken($seller['token'])
-            ->postJson('/api/seller/products', [
+            ->post('/api/seller/products', [
                 'label'  => 'Product To Delete',
                 'code'   => 'delete-product-001',
                 'status' => 1,
+                'images' => [UploadedFile::fake()->image('test.jpg')],
             ]);
         $create->assertStatus(201);
         $productId = $create->json('data.id');
@@ -612,12 +692,76 @@ class ApiTest extends TestCase
         $customer = User::where('email', 'customer.noseller@example.com')->first();
         $token = $customer->createToken('test')->plainTextToken;
 
+        Http::fake([
+            '*' => Http::response(['upload_url' => 'http://fake', 'file_id' => '123'], 200)
+        ]);
+
         $response = $this->withToken($token)
-            ->postJson('/api/seller/products', [
+            ->post('/api/seller/products', [
                 'label' => 'Unauthorized Product',
                 'code'  => 'unauth-product',
+                'images' => [UploadedFile::fake()->image('test.jpg')],
             ]);
 
         $response->assertStatus(403);
+    }
+
+    public function test_admin_can_approve_and_reject_seller_and_seller_can_reupload_ktp(): void
+    {
+        $admin = $this->registerAdminAndGetToken('admin.verif@example.com');
+
+        $sellerData = [
+            'code' => 'testsiteapi-verif1',
+            'email' => 'seller.verif1@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'name' => 'Seller Verif 1',
+            'telephone' => '08987654321',
+            'address' => 'Jl. Thamrin No. 2',
+            'bank_account_number' => '0987654321',
+            'bank_account_name' => 'Seller 1',
+            'bank_name' => 'Bank Mandiri',
+            'ktp_image' => \Illuminate\Http\UploadedFile::fake()->image('ktp.jpg'),
+        ];
+
+        \Illuminate\Support\Facades\Http::fake([
+            '*' => \Illuminate\Support\Facades\Http::response(['upload_url' => 'http://fake', 'file_id' => '123'], 200)
+        ]);
+
+        $this->post('/api/register/seller', $sellerData)->assertStatus(201);
+        
+        $seller = \App\Models\User::where('email', 'seller.verif1@example.com')->first();
+
+        // 1. Admin reads list
+        \Laravel\Sanctum\Sanctum::actingAs($admin['user']);
+        $response = $this->getJson('/api/admin/sellers/pending')
+             ->assertStatus(200);
+        
+        $this->assertStringContainsString('seller.verif1@example.com', $response->content());
+
+        // 2. Admin rejects
+        \Laravel\Sanctum\Sanctum::actingAs($admin['user']);
+        $this->postJson("/api/admin/sellers/{$seller->id}/reject", ['reason' => 'Blurry KTP'])
+             ->assertStatus(200);
+
+        $this->assertEquals('rejected', $seller->fresh()->seller_status);
+        $this->assertEquals('Blurry KTP', $seller->fresh()->rejection_reason);
+        
+        // 3. Seller re-uploads
+        \Laravel\Sanctum\Sanctum::actingAs($seller->fresh());
+        $this->post('/api/seller/reupload-ktp', [
+                 'ktp_image' => \Illuminate\Http\UploadedFile::fake()->image('ktp_new.jpg'),
+             ])
+             ->assertStatus(200);
+
+        $this->assertEquals('pending', $seller->fresh()->seller_status);
+        $this->assertNull($seller->fresh()->rejection_reason);
+
+        // 4. Admin approves
+        \Laravel\Sanctum\Sanctum::actingAs($admin['user']);
+        $this->postJson("/api/admin/sellers/{$seller->id}/approve")
+             ->assertStatus(200);
+
+        $this->assertEquals('approved', $seller->fresh()->seller_status);
     }
 }

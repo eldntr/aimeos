@@ -43,6 +43,10 @@ class CartController extends Controller
         $context = $this->getContextWithLocale();
         $user = auth()->user();
         
+        \Aimeos\MShop::cache(false);
+        \Aimeos\MShop::cache(true);
+        
+        $context = $this->getContextWithLocale();
         $orderManager = \Aimeos\MShop::create($context, 'order');
         $filter = $orderManager->filter();
         $filter->add($filter->and([

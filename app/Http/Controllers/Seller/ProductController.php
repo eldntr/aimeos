@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Seller;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 
 class ProductController extends Controller
 {
@@ -90,20 +91,57 @@ class ProductController extends Controller
             'code'   => ['required', 'string', 'max:64'],
             'type'   => ['sometimes', 'string', 'in:default,bundle,select,voucher'],
             'status' => ['sometimes', 'integer', 'in:0,1'],
+            'images' => ['required', 'array', 'min:1', 'max:5'],
+            'images.*' => ['file', 'mimes:jpeg,png,jpg,webp', 'max:5120'], // Max 5MB
+            'video' => ['sometimes', 'file', 'mimes:mp4,webm', 'max:51200'], // Max 50MB
         ]);
 
         $context = $this->getSellerContext();
         $manager = \Aimeos\MShop::create($context, 'product');
+        
+        $manager->begin();
+        try {
+            $product = $manager->create()
+                ->setLabel(strip_tags($request->label))
+                ->setCode(strip_tags($request->code))
+                ->setType($request->input('type', 'default'))
+                ->setStatus($request->input('status', 1));
 
-        $item = $manager->create()
-            ->setLabel(strip_tags($request->label))
-            ->setCode(strip_tags($request->code))
-            ->setType($request->input('type', 'default'))
-            ->setStatus($request->input('status', 1));
+            $fileService = new \App\Services\FileServerService();
+            
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $file) {
+                    $mediaUrl = $fileService->uploadFile($file);
+                    
+                    $mediaItem = $this->createMediaItem($context, $mediaUrl, $file->getMimeType());
+                    $listItem = $this->createListItem($context, $mediaItem->getId());
+                    
+                    $product->addListItem('media', $listItem);
+                }
+            }
+            
+            if ($request->hasFile('video')) {
+                $file = $request->file('video');
+                $mediaUrl = $fileService->uploadFile($file);
+                
+                $mediaItem = $this->createMediaItem($context, $mediaUrl, $file->getMimeType());
+                $listItem = $this->createListItem($context, $mediaItem->getId());
+                
+                $product->addListItem('media', $listItem);
+            }
+            
+            $saved = $manager->save($product);
+            $manager->commit();
+            
+            // Trigger kompresi asinkron di file server
+            $fileService->triggerCompression();
 
-        $saved = $manager->save($item);
-
-        return response()->json(['data' => $this->formatProduct($saved)], 201);
+            return response()->json(['data' => $this->formatProduct($saved)], 201);
+            
+        } catch (\Exception $e) {
+            $manager->rollback();
+            return response()->json(['message' => 'Gagal menyimpan produk: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -169,5 +207,27 @@ class ProductController extends Controller
             'ctime'  => $product->getTimeCreated(),
             'mtime'  => $product->getTimeModified(),
         ];
+    }
+
+
+    private function createMediaItem(\Aimeos\MShop\ContextIface $context, string $url, string $mimeType): \Aimeos\MShop\Media\Item\Iface
+    {
+        $mediaManager = \Aimeos\MShop::create($context, 'media');
+        $mediaItem = $mediaManager->create()
+            ->setDomain('media')
+            ->setMimeType($mimeType)
+            ->setUrl($url)
+            ->setPreview($url)
+            ->setStatus(1);
+            
+        return $mediaManager->save($mediaItem);
+    }
+
+    private function createListItem(\Aimeos\MShop\ContextIface $context, string $refId): \Aimeos\MShop\Common\Item\Lists\Iface
+    {
+        return \Aimeos\MShop::create($context, 'product/lists')->create()
+            ->setDomain('media')
+            ->setType('default')
+            ->setRefId($refId);
     }
 }

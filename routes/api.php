@@ -7,6 +7,8 @@ use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\Seller\ProductController as SellerProductController;
+use App\Http\Controllers\Seller\SellerProfileController;
+use App\Http\Controllers\Admin\SellerVerificationController;
 use App\Http\Controllers\CartController;
 
 /*
@@ -50,13 +52,41 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/cart/{position}', [CartController::class, 'destroy']);
     Route::delete('/cart', [CartController::class, 'clear']);
 
-    // Seller product management routes
+    // User Address routes
+    Route::get('/user/addresses', [\App\Http\Controllers\CustomerAddressController::class, 'index']);
+    Route::post('/user/addresses', [\App\Http\Controllers\CustomerAddressController::class, 'store']);
+    Route::put('/user/addresses/{id}', [\App\Http\Controllers\CustomerAddressController::class, 'update']);
+    Route::delete('/user/addresses/{id}', [\App\Http\Controllers\CustomerAddressController::class, 'destroy']);
+
+    // Checkout routes
+    Route::prefix('checkout')->group(function () {
+        Route::post('/address', [\App\Http\Controllers\CheckoutController::class, 'saveAddress']);
+        Route::get('/shipping', [\App\Http\Controllers\CheckoutController::class, 'getShippingOptions']);
+        Route::post('/shipping', [\App\Http\Controllers\CheckoutController::class, 'saveShipping']);
+        Route::get('/payment', [\App\Http\Controllers\CheckoutController::class, 'getPaymentOptions']);
+        Route::post('/payment', [\App\Http\Controllers\CheckoutController::class, 'savePayment']);
+        Route::post('/process', [\App\Http\Controllers\CheckoutController::class, 'processOrder']);
+    });
+
+    // Seller management routes
     Route::middleware('seller')->prefix('seller')->group(function () {
-        Route::get('/products', [SellerProductController::class, 'index']);
-        Route::post('/products', [SellerProductController::class, 'store']);
-        Route::get('/products/{id}', [SellerProductController::class, 'show']);
-        Route::patch('/products/{id}', [SellerProductController::class, 'update']);
-        Route::delete('/products/{id}', [SellerProductController::class, 'destroy']);
+        Route::post('/reupload-ktp', [SellerProfileController::class, 'reuploadKtp']);
+        
+        // Seller product management routes (must be approved)
+        Route::middleware('seller.approved')->group(function () {
+            Route::get('/products', [SellerProductController::class, 'index']);
+            Route::post('/products', [SellerProductController::class, 'store']);
+            Route::get('/products/{id}', [SellerProductController::class, 'show']);
+            Route::patch('/products/{id}', [SellerProductController::class, 'update']);
+            Route::delete('/products/{id}', [SellerProductController::class, 'destroy']);
+        });
+    });
+
+    // Admin routes
+    Route::middleware('admin')->prefix('admin')->group(function () {
+        Route::get('/sellers/pending', [SellerVerificationController::class, 'index']);
+        Route::post('/sellers/{id}/approve', [SellerVerificationController::class, 'approve']);
+        Route::post('/sellers/{id}/reject', [SellerVerificationController::class, 'reject']);
     });
 });
 

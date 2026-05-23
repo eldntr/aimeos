@@ -9,6 +9,14 @@ use Tests\TestCase;
 
 class CartTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        if (class_exists('\Aimeos\MShop')) {
+            \Aimeos\MShop::cache(false);
+            \Aimeos\MShop::cache(true);
+        }
+    }
     private function registerUserAndGetToken($email = 'cartuser@example.com')
     {
         $response = $this->postJson('/api/register/customer', [

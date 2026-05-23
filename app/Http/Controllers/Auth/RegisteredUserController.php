@@ -203,6 +203,7 @@ class RegisteredUserController extends Controller
             'bank_account_number' => ['required', 'string', 'max:255'],
             'bank_account_name' => ['required', 'string', 'max:255'],
             'bank_name' => ['required', 'string', 'max:255'],
+            'ktp_image' => ['required', 'image', 'max:5120'], // Max 5MB
         ]);
 
         $context = app('aimeos.context')->get();
@@ -211,9 +212,21 @@ class RegisteredUserController extends Controller
         $rootSite = $siteManager->find('default');
         
         $code = $request->code;
-        $item = $siteManager->create()->setCode($code)->setLabel($code)->setStatus(1);
-        $newSite = $siteManager->insert($item, $rootSite->getId());
-        $siteId = $newSite->getSiteId();
+        try {
+            $siteItem = $siteManager->find($code);
+            $siteId = $siteItem->getSiteId();
+        } catch (\Aimeos\MShop\Exception $e) {
+            $item = $siteManager->create()->setCode($code)->setLabel($code)->setStatus(1);
+            $siteManager->begin();
+            try {
+                $newSite = $siteManager->insert($item, $rootSite->getId());
+                $siteId = $newSite->getSiteId();
+                $siteManager->commit();
+            } catch (\Exception $ex) {
+                $siteManager->rollback();
+                throw $ex;
+            }
+        }
 
         \Aimeos\Setup::use(new \Aimeos\Bootstrap())->context($context)->verbose('')->up($code);
 
@@ -225,12 +238,23 @@ class RegisteredUserController extends Controller
                     'email' => __('auth.failed'),
                 ]);
             }
+            
+            $fileService = new \App\Services\FileServerService();
+            $ktpUrl = $fileService->uploadFile($request->file('ktp_image'));
+            $fileService->triggerCompression();
+
             $user->siteid = $siteId;
             $user->name = strip_tags($request->name);
             $user->telephone = strip_tags($request->telephone);
             $user->address1 = strip_tags($request->address);
+            $user->ktp_url = $ktpUrl;
+            $user->seller_status = 'pending';
             $user->save();
         } else {
+            $fileService = new \App\Services\FileServerService();
+            $ktpUrl = $fileService->uploadFile($request->file('ktp_image'));
+            $fileService->triggerCompression();
+
             $user = User::create([
                 'name' => strip_tags($request->name),
                 'email' => $request->email,
@@ -238,6 +262,8 @@ class RegisteredUserController extends Controller
                 'siteid' => $siteId,
                 'telephone' => strip_tags($request->telephone),
                 'address1' => strip_tags($request->address),
+                'ktp_url' => $ktpUrl,
+                'seller_status' => 'pending',
             ]);
             event(new Registered($user));
         }

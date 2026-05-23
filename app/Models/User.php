@@ -24,6 +24,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'siteid',
         'telephone',
         'address1',
+        'ktp_url',
+        'seller_status',
+        'rejection_reason',
     ];
 
     /**

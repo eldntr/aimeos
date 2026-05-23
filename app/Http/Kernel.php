@@ -66,5 +66,7 @@ class Kernel extends HttpKernel
         'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
         'setlocale' => \App\Http\Middleware\SetLocale::class,
         'seller' => \App\Http\Middleware\EnsureIsSeller::class,
+        'seller.approved' => \App\Http\Middleware\EnsureSellerIsApproved::class,
+        'admin' => \App\Http\Middleware\EnsureIsAdmin::class,
     ];
 }

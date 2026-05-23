@@ -75,6 +75,10 @@ abstract class TestCase extends BaseTestCase
             if (app()->has('aimeos.context')) {
                 app('aimeos.context')->get(false)->cache()->clear();
             }
+            if (class_exists('\Aimeos\MShop')) {
+                \Aimeos\MShop::cache(false);
+                \Aimeos\MShop::cache(true);
+            }
         } catch (\Exception $e) {}
     }
 }

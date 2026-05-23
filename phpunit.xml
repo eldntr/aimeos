@@ -29,5 +29,7 @@
         <env name="SHOP_REGISTRATION" value="false"/>
         <env name="SHOP_MULTISHOP" value="false"/>
         <env name="MAIL_FROM_ADDRESS" value="hello@example.com"/>
+        <env name="JWT_SECRET" value="dummysecret123"/>
+        <env name="FILE_SERVER_URL" value="http://localhost:8081"/>
     </php>
 </phpunit>

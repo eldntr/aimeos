@@ -424,7 +424,7 @@
                     <h1>Aimeos API Docs</h1>
                 </div>
             </div>
-            <div class="badge">v1.0.0</div>
+            <div class="badge">v2.0.0</div>
         </div>
     </header>
 
