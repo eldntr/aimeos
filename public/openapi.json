@@ -323,6 +323,7 @@
         "summary": "List Products",
         "description": "Browse all active products. No authentication required.",
         "parameters": [
+          { "name": "search", "in": "query", "schema": { "type": "string", "example": "sepatu" }, "description": "Search products by name/label" },
           { "name": "page", "in": "query", "schema": { "type": "integer", "example": 1 }, "description": "Page number" },
           { "name": "limit", "in": "query", "schema": { "type": "integer", "example": 20 }, "description": "Items per page" }
         ],
