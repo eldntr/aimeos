@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\Seller\ProductController as SellerProductController;
+use App\Http\Controllers\CartController;
 
 /*
 |--------------------------------------------------------------------------
@@ -41,6 +42,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/profile', [ProfileController::class, 'update']);
     Route::put('/password', [PasswordController::class, 'update']);
     Route::delete('/profile', [ProfileController::class, 'destroy']);
+
+    // Cart routes
+    Route::get('/cart', [CartController::class, 'index']);
+    Route::post('/cart', [CartController::class, 'store']);
+    Route::patch('/cart/{position}', [CartController::class, 'update']);
+    Route::delete('/cart/{position}', [CartController::class, 'destroy']);
+    Route::delete('/cart', [CartController::class, 'clear']);
 
     // Seller product management routes
     Route::middleware('seller')->prefix('seller')->group(function () {
