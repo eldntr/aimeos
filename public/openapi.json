@@ -18,6 +18,7 @@
     { "name": "Cart", "description": "Shopping cart management (requires auth)" },
     { "name": "Customer Addresses", "description": "User address book management (requires auth)" },
     { "name": "Checkout", "description": "Multi-step checkout flow: address → shipping → payment → process (requires auth)" },
+    { "name": "Order History", "description": "Customer order history and details (requires auth)" },
     { "name": "Seller", "description": "Seller profile and product management (requires seller role)" },
     { "name": "Admin", "description": "Admin tools for seller KYC verification (requires admin role)" }
   ],
@@ -228,6 +229,90 @@
         "responses": {
           "200": { "description": "Password updated." },
           "422": { "description": "Validation error.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ValidationError" } } } },
+          "401": { "description": "Unauthorized." }
+        }
+      }
+    },
+    "/api/user/orders": {
+      "get": {
+        "security": [{ "bearerAuth": [] }],
+        "tags": ["Order History"],
+        "summary": "List Order History",
+        "description": "Get a list of all finished/pending orders for the authenticated customer. Does not include active shopping carts.",
+        "responses": {
+          "200": {
+            "description": "Orders retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string", "example": "Order history retrieved successfully" },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string", "example": "1" },
+                          "date": { "type": "string", "example": "2026-05-23 10:00:00" },
+                          "status_payment": { "type": "integer", "example": 1 },
+                          "status_delivery": { "type": "integer", "example": 1 },
+                          "price": { "type": "string", "example": "100.00" },
+                          "currency": { "type": "string", "example": "USD" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized." }
+        }
+      }
+    },
+    "/api/user/orders/{id}": {
+      "get": {
+        "security": [{ "bearerAuth": [] }],
+        "tags": ["Order History"],
+        "summary": "Get Order Detail",
+        "description": "Get complete details of a specific order belonging to the authenticated customer, including the `payment_url`.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Order ID",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order details retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string", "example": "Order details retrieved successfully" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string", "example": "1" },
+                        "date": { "type": "string", "example": "2026-05-23 10:00:00" },
+                        "payment_url": { "type": "string", "example": "https://midtrans.mock/pay/1" },
+                        "products": { "type": "array", "items": { "type": "object" } },
+                        "addresses": { "type": "array", "items": { "type": "object" } },
+                        "services": { "type": "array", "items": { "type": "object" } }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "description": "Forbidden (Order belongs to someone else)." },
+          "404": { "description": "Order not found." },
           "401": { "description": "Unauthorized." }
         }
       }

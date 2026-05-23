@@ -58,6 +58,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/user/addresses/{id}', [\App\Http\Controllers\CustomerAddressController::class, 'update']);
     Route::delete('/user/addresses/{id}', [\App\Http\Controllers\CustomerAddressController::class, 'destroy']);
 
+    // Order History routes
+    Route::get('/user/orders', [\App\Http\Controllers\OrderController::class, 'index']);
+    Route::get('/user/orders/{id}', [\App\Http\Controllers\OrderController::class, 'show']);
+
     // Checkout routes
     Route::prefix('checkout')->group(function () {
         Route::post('/address', [\App\Http\Controllers\CheckoutController::class, 'saveAddress']);

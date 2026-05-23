@@ -12,6 +12,19 @@ use Tests\TestCase;
 
 class ApiTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Http::fake([
+            '*/api/files/presign-upload' => Http::response([
+                'upload_url' => 'http://mock-minio/upload',
+                'file_id' => 'mock-file-123'
+            ], 200),
+            '*/api/files/*/complete-upload' => Http::response(['message' => 'success'], 200),
+            'http://mock-minio/upload' => Http::response('', 200),
+        ]);
+    }
+
     public function test_user_can_register_via_api(): void
     {
         $data = [
