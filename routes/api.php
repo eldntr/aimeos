@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\Seller\ProductController as SellerProductController;
 use App\Http\Controllers\Seller\SellerProfileController;
 use App\Http\Controllers\Admin\SellerVerificationController;
@@ -57,6 +58,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/user/addresses', [\App\Http\Controllers\CustomerAddressController::class, 'store']);
     Route::put('/user/addresses/{id}', [\App\Http\Controllers\CustomerAddressController::class, 'update']);
     Route::delete('/user/addresses/{id}', [\App\Http\Controllers\CustomerAddressController::class, 'destroy']);
+
+    // Wishlist routes
+    Route::get('/wishlist', [WishlistController::class, 'index']);
+    Route::post('/wishlist', [WishlistController::class, 'store']);
+    Route::delete('/wishlist/{id}', [WishlistController::class, 'destroy']);
 
     // Order History routes
     Route::get('/user/orders', [\App\Http\Controllers\OrderController::class, 'index']);

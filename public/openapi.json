@@ -20,7 +20,8 @@
     { "name": "Checkout", "description": "Multi-step checkout flow: address → shipping → payment → process (requires auth)" },
     { "name": "Order History", "description": "Customer order history and details (requires auth)" },
     { "name": "Seller", "description": "Seller profile and product management (requires seller role)" },
-    { "name": "Admin", "description": "Admin tools for seller KYC verification (requires admin role)" }
+    { "name": "Admin", "description": "Admin tools for seller KYC verification (requires admin role)" },
+    { "name": "Wishlist", "description": "User wishlist management (requires auth)" }
   ],
   "paths": {
     "/api/register/customer": {
@@ -537,6 +538,70 @@
         "responses": {
           "200": { "description": "Address deleted." },
           "404": { "description": "Address not found or unauthorized." },
+          "401": { "description": "Unauthorized." }
+        }
+      }
+    },
+    "/api/wishlist": {
+      "get": {
+        "security": [{ "bearerAuth": [] }],
+        "tags": ["Wishlist"],
+        "summary": "List Saved Products",
+        "description": "Get all products saved in the user's wishlist.",
+        "responses": {
+          "200": {
+            "description": "Wishlist retrieved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized." }
+        }
+      },
+      "post": {
+        "security": [{ "bearerAuth": [] }],
+        "tags": ["Wishlist"],
+        "summary": "Add Product to Wishlist",
+        "description": "Add a new product to the user's wishlist.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["product_id"],
+                "properties": {
+                  "product_id": { "type": "string", "description": "Aimeos product ID", "example": "42" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Product added to wishlist.", "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string", "example": "Produk berhasil ditambahkan ke wishlist." }, "data": { "type": "object" } } } } } },
+          "422": { "description": "Validation error or product already in wishlist.", "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string", "example": "Produk sudah ada di wishlist." } } } } } },
+          "401": { "description": "Unauthorized." }
+        }
+      }
+    },
+    "/api/wishlist/{id}": {
+      "delete": {
+        "security": [{ "bearerAuth": [] }],
+        "tags": ["Wishlist"],
+        "summary": "Remove Product from Wishlist",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Product ID to remove", "example": "42" }
+        ],
+        "responses": {
+          "200": { "description": "Product removed from wishlist.", "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string", "example": "Produk berhasil dihapus dari wishlist." } } } } } },
+          "404": { "description": "Product not found in wishlist." },
           "401": { "description": "Unauthorized." }
         }
       }
