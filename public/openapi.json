@@ -318,6 +318,69 @@
         }
       }
     },
+    "/api/orders/{id}/complaint": {
+      "post": {
+        "security": [{ "bearerAuth": [] }],
+        "tags": ["Order History"],
+        "summary": "File an Order Complaint",
+        "description": "Submit a complaint or return request for a specific order. You can upload proof (photo/image).",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Order ID", "example": "10" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["complaint", "proof"],
+                "properties": {
+                  "complaint": { "type": "string", "example": "Barang yang diterima rusak." },
+                  "proof": { "type": "string", "format": "binary", "description": "Proof image upload (max 5MB)" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Complaint submitted successfully." },
+          "404": { "description": "Order not found." },
+          "422": { "description": "Validation error or invalid input." },
+          "401": { "description": "Unauthorized." }
+        }
+      }
+    },
+    "/api/orders/{id}/resolution": {
+      "patch": {
+        "security": [{ "bearerAuth": [] }],
+        "tags": ["Order History"],
+        "summary": "Respond to Order Complaint",
+        "description": "Seller or admin can provide a resolution to an existing order complaint.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Order ID", "example": "10" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["resolution"],
+                "properties": {
+                  "resolution": { "type": "string", "example": "Kami akan mengirimkan barang pengganti besok." }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Resolution submitted successfully." },
+          "404": { "description": "Complaint not found for this order." },
+          "422": { "description": "Validation error." },
+          "401": { "description": "Unauthorized." }
+        }
+      }
+    },
     "/api/products": {
       "get": {
         "tags": ["Products"],

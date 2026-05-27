@@ -8,6 +8,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\Seller\ProductController as SellerProductController;
 use App\Http\Controllers\Seller\SellerProfileController;
 use App\Http\Controllers\Admin\SellerVerificationController;
@@ -72,6 +73,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // Order History routes
     Route::get('/user/orders', [\App\Http\Controllers\OrderController::class, 'index']);
     Route::get('/user/orders/{id}', [\App\Http\Controllers\OrderController::class, 'show']);
+
+    // Order Complaint & Resolution
+    Route::post('/orders/{id}/complaint', [ComplaintController::class, 'store']);
+    Route::patch('/orders/{id}/resolution', [ComplaintController::class, 'resolve']);
 
     // Checkout routes
     Route::prefix('checkout')->group(function () {
