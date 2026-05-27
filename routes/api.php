@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\WishlistController;
+use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\Seller\ProductController as SellerProductController;
 use App\Http\Controllers\Seller\SellerProfileController;
 use App\Http\Controllers\Admin\SellerVerificationController;
@@ -33,6 +34,7 @@ Route::post('/login', [AuthenticatedSessionController::class, 'store']);
 // Public product routes (customer browsing — no auth required)
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
+Route::get('/products/{id}/reviews', [ReviewController::class, 'index']);
 
 Route::get('/docs', function () {
     return view('swagger');
@@ -63,6 +65,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/wishlist', [WishlistController::class, 'index']);
     Route::post('/wishlist', [WishlistController::class, 'store']);
     Route::delete('/wishlist/{id}', [WishlistController::class, 'destroy']);
+
+    // Review routes
+    Route::post('/products/{id}/reviews', [ReviewController::class, 'store']);
 
     // Order History routes
     Route::get('/user/orders', [\App\Http\Controllers\OrderController::class, 'index']);

@@ -360,6 +360,61 @@
         }
       }
     },
+    "/api/products/{id}/reviews": {
+      "get": {
+        "tags": ["Products"],
+        "summary": "List Product Reviews",
+        "description": "Get all approved reviews for a specific product.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Aimeos product ID", "example": "42" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reviews retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "type": "object" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "security": [{ "bearerAuth": [] }],
+        "tags": ["Products"],
+        "summary": "Submit a Product Review",
+        "description": "Submit a rating and comment for a product after ordering. Optionally upload a photo.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Aimeos product ID", "example": "42" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["rating"],
+                "properties": {
+                  "rating": { "type": "integer", "minimum": 1, "maximum": 5, "example": 5 },
+                  "comment": { "type": "string", "example": "Barangnya sangat bagus!" },
+                  "photo": { "type": "string", "format": "binary", "description": "Optional photo upload (max 2MB)" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Review submitted successfully." },
+          "422": { "description": "Validation error or invalid input." },
+          "401": { "description": "Unauthorized." }
+        }
+      }
+    },
     "/api/cart": {
       "get": {
         "security": [{ "bearerAuth": [] }],
