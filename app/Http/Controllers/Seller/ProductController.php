@@ -94,6 +94,11 @@ class ProductController extends Controller
             'images' => ['required', 'array', 'min:1', 'max:5'],
             'images.*' => ['file', 'mimes:jpeg,png,jpg,webp', 'max:5120'], // Max 5MB
             'video' => ['sometimes', 'file', 'mimes:mp4,webm', 'max:51200'], // Max 50MB
+            'categories' => ['sometimes', 'array'],
+            'categories.*' => ['string'],
+            'variants' => ['sometimes', 'array'],
+            'variants.*.code' => ['required_with:variants', 'string', 'max:64'],
+            'variants.*.label' => ['required_with:variants', 'string', 'max:255'],
         ]);
 
         $context = $this->getSellerContext();
@@ -130,7 +135,33 @@ class ProductController extends Controller
                 $product->addListItem('media', $listItem);
             }
             
+            // Add categories
+            if ($request->has('categories') && is_array($request->categories)) {
+                foreach ($request->categories as $categoryId) {
+                    $listItem = $this->createCatalogListItem($context, $categoryId);
+                    $product->addListItem('catalog', $listItem);
+                }
+            }
+            
             $saved = $manager->save($product);
+            
+            // Add variants if type is select
+            if ($product->getType() === 'select' && $request->has('variants') && is_array($request->variants)) {
+                foreach ($request->variants as $variantData) {
+                    $variantProduct = $manager->create()
+                        ->setLabel(strip_tags($variantData['label']))
+                        ->setCode(strip_tags($variantData['code']))
+                        ->setType('default')
+                        ->setStatus(1);
+                    $savedVariant = $manager->save($variantProduct);
+
+                    $listItem = $this->createVariantListItem($context, $savedVariant->getId());
+                    $saved->addListItem('product', $listItem);
+                }
+                $saved = $manager->save($saved); // Save again with attached variants
+            }
+            
+
             $manager->commit();
             
             // Trigger kompresi asinkron di file server
@@ -152,6 +183,11 @@ class ProductController extends Controller
         $request->validate([
             'label'  => ['sometimes', 'string', 'max:255'],
             'status' => ['sometimes', 'integer', 'in:0,1'],
+            'categories' => ['sometimes', 'array'],
+            'categories.*' => ['string'],
+            'variants' => ['sometimes', 'array'],
+            'variants.*.code' => ['required_with:variants', 'string', 'max:64'],
+            'variants.*.label' => ['required_with:variants', 'string', 'max:255'],
         ]);
 
         $context = $this->getSellerContext();
@@ -170,7 +206,37 @@ class ProductController extends Controller
             $product->setStatus((int) $request->status);
         }
 
+        // Update categories if provided (simple append for now)
+        if ($request->has('categories') && is_array($request->categories)) {
+            // Remove existing catalog lists to replace them
+            $listItems = $product->getListItems('catalog', 'default');
+            $product->deleteListItems($listItems, 'catalog');
+            
+            foreach ($request->categories as $categoryId) {
+                $listItem = $this->createCatalogListItem($context, $categoryId);
+                $product->addListItem('catalog', $listItem);
+            }
+        }
+
         $saved = $manager->save($product);
+        
+        // Add new variants if provided (does not delete existing variants to prevent data loss)
+        if ($saved->getType() === 'select' && $request->has('variants') && is_array($request->variants)) {
+            foreach ($request->variants as $variantData) {
+                $variantProduct = $manager->create()
+                    ->setLabel(strip_tags($variantData['label']))
+                    ->setCode(strip_tags($variantData['code']))
+                    ->setType('default')
+                    ->setStatus(1);
+                $savedVariant = $manager->save($variantProduct);
+
+                $listItem = $this->createVariantListItem($context, $savedVariant->getId());
+                $saved->addListItem('product', $listItem);
+            }
+            $saved = $manager->save($saved);
+        }
+
+
 
         return response()->json(['data' => $this->formatProduct($saved)]);
     }
@@ -229,5 +295,21 @@ class ProductController extends Controller
             ->setDomain('media')
             ->setType('default')
             ->setRefId($refId);
+    }
+
+    private function createCatalogListItem(\Aimeos\MShop\ContextIface $context, string $catalogId): \Aimeos\MShop\Common\Item\Lists\Iface
+    {
+        return \Aimeos\MShop::create($context, 'product/lists')->create()
+            ->setDomain('catalog')
+            ->setType('default')
+            ->setRefId($catalogId);
+    }
+
+    private function createVariantListItem(\Aimeos\MShop\ContextIface $context, string $variantId): \Aimeos\MShop\Common\Item\Lists\Iface
+    {
+        return \Aimeos\MShop::create($context, 'product/lists')->create()
+            ->setDomain('product')
+            ->setType('default')
+            ->setRefId($variantId);
     }
 }

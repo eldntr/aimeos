@@ -11,6 +11,7 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\Seller\ProductController as SellerProductController;
 use App\Http\Controllers\Seller\SellerProfileController;
+use App\Http\Controllers\Seller\CategoryController;
 use App\Http\Controllers\Admin\SellerVerificationController;
 use App\Http\Controllers\CartController;
 
@@ -99,6 +100,10 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/products/{id}', [SellerProductController::class, 'show']);
             Route::patch('/products/{id}', [SellerProductController::class, 'update']);
             Route::delete('/products/{id}', [SellerProductController::class, 'destroy']);
+
+            // Seller category management routes
+            Route::get('/categories', [CategoryController::class, 'index']);
+            Route::post('/categories', [CategoryController::class, 'store']);
         });
     });
 

@@ -608,6 +608,60 @@ class ApiTest extends TestCase
                  ->assertJsonPath('data.code', 'test-product-001');
     }
 
+    public function test_seller_can_create_and_list_categories(): void
+    {
+        $seller = $this->registerSellerAndGetToken('category');
+
+        // Create category
+        $createResponse = $this->withToken($seller['token'])
+            ->postJson('/api/seller/categories', [
+                'code' => 'test-category-001',
+                'label' => 'Test Category',
+                'status' => 1
+            ]);
+        $createResponse->assertStatus(201);
+        $categoryId = $createResponse->json('data.id');
+
+        // List categories
+        $listResponse = $this->withToken($seller['token'])
+            ->getJson('/api/seller/categories');
+        $listResponse->assertStatus(200)
+                     ->assertJsonFragment(['id' => $categoryId]);
+    }
+
+    public function test_seller_can_create_product_with_variants_and_categories(): void
+    {
+        $seller = $this->registerSellerAndGetToken('variants');
+
+        // Create category
+        $category = $this->withToken($seller['token'])
+            ->postJson('/api/seller/categories', [
+                'code' => 'cat-var-01',
+                'label' => 'Variant Category'
+            ]);
+        $categoryId = $category->json('data.id');
+
+        Http::fake([
+            '*' => Http::response(['upload_url' => 'http://fake', 'file_id' => '123'], 200)
+        ]);
+
+        $response = $this->withToken($seller['token'])
+            ->post('/api/seller/products', [
+                'label'  => 'Produk Variasi Test',
+                'code'   => 'test-variant-product',
+                'type'   => 'select',
+                'status' => 1,
+                'images' => [UploadedFile::fake()->image('test.jpg')],
+                'categories' => [$categoryId],
+                'variants' => [
+                    ['code' => 'var-01', 'label' => 'Ukuran S'],
+                    ['code' => 'var-02', 'label' => 'Ukuran M']
+                ]
+            ]);
+
+        $response->assertStatus(201);
+    }
+
     public function test_seller_can_list_own_products(): void
     {
         $seller = $this->registerSellerAndGetToken('list');

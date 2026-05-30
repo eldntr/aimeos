@@ -953,6 +953,48 @@
         }
       }
     },
+    "/api/seller/categories": {
+      "get": {
+        "security": [{ "bearerAuth": [] }],
+        "tags": ["Seller"],
+        "summary": "List Seller's Categories",
+        "description": "Get all categories (catalogs) belonging to the authenticated seller. Requires `seller` role with **approved** KYC status.",
+        "responses": {
+          "200": { "description": "Category list retrieved." },
+          "403": { "description": "Seller account not approved yet." },
+          "401": { "description": "Unauthorized." }
+        }
+      },
+      "post": {
+        "security": [{ "bearerAuth": [] }],
+        "tags": ["Seller"],
+        "summary": "Create a Category",
+        "description": "Create a new category (catalog). Requires `seller` role with **approved** KYC status.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["code", "label"],
+                "properties": {
+                  "code": { "type": "string", "example": "CAT-001" },
+                  "label": { "type": "string", "example": "Pakaian Pria" },
+                  "status": { "type": "integer", "enum": [0, 1], "example": 1 },
+                  "parent_id": { "type": "string", "description": "Optional parent category ID", "example": "1" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Category created." },
+          "422": { "description": "Validation error.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ValidationError" } } } },
+          "403": { "description": "Seller account not approved yet." },
+          "401": { "description": "Unauthorized." }
+        }
+      }
+    },
     "/api/seller/products": {
       "get": {
         "security": [{ "bearerAuth": [] }],
@@ -1175,13 +1217,29 @@
       },
       "ProductInput": {
         "type": "object",
-        "required": ["code", "label", "price"],
+        "required": ["code", "label"],
         "properties": {
           "code": { "type": "string", "description": "Unique product code", "example": "KAOS-001" },
           "label": { "type": "string", "description": "Product display name", "example": "Kaos Polos Premium" },
-          "price": { "type": "number", "description": "Product price in IDR", "example": 150000 },
-          "stock": { "type": "integer", "description": "Available stock quantity", "example": 50 },
-          "status": { "type": "integer", "enum": [0, 1], "description": "1 = active, 0 = inactive", "example": 1 }
+          "type": { "type": "string", "enum": ["default", "bundle", "select", "voucher"], "description": "Product type", "example": "default" },
+          "status": { "type": "integer", "enum": [0, 1], "description": "1 = active, 0 = inactive", "example": 1 },
+          "categories": { 
+            "type": "array", 
+            "items": { "type": "string" }, 
+            "description": "List of Category IDs (catalog IDs)", 
+            "example": ["1", "2"] 
+          },
+          "variants": {
+            "type": "array",
+            "description": "Required if type is 'select'. List of variants/child products.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": { "type": "string", "example": "KAOS-001-S" },
+                "label": { "type": "string", "example": "Ukuran S" }
+              }
+            }
+          }
         }
       },
       "Cart": {
