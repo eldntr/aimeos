@@ -18,6 +18,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\CategoryController as PublicCategoryController;
 use App\Http\Controllers\ShopController;
 use App\Http\Controllers\Seller\VoucherController;
+use App\Http\Controllers\Seller\OrderController as SellerOrderController;
 
 /*
 |--------------------------------------------------------------------------
@@ -107,6 +108,11 @@ Route::middleware('auth:sanctum')->group(function () {
         
         // Seller product management routes (must be approved)
         Route::middleware('seller.approved')->group(function () {
+            Route::get('/orders', [SellerOrderController::class, 'index']);
+            Route::get('/orders/{id}', [SellerOrderController::class, 'show']);
+            Route::patch('/orders/{id}/status', [SellerOrderController::class, 'updateStatus']);
+            Route::post('/orders/{id}/pickup', [SellerOrderController::class, 'requestPickup']);
+
             Route::get('/shop', [SellerProfileController::class, 'getShop']);
             Route::put('/shop', [SellerProfileController::class, 'updateShop']);
             Route::put('/bank', [SellerProfileController::class, 'updateBank']);
