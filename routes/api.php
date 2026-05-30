@@ -150,6 +150,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Admin routes
     Route::middleware('admin')->prefix('admin')->group(function () {
+        Route::get('/dashboard/stats', [\App\Http\Controllers\Admin\DashboardController::class, 'getStats']);
+        Route::patch('/users/{id}/status', [\App\Http\Controllers\Admin\UserController::class, 'updateStatus']);
+        
+        Route::post('/categories', [\App\Http\Controllers\Admin\CategoryController::class, 'store']);
+        Route::put('/categories/{id}', [\App\Http\Controllers\Admin\CategoryController::class, 'update']);
+        Route::delete('/categories/{id}', [\App\Http\Controllers\Admin\CategoryController::class, 'destroy']);
+        
         Route::get('/sellers/pending', [SellerVerificationController::class, 'index']);
         Route::post('/sellers/{id}/approve', [SellerVerificationController::class, 'approve']);
         Route::post('/sellers/{id}/reject', [SellerVerificationController::class, 'reject']);
