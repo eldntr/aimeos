@@ -63,6 +63,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/password', [PasswordController::class, 'update']);
     Route::delete('/profile', [ProfileController::class, 'destroy']);
 
+    // Notification routes
+    Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
+    Route::patch('/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead']);
+
     // Cart routes
     Route::get('/cart', [CartController::class, 'index']);
     Route::post('/cart', [CartController::class, 'store']);
@@ -156,6 +160,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/categories', [\App\Http\Controllers\Admin\CategoryController::class, 'store']);
         Route::put('/categories/{id}', [\App\Http\Controllers\Admin\CategoryController::class, 'update']);
         Route::delete('/categories/{id}', [\App\Http\Controllers\Admin\CategoryController::class, 'destroy']);
+        
+        Route::get('/banners', [\App\Http\Controllers\Admin\BannerController::class, 'index']);
+        Route::post('/banners', [\App\Http\Controllers\Admin\BannerController::class, 'store']);
+        Route::delete('/banners/{id}', [\App\Http\Controllers\Admin\BannerController::class, 'destroy']);
+        
+        Route::get('/withdrawals', [\App\Http\Controllers\Admin\WithdrawalController::class, 'index']);
+        Route::patch('/withdrawals/{id}/approve', [\App\Http\Controllers\Admin\WithdrawalController::class, 'approve']);
+        
+        Route::get('/reports/export', [\App\Http\Controllers\Admin\ReportController::class, 'export']);
+        
+        Route::post('/notifications/broadcast', [\App\Http\Controllers\Admin\NotificationController::class, 'broadcast']);
         
         Route::get('/sellers/pending', [SellerVerificationController::class, 'index']);
         Route::post('/sellers/{id}/approve', [SellerVerificationController::class, 'approve']);
