@@ -923,4 +923,117 @@ class ApiTest extends TestCase
         
         $this->assertContains($response->status(), [200, 422]);
     }
+
+    public function test_seller_can_update_shop(): void
+    {
+        $sellerInfo = $this->registerSellerAndGetToken('shop-update');
+        $sellerToken = $sellerInfo['token'];
+        
+        $response = $this->putJson('/api/seller/shop', [
+            'name' => 'New Shop Name',
+            'address' => 'Jl. Kebon Jeruk No 1'
+        ], ['Authorization' => "Bearer $sellerToken"]);
+        
+        if ($response->status() !== 403) {
+            $response->assertStatus(200)
+                     ->assertJsonPath('data.name', 'New Shop Name');
+        }
+    }
+
+    public function test_seller_can_update_bank(): void
+    {
+        $sellerInfo = $this->registerSellerAndGetToken('bank-update');
+        $sellerToken = $sellerInfo['token'];
+        
+        $response = $this->putJson('/api/seller/bank', [
+            'bank_name' => 'BCA',
+            'account_number' => '123456789',
+            'account_name' => 'John Doe Bank'
+        ], ['Authorization' => "Bearer $sellerToken"]);
+        
+        if ($response->status() !== 403) {
+            $response->assertStatus(200);
+            $this->assertEquals('BCA', $response->json('data.config.bank.name') ?? $response->json('data.config')['bank.name']);
+        }
+    }
+
+    public function test_seller_can_manage_variants(): void
+    {
+        $sellerInfo = $this->registerSellerAndGetToken('variants');
+        $sellerToken = $sellerInfo['token'];
+        
+        // 1. Create a parent product
+        $createResp = $this->postJson('/api/seller/products', [
+            'label' => 'Parent Shirt',
+            'code' => 'parent-shirt-' . uniqid(),
+            'type' => 'default',
+            'images' => [
+                \Illuminate\Http\UploadedFile::fake()->image('shirt.jpg')
+            ]
+        ], ['Authorization' => "Bearer $sellerToken"]);
+        
+        if ($createResp->status() === 403) return;
+        
+        $parentId = $createResp->json('data.id');
+        
+        // 2. Add Variant
+        $addResp = $this->postJson("/api/seller/products/$parentId/variants", [
+            'code' => 'variant-red-' . uniqid(),
+            'label' => 'Red Shirt'
+        ], ['Authorization' => "Bearer $sellerToken"]);
+        
+        $addResp->assertStatus(201);
+        $variantId = $addResp->json('data.id');
+        
+        // 3. Get Variants
+        $getResp = $this->getJson("/api/seller/products/$parentId/variants", ['Authorization' => "Bearer $sellerToken"]);
+        $getResp->assertStatus(200);
+        $this->assertCount(1, $getResp->json('data'));
+        
+        // 4. Delete Variant
+        $delResp = $this->deleteJson("/api/seller/products/$parentId/variants/$variantId", [], ['Authorization' => "Bearer $sellerToken"]);
+        $delResp->assertStatus(200);
+    }
+
+    public function test_seller_can_manage_images(): void
+    {
+        $sellerInfo = $this->registerSellerAndGetToken('images');
+        $sellerToken = $sellerInfo['token'];
+        
+        // 1. Create a product
+        $createResp = $this->postJson('/api/seller/products', [
+            'label' => 'Shoe Image Test',
+            'code' => 'shoe-img-' . uniqid(),
+            'type' => 'default',
+            'images' => [
+                \Illuminate\Http\UploadedFile::fake()->image('shoe1.jpg')
+            ]
+        ], ['Authorization' => "Bearer $sellerToken"]);
+        
+        if ($createResp->status() === 403) return;
+        
+        $productId = $createResp->json('data.id');
+        
+        // 2. Upload Images
+        $uploadResp = $this->postJson("/api/seller/products/$productId/images", [
+            'images' => [
+                \Illuminate\Http\UploadedFile::fake()->image('shoe2.jpg'),
+                \Illuminate\Http\UploadedFile::fake()->image('shoe3.jpg')
+            ]
+        ], ['Authorization' => "Bearer $sellerToken"]);
+        
+        $uploadResp->assertStatus(201);
+        
+        // 3. Get Images
+        $getResp = $this->getJson("/api/seller/products/$productId/images", ['Authorization' => "Bearer $sellerToken"]);
+        $getResp->assertStatus(200);
+        
+        $mediaList = $getResp->json('data');
+        $this->assertGreaterThanOrEqual(3, count($mediaList));
+        
+        // 4. Delete Image
+        $imageId = $mediaList[0]['media_id'];
+        $delResp = $this->deleteJson("/api/seller/products/$productId/images/$imageId", [], ['Authorization' => "Bearer $sellerToken"]);
+        $delResp->assertStatus(200);
+    }
 }

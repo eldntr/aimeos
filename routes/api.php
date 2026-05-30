@@ -107,11 +107,23 @@ Route::middleware('auth:sanctum')->group(function () {
         
         // Seller product management routes (must be approved)
         Route::middleware('seller.approved')->group(function () {
+            Route::get('/shop', [SellerProfileController::class, 'getShop']);
+            Route::put('/shop', [SellerProfileController::class, 'updateShop']);
+            Route::put('/bank', [SellerProfileController::class, 'updateBank']);
+
             Route::get('/products', [SellerProductController::class, 'index']);
             Route::post('/products', [SellerProductController::class, 'store']);
             Route::get('/products/{id}', [SellerProductController::class, 'show']);
             Route::patch('/products/{id}', [SellerProductController::class, 'update']);
             Route::delete('/products/{id}', [SellerProductController::class, 'destroy']);
+            
+            Route::get('/products/{id}/variants', [SellerProductController::class, 'getVariants']);
+            Route::post('/products/{id}/variants', [SellerProductController::class, 'addVariant']);
+            Route::delete('/products/{id}/variants/{variant_id}', [SellerProductController::class, 'deleteVariant']);
+
+            Route::get('/products/{id}/images', [SellerProductController::class, 'getImages']);
+            Route::post('/products/{id}/images', [SellerProductController::class, 'uploadImages']);
+            Route::delete('/products/{id}/images/{image_id}', [SellerProductController::class, 'deleteImage']);
 
             // Seller category management routes
             Route::get('/categories', [CategoryController::class, 'index']);

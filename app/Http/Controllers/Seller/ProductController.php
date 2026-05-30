@@ -312,4 +312,217 @@ class ProductController extends Controller
             ->setType('default')
             ->setRefId($variantId);
     }
+    public function getVariants(Request $request, string $id): \Illuminate\Http\JsonResponse
+    {
+        $context = $this->getSellerContext();
+        
+        try {
+            $manager = \Aimeos\MShop::create($context, 'product');
+            $product = $manager->get($id, ['product']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Product not found.'], 404);
+        }
+
+        $variants = [];
+        foreach ($product->getListItems('product', 'default') as $listItem) {
+            try {
+                $variantProd = $manager->get($listItem->getRefId());
+                $variants[] = [
+                    'list_id' => $listItem->getId(),
+                    'variant' => $this->formatProduct($variantProd)
+                ];
+            } catch (\Exception $e) {
+                // skip if not found
+            }
+        }
+
+        return response()->json(['data' => $variants]);
+    }
+
+    public function addVariant(Request $request, string $id): \Illuminate\Http\JsonResponse
+    {
+        $request->validate([
+            'code' => ['required', 'string', 'max:64'],
+            'label' => ['required', 'string', 'max:255'],
+        ]);
+
+        $context = $this->getSellerContext();
+        $manager = \Aimeos\MShop::create($context, 'product');
+
+        $manager->begin();
+        try {
+            $parentProduct = $manager->get($id, ['product']);
+            
+            // If parent product was default, change to select
+            if ($parentProduct->getType() === 'default') {
+                $parentProduct->setType('select');
+                $manager->save($parentProduct);
+            }
+
+            $variantProduct = $manager->create()
+                ->setLabel(strip_tags($request->label))
+                ->setCode(strip_tags($request->code))
+                ->setType('default')
+                ->setStatus(1);
+            $savedVariant = $manager->save($variantProduct);
+
+            $listItem = $this->createVariantListItem($context, $savedVariant->getId());
+            $parentProduct->addListItem('product', $listItem);
+            $manager->save($parentProduct);
+
+            $manager->commit();
+
+            return response()->json([
+                'message' => 'Varian berhasil ditambahkan.',
+                'data' => $this->formatProduct($savedVariant)
+            ], 201);
+        } catch (\Exception $e) {
+            $manager->rollback();
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function deleteVariant(Request $request, string $id, string $variant_id): \Illuminate\Http\JsonResponse
+    {
+        $context = $this->getSellerContext();
+        $manager = \Aimeos\MShop::create($context, 'product');
+        
+        $manager->begin();
+        try {
+            $parentProduct = $manager->get($id, ['product']);
+            
+            // Find the list item connecting the variant
+            $listItems = $parentProduct->getListItems('product', 'default');
+            $foundListItem = null;
+            foreach ($listItems as $item) {
+                if ($item->getRefId() === $variant_id) {
+                    $foundListItem = $item;
+                    break;
+                }
+            }
+            
+            if (!$foundListItem) {
+                return response()->json(['message' => 'Variant list item not found in this product.'], 404);
+            }
+            
+            $parentProduct->deleteListItem('product', $foundListItem);
+            $manager->save($parentProduct);
+            
+            // Delete the variant product itself
+            $manager->delete($variant_id);
+            
+            $manager->commit();
+            return response()->json(['message' => 'Varian berhasil dihapus.']);
+        } catch (\Exception $e) {
+            $manager->rollback();
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function getImages(Request $request, string $id): \Illuminate\Http\JsonResponse
+    {
+        $context = $this->getSellerContext();
+        
+        try {
+            $manager = \Aimeos\MShop::create($context, 'product');
+            $product = $manager->get($id, ['media']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Product not found.'], 404);
+        }
+
+        $mediaManager = \Aimeos\MShop::create($context, 'media');
+        $images = [];
+        
+        foreach ($product->getListItems('media', 'default') as $listItem) {
+            try {
+                $media = $mediaManager->get($listItem->getRefId());
+                $images[] = [
+                    'list_id' => $listItem->getId(),
+                    'media_id' => $media->getId(),
+                    'url' => $media->getUrl(),
+                    'mimetype' => $media->getMimeType()
+                ];
+            } catch (\Exception $e) {
+                // skip
+            }
+        }
+
+        return response()->json(['data' => $images]);
+    }
+
+    public function uploadImages(Request $request, string $id): \Illuminate\Http\JsonResponse
+    {
+        $request->validate([
+            'images' => ['required', 'array', 'min:1'],
+            'images.*' => ['required', 'file', 'mimes:jpeg,png,jpg,webp', 'max:5120'],
+        ]);
+
+        $context = $this->getSellerContext();
+        $manager = \Aimeos\MShop::create($context, 'product');
+
+        $manager->begin();
+        try {
+            $product = $manager->get($id, ['media']);
+            $fileService = new \App\Services\FileServerService();
+            $uploaded = [];
+
+            foreach ($request->file('images') as $file) {
+                $mediaUrl = $fileService->uploadFile($file);
+                
+                $mediaItem = $this->createMediaItem($context, $mediaUrl, $file->getMimeType());
+                $listItem = $this->createListItem($context, $mediaItem->getId());
+                
+                $product->addListItem('media', $listItem);
+                $uploaded[] = $mediaUrl;
+            }
+            
+            $manager->save($product);
+            $manager->commit();
+            $fileService->triggerCompression();
+
+            return response()->json([
+                'message' => 'Gambar berhasil diunggah.',
+                'data' => $uploaded
+            ], 201);
+        } catch (\Exception $e) {
+            $manager->rollback();
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function deleteImage(Request $request, string $id, string $media_id): \Illuminate\Http\JsonResponse
+    {
+        $context = $this->getSellerContext();
+        $manager = \Aimeos\MShop::create($context, 'product');
+        $mediaManager = \Aimeos\MShop::create($context, 'media');
+        
+        $manager->begin();
+        try {
+            $product = $manager->get($id, ['media']);
+            
+            $listItems = $product->getListItems('media', 'default');
+            $foundListItem = null;
+            foreach ($listItems as $item) {
+                if ($item->getRefId() === $media_id) {
+                    $foundListItem = $item;
+                    break;
+                }
+            }
+            
+            if (!$foundListItem) {
+                return response()->json(['message' => 'Media list item not found in this product.'], 404);
+            }
+            
+            $product->deleteListItem('media', $foundListItem);
+            $manager->save($product);
+            
+            $mediaManager->delete($media_id);
+            
+            $manager->commit();
+            return response()->json(['message' => 'Gambar berhasil dihapus.']);
+        } catch (\Exception $e) {
+            $manager->rollback();
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
 }
