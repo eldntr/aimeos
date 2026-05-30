@@ -17,6 +17,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\CategoryController as PublicCategoryController;
 use App\Http\Controllers\ShopController;
+use App\Http\Controllers\Seller\VoucherController;
 
 /*
 |--------------------------------------------------------------------------
@@ -65,6 +66,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/cart/{position}', [CartController::class, 'update']);
     Route::delete('/cart/{position}', [CartController::class, 'destroy']);
     Route::delete('/cart', [CartController::class, 'clear']);
+    Route::post('/cart/apply-voucher', [CartController::class, 'applyVoucher']);
+    Route::delete('/cart/remove-voucher', [CartController::class, 'removeVoucher']);
 
     // User Address routes
     Route::get('/user/addresses', [\App\Http\Controllers\CustomerAddressController::class, 'index']);
@@ -113,6 +116,10 @@ Route::middleware('auth:sanctum')->group(function () {
             // Seller category management routes
             Route::get('/categories', [CategoryController::class, 'index']);
             Route::post('/categories', [CategoryController::class, 'store']);
+
+            // Seller voucher management routes
+            Route::get('/vouchers', [VoucherController::class, 'index']);
+            Route::post('/vouchers', [VoucherController::class, 'store']);
         });
     });
 

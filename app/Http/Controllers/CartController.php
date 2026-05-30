@@ -146,6 +146,15 @@ class CartController extends Controller
         foreach ($basket->getProducts() as $pos => $productItem) {
             $data['product'][$pos] = $productItem->toArray();
         }
+
+        // Include applied coupons/vouchers
+        $data['coupon'] = [];
+        foreach ($basket->getCoupons() as $code => $couponItem) {
+            $data['coupon'][] = [
+                'code' => $code,
+                'name' => $couponItem->getName(),
+            ];
+        }
         
         return $data;
     }
@@ -249,29 +258,103 @@ class CartController extends Controller
      */
     public function clear()
     {
-        $basketController = $this->getBasketController();
-        $basket = $basketController->get();
-        
         $context = $this->getContextWithLocale();
-        $orderManager = \Aimeos\MShop::create($context, 'order');
+        $user = auth()->user();
         
-        if ($basket->getId()) {
+        $orderManager = \Aimeos\MShop::create($context, 'order');
+        $filter = $orderManager->filter();
+        $filter->add($filter->and([
+            $filter->compare('==', 'order.customerid', $user->id),
+            $filter->compare('==', 'order.statuspayment', OrderBase::PAY_UNFINISHED),
+            $filter->compare('==', 'order.statusdelivery', OrderBase::STAT_UNFINISHED),
+        ]));
+        
+        $order = $orderManager->search($filter)->first();
+        
+        if ($order && $order->getId()) {
+            $basketId = $order->getId();
+            
             // Delete products first to avoid foreign key constraints
             \Illuminate\Support\Facades\DB::table('mshop_order_product')
-                ->where('parentid', $basket->getId())
+                ->where('parentid', $basketId)
+                ->delete();
+            
+            \Illuminate\Support\Facades\DB::table('mshop_order_address')
+                ->where('parentid', $basketId)
+                ->delete();
+                
+            \Illuminate\Support\Facades\DB::table('mshop_order_service')
+                ->where('parentid', $basketId)
+                ->delete();
+                
+            \Illuminate\Support\Facades\DB::table('mshop_order_coupon')
+                ->where('parentid', $basketId)
+                ->delete();
+                
+            \Illuminate\Support\Facades\DB::table('mshop_order_status')
+                ->where('parentid', $basketId)
                 ->delete();
                 
             // Bypass Aimeos Cache Manager to prevent 'No site item available' exceptions during eviction
             \Illuminate\Support\Facades\DB::table('mshop_order')
-                ->where('id', $basket->getId())
+                ->where('id', $basketId)
                 ->delete();
         }
         
+        $basketController = $this->getBasketController();
         $basketController->clear();
 
         return response()->json([
             'message' => 'Keranjang berhasil dikosongkan.',
             'data' => $this->formatBasketResponse($basketController)
         ]);
+    }
+
+    /**
+     * Apply a voucher/coupon code to the cart.
+     */
+    public function applyVoucher(Request $request)
+    {
+        $request->validate([
+            'code' => 'required|string',
+        ]);
+
+        $basketController = $this->getBasketController();
+        
+        try {
+            $basketController->addCoupon($request->code);
+            $this->saveBasket($basketController);
+
+            return response()->json([
+                'message' => 'Voucher berhasil diterapkan.',
+                'data' => $this->formatBasketResponse($basketController)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Voucher tidak valid atau kadaluarsa.'], 422);
+        }
+    }
+
+    /**
+     * Remove a voucher/coupon from the cart.
+     */
+    public function removeVoucher(Request $request)
+    {
+        $request->validate([
+            'code' => 'required|string',
+        ]);
+
+        $basketController = $this->getBasketController();
+        
+        try {
+            $basketController->deleteCoupon($request->code);
+            $this->saveBasket($basketController);
+
+            return response()->json([
+                'message' => 'Voucher berhasil dihapus.',
+                'data' => $this->formatBasketResponse($basketController)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
     }
 }

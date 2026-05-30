@@ -554,6 +554,58 @@
         }
       }
     },
+    "/api/cart/apply-voucher": {
+      "post": {
+        "security": [{ "bearerAuth": [] }],
+        "tags": ["Cart"],
+        "summary": "Apply Voucher to Cart",
+        "description": "Apply a discount/promo code to the current cart.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["code"],
+                "properties": {
+                  "code": { "type": "string", "example": "PROMO10" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Voucher applied successfully." },
+          "422": { "description": "Invalid or expired voucher code." }
+        }
+      }
+    },
+    "/api/cart/remove-voucher": {
+      "delete": {
+        "security": [{ "bearerAuth": [] }],
+        "tags": ["Cart"],
+        "summary": "Remove Voucher from Cart",
+        "description": "Remove an applied discount/promo code from the current cart.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["code"],
+                "properties": {
+                  "code": { "type": "string", "example": "PROMO10" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Voucher removed successfully." },
+          "422": { "description": "Voucher code not found in cart." }
+        }
+      }
+    },
     "/api/cart": {
       "get": {
         "security": [{ "bearerAuth": [] }],
@@ -1026,6 +1078,45 @@
           "403": { "description": "Not a seller account." },
           "422": { "description": "Validation error (invalid file type/size).", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ValidationError" } } } },
           "401": { "description": "Unauthorized." }
+        }
+      }
+    },
+    "/api/seller/vouchers": {
+      "get": {
+        "security": [{ "bearerAuth": [] }],
+        "tags": ["Seller"],
+        "summary": "List Seller Vouchers",
+        "description": "List all discount/promo codes created by the seller.",
+        "responses": {
+          "200": { "description": "Vouchers retrieved." }
+        }
+      },
+      "post": {
+        "security": [{ "bearerAuth": [] }],
+        "tags": ["Seller"],
+        "summary": "Create Seller Voucher",
+        "description": "Create a new discount/promo code.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["code", "name", "type", "discount"],
+                "properties": {
+                  "code": { "type": "string", "example": "PROMO10" },
+                  "name": { "type": "string", "example": "Diskon Akhir Bulan" },
+                  "type": { "type": "string", "enum": ["fixed", "percent"], "example": "percent" },
+                  "discount": { "type": "number", "example": 10 },
+                  "max_amount": { "type": "number", "description": "Maksimal potongan untuk diskon persentase", "example": 20000 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Voucher created." },
+          "422": { "description": "Validation error." }
         }
       }
     },
