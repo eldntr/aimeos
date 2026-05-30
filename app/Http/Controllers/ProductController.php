@@ -102,4 +102,89 @@ class ProductController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Get variant options for a specific product (usually of type 'select').
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  string  $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getVariants(Request $request, string $id): \Illuminate\Http\JsonResponse
+    {
+        $context  = app('aimeos.context')->get(false);
+        $siteCode = $request->query('site', 'default');
+
+        try {
+            $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap($siteCode, '', '', false);
+            $context->setLocale($locale);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Site not found.'], 404);
+        }
+
+        try {
+            $manager = \Aimeos\MShop::create($context, 'product');
+            // Fetch product and its product list items (which links variants)
+            $product = $manager->get($id, ['product']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Product not found.'], 404);
+        }
+
+        // if product is not a select type, it likely has no variants
+        if ($product->getType() !== 'select') {
+            return response()->json(['data' => []]);
+        }
+
+        $variants = [];
+        $variantIds = [];
+
+        // Collect all variant IDs
+        foreach ($product->getListItems('product', 'default') as $listItem) {
+            $variantIds[] = $listItem->getRefId();
+        }
+
+        if (empty($variantIds)) {
+            return response()->json(['data' => []]);
+        }
+
+        // Fetch variant products
+        $filter = $manager->filter();
+        $filter->add($filter->compare('in', 'product.id', $variantIds));
+        $filter->add($filter->compare('==', 'product.status', 1));
+        
+        $variantProducts = $manager->search($filter, ['price', 'media']);
+
+        foreach ($variantProducts as $variant) {
+            $images = [];
+            foreach ($variant->getListItems('media', 'default') as $mediaList) {
+                if ($mediaItem = $mediaList->getRefItem()) {
+                    $images[] = [
+                        'url' => $mediaItem->getUrl(),
+                        'preview' => $mediaItem->getPreview(),
+                    ];
+                }
+            }
+
+            $prices = [];
+            foreach ($variant->getListItems('price', 'default') as $priceList) {
+                if ($priceItem = $priceList->getRefItem()) {
+                    $prices[] = [
+                        'value' => $priceItem->getValue(),
+                        'currency' => $priceItem->getCurrencyId(),
+                    ];
+                }
+            }
+
+            $variants[] = [
+                'id' => $variant->getId(),
+                'code' => $variant->getCode(),
+                'label' => $variant->getLabel(),
+                'type' => $variant->getType(),
+                'images' => $images,
+                'prices' => $prices,
+            ];
+        }
+
+        return response()->json(['data' => $variants]);
+    }
 }

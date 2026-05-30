@@ -381,6 +381,68 @@
         }
       }
     },
+    "/api/banners": {
+      "get": {
+        "tags": ["Products"],
+        "summary": "List Promotional Banners",
+        "description": "Fetch promotional banners for the Homepage. No authentication required.",
+        "responses": {
+          "200": { "description": "List of banners retrieved." }
+        }
+      }
+    },
+    "/api/categories": {
+      "get": {
+        "tags": ["Products"],
+        "summary": "List Categories",
+        "description": "List product categories in a nested/hierarchical structure.",
+        "responses": {
+          "200": { "description": "Category tree retrieved." }
+        }
+      }
+    },
+    "/api/categories/{id}/products": {
+      "get": {
+        "tags": ["Products"],
+        "summary": "List Products by Category",
+        "description": "Fetch products belonging to a specific category.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Category/Catalog ID" }
+        ],
+        "responses": {
+          "200": { "description": "List of products retrieved." },
+          "404": { "description": "Category not found." }
+        }
+      }
+    },
+    "/api/shops/{shop_id}": {
+      "get": {
+        "tags": ["Products"],
+        "summary": "Get Shop Profile",
+        "description": "Fetch the public profile of a shop (seller).",
+        "parameters": [
+          { "name": "shop_id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Shop/Site Code" }
+        ],
+        "responses": {
+          "200": { "description": "Shop profile retrieved." },
+          "404": { "description": "Shop not found." }
+        }
+      }
+    },
+    "/api/shops/{shop_id}/products": {
+      "get": {
+        "tags": ["Products"],
+        "summary": "List Products by Shop",
+        "description": "Fetch all products available from a specific shop.",
+        "parameters": [
+          { "name": "shop_id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Shop/Site Code" }
+        ],
+        "responses": {
+          "200": { "description": "List of shop products retrieved." },
+          "404": { "description": "Shop not found." }
+        }
+      }
+    },
     "/api/products": {
       "get": {
         "tags": ["Products"],
@@ -419,6 +481,20 @@
         ],
         "responses": {
           "200": { "description": "Product detail.", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Product" } } } } } },
+          "404": { "description": "Product not found." }
+        }
+      }
+    },
+    "/api/products/{id}/variants": {
+      "get": {
+        "tags": ["Products"],
+        "summary": "Get Product Variants",
+        "description": "Fetch the available variant options for a specific product (usually for 'select' type products).",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Product ID" }
+        ],
+        "responses": {
+          "200": { "description": "Variants retrieved." },
           "404": { "description": "Product not found." }
         }
       }

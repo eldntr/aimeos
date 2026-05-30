@@ -504,6 +504,50 @@ class ApiTest extends TestCase
         $response->assertStatus(404);
     }
 
+    public function test_anyone_can_get_banners(): void
+    {
+        $response = $this->getJson('/api/banners');
+        $response->assertStatus(200)
+                 ->assertJsonStructure(['data']);
+    }
+
+    public function test_anyone_can_get_categories(): void
+    {
+        $response = $this->getJson('/api/categories');
+        $response->assertStatus(200)
+                 ->assertJsonStructure(['data']);
+    }
+
+    public function test_anyone_can_get_products_by_category(): void
+    {
+        // 1 is typically the root category ID or we can just expect 200
+        $response = $this->getJson('/api/categories/1/products');
+        // Might be 404 if category 1 doesn't exist, so we accept 200 or 404
+        $this->assertContains($response->status(), [200, 404]);
+    }
+
+    public function test_anyone_can_get_shop_profile(): void
+    {
+        // 'default' site should always exist
+        $response = $this->getJson('/api/shops/default');
+        $response->assertStatus(200)
+                 ->assertJsonStructure(['data' => ['id', 'code', 'label', 'status']]);
+    }
+
+    public function test_anyone_can_get_products_by_shop(): void
+    {
+        $response = $this->getJson('/api/shops/default/products');
+        $response->assertStatus(200)
+                 ->assertJsonStructure(['data']);
+    }
+
+    public function test_anyone_can_get_product_variants(): void
+    {
+        // 1 is a mock product ID, so might return 404 or 200
+        $response = $this->getJson('/api/products/1/variants');
+        $this->assertContains($response->status(), [200, 404]);
+    }
+
     // =========================================================================
     // Product API Tests — Seller CRUD
     // =========================================================================

@@ -14,6 +14,9 @@ use App\Http\Controllers\Seller\SellerProfileController;
 use App\Http\Controllers\Seller\CategoryController;
 use App\Http\Controllers\Admin\SellerVerificationController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\CategoryController as PublicCategoryController;
+use App\Http\Controllers\ShopController;
 
 /*
 |--------------------------------------------------------------------------
@@ -34,8 +37,14 @@ Route::post('/register/admin', [RegisteredUserController::class, 'registerAdmin'
 Route::post('/login', [AuthenticatedSessionController::class, 'store']);
 
 // Public product routes (customer browsing — no auth required)
+Route::get('/banners', [HomeController::class, 'getBanners']);
+Route::get('/categories', [PublicCategoryController::class, 'index']);
+Route::get('/categories/{id}/products', [PublicCategoryController::class, 'getProducts']);
+Route::get('/shops/{shop_id}', [ShopController::class, 'show']);
+Route::get('/shops/{shop_id}/products', [ShopController::class, 'getProducts']);
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
+Route::get('/products/{id}/variants', [ProductController::class, 'getVariants']);
 Route::get('/products/{id}/reviews', [ReviewController::class, 'index']);
 
 Route::get('/docs', function () {
