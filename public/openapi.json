@@ -51,6 +51,10 @@
     {
       "name": "Wishlist",
       "description": "User wishlist management (requires auth)"
+    },
+    {
+      "name": "Seller",
+      "description": "Seller operations"
     }
   ],
   "paths": {
@@ -2321,83 +2325,48 @@
       }
     },
     "/api/seller/vouchers": {
-      "get": {
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "tags": [
-          "Seller"
-        ],
-        "summary": "List Seller Vouchers",
-        "description": "List all discount/promo codes created by the seller.",
-        "responses": {
-          "200": {
-            "description": "Vouchers retrieved."
-          }
-        }
-      },
       "post": {
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
         "tags": [
           "Seller"
         ],
-        "summary": "Create Seller Voucher",
-        "description": "Create a new discount/promo code.",
+        "summary": "Create a new voucher",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "code",
-                  "name",
-                  "type",
-                  "discount"
-                ],
                 "properties": {
                   "code": {
-                    "type": "string",
-                    "example": "PROMO10"
+                    "type": "string"
                   },
-                  "name": {
-                    "type": "string",
-                    "example": "Diskon Akhir Bulan"
+                  "discount": {
+                    "type": "number"
                   },
                   "type": {
                     "type": "string",
                     "enum": [
-                      "fixed",
-                      "percent"
-                    ],
-                    "example": "percent"
-                  },
-                  "discount": {
-                    "type": "number",
-                    "example": 10
-                  },
-                  "max_amount": {
-                    "type": "number",
-                    "description": "Maksimal potongan untuk diskon persentase",
-                    "example": 20000
+                      "percent",
+                      "fixed"
+                    ]
                   }
-                }
+                },
+                "required": [
+                  "code",
+                  "discount"
+                ]
               }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "Voucher created."
-          },
-          "422": {
-            "description": "Validation error."
+            "description": "Created"
           }
         }
       }
@@ -3299,6 +3268,116 @@
         "responses": {
           "200": {
             "description": "Successful response"
+          }
+        }
+      }
+    },
+    "/api/seller/wallet": {
+      "get": {
+        "tags": [
+          "Seller"
+        ],
+        "summary": "Get seller wallet balance",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Informasi wallet berhasil diambil.",
+                  "data": {
+                    "total_revenue": 150000.0,
+                    "total_withdrawn": 50000.0,
+                    "pending_withdrawal": 0,
+                    "available_balance": 100000.0,
+                    "currency": "IDR"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/seller/withdraw": {
+      "post": {
+        "tags": [
+          "Seller"
+        ],
+        "summary": "Request funds withdrawal",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "number",
+                    "example": 50000
+                  }
+                },
+                "required": [
+                  "amount"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/api/seller/reports/sales": {
+      "get": {
+        "tags": [
+          "Seller"
+        ],
+        "summary": "Get sales reports",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
           }
         }
       }

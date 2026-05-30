@@ -19,6 +19,8 @@ use App\Http\Controllers\CategoryController as PublicCategoryController;
 use App\Http\Controllers\ShopController;
 use App\Http\Controllers\Seller\VoucherController;
 use App\Http\Controllers\Seller\OrderController as SellerOrderController;
+use App\Http\Controllers\Seller\WalletController;
+use App\Http\Controllers\Seller\ReportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -138,6 +140,11 @@ Route::middleware('auth:sanctum')->group(function () {
             // Seller voucher management routes
             Route::get('/vouchers', [VoucherController::class, 'index']);
             Route::post('/vouchers', [VoucherController::class, 'store']);
+
+            // Seller wallet & reports
+            Route::get('/wallet', [WalletController::class, 'getWallet']);
+            Route::post('/withdraw', [WalletController::class, 'withdraw']);
+            Route::get('/reports/sales', [ReportController::class, 'getSales']);
         });
     });
 
