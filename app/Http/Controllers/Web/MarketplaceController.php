@@ -255,7 +255,7 @@ class MarketplaceController extends Controller
             'price' => $priceLabel,
             'priceRaw' => $priceRaw,
             'image' => Arr::get($images, '0.url', 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=1200&q=80'),
-            'rating' => Arr::get($product, 'rating', '4.8'),
+            'rating' => Arr::get($product, 'rating', '-'),
             'location' => Arr::get($product, 'location', 'Indonesia'),
             'shop_name' => Arr::get($product, 'shop_name', 'Toko Reborns'),
             'shop_code' => Arr::get($product, 'shop_code', 'default'),

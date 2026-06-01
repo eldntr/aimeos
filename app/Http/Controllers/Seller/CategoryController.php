@@ -8,39 +8,8 @@ use Illuminate\Support\Facades\Auth;
 
 class CategoryController extends Controller
 {
-    /**
-     * Get the Aimeos context bootstrapped to the seller's own site.
-     */
-    private function getSellerContext(): \Aimeos\MShop\ContextIface
-    {
-        $context  = app('aimeos.context')->get(false);
-        $user     = Auth::user();
-        $siteCode = $this->getSiteCodeFromSiteId($context, $user->siteid);
+    use HasSellerContext;
 
-        $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap($siteCode, '', '', false);
-        $context->setLocale($locale);
-
-        return $context;
-    }
-
-    /**
-     * Resolve site code from the siteid path stored in users.siteid.
-     */
-    private function getSiteCodeFromSiteId(\Aimeos\MShop\ContextIface $context, string $siteid): string
-    {
-        $manager = \Aimeos\MShop::create($context, 'locale/site');
-        $filter  = $manager->filter();
-        $parts   = array_filter(explode('.', trim($siteid, '.')));
-        $numericId = end($parts);
-        $filter->add($filter->compare('==', 'locale.site.id', (int) $numericId));
-        $sites   = $manager->search($filter);
-
-        if ($sites->isEmpty()) {
-            abort(403, 'Seller site not found.');
-        }
-
-        return $sites->first()->getCode();
-    }
 
     /**
      * List all categories (catalogs) for this seller.

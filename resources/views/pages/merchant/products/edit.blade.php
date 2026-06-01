@@ -16,29 +16,6 @@
             </div>
         </div>
 
-        {{-- Validation Errors --}}
-        @if ($errors->any())
-            <div class="bg-error/10 border border-error/20 rounded-2xl p-4">
-                <div class="flex items-center gap-2 mb-2">
-                    <span class="material-symbols-outlined text-error text-lg" style="font-variation-settings: 'FILL' 1;">error</span>
-                    <p class="text-sm font-bold text-error">Ada kesalahan pada form:</p>
-                </div>
-                <ul class="list-disc list-inside text-sm text-error/80 space-y-1">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
-        {{-- Flash Messages --}}
-        @if (session('success'))
-            <div class="flex items-center gap-3 px-5 py-3 bg-tertiary/10 text-tertiary rounded-2xl text-sm font-semibold">
-                <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-                {{ session('success') }}
-            </div>
-        @endif
-
         {{-- Edit Form --}}
         <form action="{{ route('merchant.products.update', ['product' => $product['id']] + $routeParams) }}" method="POST" enctype="multipart/form-data"
               class="bg-surface-container-lowest rounded-2xl p-6 md:p-8 border border-outline-variant/10 shadow-[0_4px_16px_rgba(47,47,46,0.04)] space-y-6">
@@ -114,6 +91,52 @@
                 </div>
             @endif
 
+            {{-- Variant Management Section (AJAX) --}}
+            <div class="p-6 bg-surface-container-low rounded-2xl border border-outline-variant/10 space-y-4">
+                <h2 class="text-base font-bold text-on-surface flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-primary">sell</span>
+                    Kelola Varian Produk
+                </h2>
+                <p class="text-xs text-on-surface-variant">Tambahkan atau hapus opsi variasi untuk produk ini (warna, ukuran, RAM, dsb). Varian yang disimpan akan langsung diperbarui.</p>
+
+                {{-- Add Variant AJAX Form --}}
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-surface-container-lowest rounded-xl border border-outline-variant/10" id="add-variant-form">
+                    <div>
+                        <label class="block text-[11px] font-bold text-outline mb-1">Kode Varian (SKU)</label>
+                        <input type="text" id="new-variant-code" placeholder="Contoh: MBA-M1-GOLD"
+                               class="w-full rounded-lg bg-surface-container-high border-none px-3 py-2 text-xs text-on-surface focus:ring-1 focus:ring-primary" />
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-outline mb-1">Nama Varian (Label)</label>
+                        <input type="text" id="new-variant-label" placeholder="Contoh: Gold / 8GB RAM"
+                               class="w-full rounded-lg bg-surface-container-high border-none px-3 py-2 text-xs text-on-surface focus:ring-1 focus:ring-primary" />
+                    </div>
+                    <div class="flex items-end">
+                        <button type="button" onclick="submitNewVariant()"
+                                class="w-full py-2 bg-primary text-white text-xs font-bold rounded-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-1">
+                            <span class="material-symbols-outlined text-sm">add</span>
+                            Simpan Varian
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Variants Table --}}
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-outline-variant/10 text-outline uppercase font-bold text-[10px]">
+                                <th class="pb-2">SKU</th>
+                                <th class="pb-2">Nama Varian</th>
+                                <th class="pb-2 text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="variants-table-body" class="divide-y divide-outline-variant/10">
+                            {{-- Will be loaded via JS --}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             {{-- Image Upload --}}
             <div>
                 <label class="block text-sm font-bold text-on-surface mb-2">Ganti Foto (opsional)</label>
@@ -145,22 +168,136 @@
                 </div>
 
                 {{-- Delete Button --}}
-                <form action="{{ route('merchant.products.destroy', ['product' => $product['id']] + $routeParams) }}" method="POST"
-                      onsubmit="return confirm('Yakin mau hapus produk ini? Aksi ini tidak bisa dibatalkan.');">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit"
-                            class="inline-flex items-center gap-2 px-5 py-3 bg-error/10 text-error rounded-full font-bold text-sm hover:bg-error/20 transition-colors">
-                        <span class="material-symbols-outlined text-lg">delete</span>
-                        Hapus
-                    </button>
-                </form>
+                <button type="submit" form="delete-product-form"
+                        class="inline-flex items-center gap-2 px-5 py-3 bg-error/10 text-error rounded-full font-bold text-sm hover:bg-error/20 transition-colors">
+                    <span class="material-symbols-outlined text-lg">delete</span>
+                    Hapus
+                </button>
             </div>
+        </form>
+
+        {{-- Hidden Delete Form --}}
+        <form id="delete-product-form" action="{{ route('merchant.products.destroy', ['product' => $product['id']] + $routeParams) }}" method="POST"
+              onsubmit="return confirm('Yakin mau hapus produk ini? Aksi ini tidak bisa dibatalkan.');" class="hidden">
+            @csrf
+            @method('DELETE')
         </form>
     </section>
 
     @push('scripts')
     <script>
+        const productId = @json($product['id']);
+        const routeParams = @json($routeParams);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadVariants();
+        });
+
+        async function loadVariants() {
+            const tbody = document.getElementById('variants-table-body');
+            tbody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-outline">Memuat varian...</td></tr>`;
+
+            try {
+                let url = `/api/products/${productId}/variants`;
+                if (routeParams.site) {
+                    url += `?site=${routeParams.site}`;
+                }
+                const response = await fetch(url);
+                const result = await response.json();
+                const variants = result.data || [];
+
+                tbody.innerHTML = '';
+                if (variants.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-outline">Belum ada variasi aktif untuk produk ini.</td></tr>`;
+                    return;
+                }
+
+                variants.forEach(item => {
+                    const row = document.createElement('tr');
+                    const v = item.variant || item;
+                    const vId = v.id;
+                    const vCode = v.code || '-';
+                    const vLabel = v.label || v.name || '-';
+
+                    row.innerHTML = `
+                        <td class="py-3 font-semibold text-on-surface">${vCode}</td>
+                        <td class="py-3 text-on-surface-variant font-medium">${vLabel}</td>
+                        <td class="py-3 text-right">
+                            <button type="button" onclick="deleteVariant('${vId}')"
+                                    class="text-error font-bold hover:underline">Hapus</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-error font-semibold">Gagal memuat varian.</td></tr>`;
+            }
+        }
+
+        async function submitNewVariant() {
+            const codeInput = document.getElementById('new-variant-code');
+            const labelInput = document.getElementById('new-variant-label');
+            const code = codeInput.value.trim();
+            const label = labelInput.value.trim();
+
+            if (!code || !label) {
+                alert('Kode dan Nama varian harus diisi.');
+                return;
+            }
+
+            try {
+                let url = `/merchant/products/${productId}/variants`;
+                if (routeParams.site) {
+                    url += `?site=${routeParams.site}`;
+                }
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({ code, label })
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    codeInput.value = '';
+                    labelInput.value = '';
+                    loadVariants();
+                } else {
+                    alert(result.message || 'Gagal menambahkan varian.');
+                }
+            } catch (e) {
+                alert('Terjadi kesalahan koneksi.');
+            }
+        }
+
+        async function deleteVariant(variantId) {
+            if (!confirm('Yakin ingin menghapus varian ini?')) return;
+
+            try {
+                let url = `/merchant/products/${productId}/variants/${variantId}`;
+                if (routeParams.site) {
+                    url += `?site=${routeParams.site}`;
+                }
+                const response = await fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    loadVariants();
+                } else {
+                    alert(result.message || 'Gagal menghapus varian.');
+                }
+            } catch (e) {
+                alert('Terjadi kesalahan koneksi.');
+            }
+        }
+
         function previewImages(input) {
             const container = document.getElementById('image-preview-container');
             container.innerHTML = '';

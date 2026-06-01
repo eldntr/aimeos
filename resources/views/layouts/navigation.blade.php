@@ -11,9 +11,9 @@
     }
 
     $user = auth()->user();
-    $isCustomer = $user?->hasRole('customer') || $user?->role === 'customer';
-    $isMerchant = $user?->hasRole('merchant') || $user?->role === 'merchant';
-    $isAdmin = $user?->hasRole('admin') || $user?->role === 'admin';
+    $isMerchant = $user && !empty($user->siteid) && $user->siteid !== '1.' && $user->seller_status === 'approved';
+    $isCustomer = !$isMerchant;
+    $isAdmin = false; // default to false or dynamic check if needed
 @endphp
 
 <nav class="sticky top-0 z-50 bg-[#FF5722] text-white font-['Plus_Jakarta_Sans'] font-medium tracking-tight shadow-[0_12px_40px_rgba(47,47,46,0.06)] flex justify-between items-center w-full px-5 md:px-8 py-3 max-w-full relative">
@@ -24,14 +24,33 @@
         <div class="hidden md:flex gap-8"></div>
     </div>
 
-    <div class="flex-1 max-w-2xl px-8 hidden lg:block">
-        <div class="relative flex items-center group">
-            <span class="material-symbols-outlined absolute left-4 text-white/70">search</span>
+    {{-- Desktop autocomplete search bar --}}
+    <div class="flex-1 max-w-2xl px-8 hidden lg:block" data-search-widget="desktop">
+        <form id="navbar-search-form-desktop" action="{{ route('landing') }}" method="GET" class="relative" role="search" autocomplete="off">
+            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none z-10">search</span>
             <input
-                class="w-full bg-white/15 border-none focus:ring-2 focus:ring-white/30 rounded-full py-2 pl-12 pr-4 text-white placeholder:text-white/60 transition-all duration-200"
-                placeholder="Cari prelove yang kamu lagi cari..."
-                type="text" />
-        </div>
+                id="navbar-search-desktop"
+                name="search"
+                class="w-full bg-white/15 border-none focus:ring-2 focus:ring-white/30 rounded-full py-2.5 pl-12 pr-10 text-white placeholder:text-white/60 transition-all duration-200 outline-none"
+                placeholder="Cari produk atau nama toko..."
+                type="text"
+                value="{{ request('search', '') }}"
+                autocomplete="off"
+                aria-label="Cari produk atau toko"
+                aria-autocomplete="list"
+                aria-controls="search-dropdown-desktop" />
+            <button type="submit" class="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors" aria-label="Cari">
+                <span class="material-symbols-outlined text-[18px] leading-none">arrow_forward</span>
+            </button>
+            {{-- Dropdown --}}
+            <div
+                id="search-dropdown-desktop"
+                class="hidden absolute top-[calc(100%+10px)] left-0 right-0 bg-[#1C1C1E] rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.45)] border border-white/10 overflow-hidden z-[9999]"
+                role="listbox"
+                aria-label="Hasil pencarian">
+                {{-- JS will populate this --}}
+            </div>
+        </form>
     </div>
 
     <div class="flex items-center gap-3 md:gap-6 shrink-0">
@@ -191,6 +210,29 @@
     </div>
 
     <div class="hidden md:hidden absolute top-full right-5 left-5 mt-3 bg-[#F8FAFC] text-on-surface rounded-2xl border border-outline-variant/20 shadow-[0_24px_48px_rgba(47,47,46,0.18)] p-3 z-50" data-mobile-menu>
+        {{-- Mobile search bar --}}
+        <div data-search-widget="mobile" class="relative mb-2">
+            <form id="navbar-search-form-mobile" action="{{ route('landing') }}" method="GET" role="search" autocomplete="off">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] pointer-events-none z-10">search</span>
+                <input
+                    id="navbar-search-mobile"
+                    name="search"
+                    class="w-full bg-surface-container-low border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-full py-2 pl-10 pr-4 text-sm text-on-surface placeholder:text-on-surface-variant transition-all duration-200"
+                    placeholder="Cari produk atau toko..."
+                    type="text"
+                    value="{{ request('search', '') }}"
+                    autocomplete="off"
+                    aria-label="Cari produk atau toko"
+                    aria-autocomplete="list"
+                    aria-controls="search-dropdown-mobile" />
+            </form>
+            <div
+                id="search-dropdown-mobile"
+                class="hidden absolute top-[calc(100%+6px)] left-0 right-0 bg-[#1C1C1E] rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden z-[9999]"
+                role="listbox"
+                aria-label="Hasil pencarian">
+            </div>
+        </div>
         <div class="flex flex-col gap-1 text-sm font-semibold">
             @auth
             @if(Route::has('marketplace.cart'))
@@ -231,10 +273,177 @@
 
 @push('scripts')
 <script>
+    // ── Navbar Autocomplete Search Widget ────────────────────────────────────
+    (() => {
+        const SUGGEST_URL = '/api/search/suggestions';
+        const DEBOUNCE_MS = 220;
+
+        function initSearchWidget(inputId, dropdownId, formId) {
+            const input    = document.getElementById(inputId);
+            const dropdown = document.getElementById(dropdownId);
+            const form     = document.getElementById(formId);
+            if (!input || !dropdown || !form) return;
+
+            let timer       = null;
+            let activeIndex = -1;
+            let lastQuery   = '';
+
+            function highlight(text, query) {
+                if (!query) return text;
+                const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                return text.replace(new RegExp(`(${escaped})`, 'gi'),
+                    '<mark style="background:rgba(255,87,34,.35);color:inherit;border-radius:2px;padding:0 1px">$1</mark>');
+            }
+
+            function buildHTML(data) {
+                const { products = [], shops = [] } = data;
+                if (!products.length && !shops.length) {
+                    return `<div class="px-5 py-4 text-sm text-white/50 text-center">Tidak ada hasil untuk "<strong class="text-white/80">${lastQuery}</strong>"</div>`;
+                }
+
+                let html = '';
+                const q = lastQuery;
+
+                if (products.length) {
+                    html += `<div class="px-4 pt-3 pb-1 text-[10px] font-bold text-white/40 uppercase tracking-widest">Produk</div>`;
+                    products.forEach((p, i) => {
+                        const img = p.image
+                            ? `<img src="${p.image}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0 bg-white/10" loading="lazy" alt="${p.label}">`
+                            : `<div class="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-white/40 text-[18px]">image</span></div>`;
+                        const price = p.price ? `<span class="text-[#FF9770] text-xs font-bold">${p.price}</span>` : '';
+                        const shop  = `<span class="text-white/40 text-[11px]">${p.shop_name}</span>`;
+                        html += `
+                            <a href="${p.url}" class="search-item flex items-center gap-3 px-4 py-2.5 hover:bg-white/8 transition-colors cursor-pointer" data-idx="${i}" role="option">
+                                ${img}
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-sm text-white leading-snug truncate">${highlight(p.label, q)}</div>
+                                    <div class="flex items-center gap-2 mt-0.5">${shop}${price ? '<span class="text-white/20">·</span>' + price : ''}</div>
+                                </div>
+                                <span class="material-symbols-outlined text-white/20 text-[16px] flex-shrink-0">chevron_right</span>
+                            </a>`;
+                    });
+                }
+
+                if (shops.length) {
+                    html += `<div class="px-4 pt-3 pb-1 text-[10px] font-bold text-white/40 uppercase tracking-widest ${products.length ? 'border-t border-white/8 mt-1' : ''}">Toko</div>`;
+                    shops.forEach((s, i) => {
+                        const idx = products.length + i;
+                        html += `
+                            <a href="${s.url}" class="search-item flex items-center gap-3 px-4 py-2.5 hover:bg-white/8 transition-colors cursor-pointer" data-idx="${idx}" role="option">
+                                <div class="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+                                    <span class="material-symbols-outlined text-white/60 text-[20px]">storefront</span>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-sm text-white leading-snug truncate">${highlight(s.name, q)}</div>
+                                    <div class="text-[11px] text-white/40">Lihat toko</div>
+                                </div>
+                                <span class="material-symbols-outlined text-white/20 text-[16px] flex-shrink-0">chevron_right</span>
+                            </a>`;
+                    });
+                }
+
+                // Footer — "Cari semua hasil"
+                const searchUrl = `/?search=${encodeURIComponent(q)}`;
+                html += `
+                    <div class="border-t border-white/8 mt-1">
+                        <a href="${searchUrl}" class="search-item flex items-center gap-3 px-4 py-3 hover:bg-white/8 transition-colors" role="option">
+                            <span class="material-symbols-outlined text-[#FF5722] text-[20px]">search</span>
+                            <span class="text-sm text-white/70">Cari semua hasil untuk <strong class="text-white">"${q}"</strong></span>
+                        </a>
+                    </div>`;
+
+                return html;
+            }
+
+            function showDropdown(html) {
+                dropdown.innerHTML = html;
+                dropdown.classList.remove('hidden');
+                activeIndex = -1;
+            }
+
+            function hideDropdown() {
+                dropdown.classList.add('hidden');
+                activeIndex = -1;
+            }
+
+            function getItems() {
+                return Array.from(dropdown.querySelectorAll('.search-item'));
+            }
+
+            function setActive(idx) {
+                const items = getItems();
+                items.forEach(el => el.classList.remove('bg-white/10'));
+                if (idx >= 0 && idx < items.length) {
+                    items[idx].classList.add('bg-white/10');
+                    items[idx].scrollIntoView({ block: 'nearest' });
+                }
+                activeIndex = idx;
+            }
+
+            async function fetchSuggestions(q) {
+                if (q.length < 2) { hideDropdown(); return; }
+                lastQuery = q;
+                showDropdown(`<div class="flex items-center justify-center py-5"><div class="w-5 h-5 border-2 border-[#FF5722] border-t-transparent rounded-full animate-spin"></div></div>`);
+                try {
+                    const res  = await fetch(`${SUGGEST_URL}?q=${encodeURIComponent(q)}`, { headers: { Accept: 'application/json' } });
+                    if (!res.ok) throw new Error();
+                    const data = await res.json();
+                    if (lastQuery !== q) return; // stale
+                    showDropdown(buildHTML(data));
+                } catch {
+                    hideDropdown();
+                }
+            }
+
+            input.addEventListener('input', () => {
+                clearTimeout(timer);
+                const val = input.value.trim();
+                if (!val) { hideDropdown(); return; }
+                timer = setTimeout(() => fetchSuggestions(val), DEBOUNCE_MS);
+            });
+
+            input.addEventListener('keydown', (e) => {
+                const items = getItems();
+                if (dropdown.classList.contains('hidden') || !items.length) return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setActive(Math.min(activeIndex + 1, items.length - 1));
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setActive(Math.max(activeIndex - 1, -1));
+                } else if (e.key === 'Enter') {
+                    if (activeIndex >= 0 && items[activeIndex]) {
+                        e.preventDefault();
+                        items[activeIndex].click();
+                    }
+                    // else let the form submit naturally
+                } else if (e.key === 'Escape') {
+                    hideDropdown();
+                    input.blur();
+                }
+            });
+
+            input.addEventListener('focus', () => {
+                if (input.value.trim().length >= 2) fetchSuggestions(input.value.trim());
+            });
+
+            // Close on outside click
+            document.addEventListener('click', (e) => {
+                if (!input.closest('[data-search-widget]').contains(e.target)) {
+                    hideDropdown();
+                }
+            });
+        }
+
+        initSearchWidget('navbar-search-desktop', 'search-dropdown-desktop', 'navbar-search-form-desktop');
+        initSearchWidget('navbar-search-mobile',  'search-dropdown-mobile',  'navbar-search-form-mobile');
+    })();
+
     (() => {
         const trigger = document.querySelector('[data-mobile-menu-trigger]');
         const menu = document.querySelector('[data-mobile-menu]');
         if (!trigger || !menu) return;
+
 
         const openMenu = () => {
             menu.classList.remove('hidden');

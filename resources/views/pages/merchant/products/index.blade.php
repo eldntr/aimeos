@@ -17,20 +17,6 @@
             </a>
         </div>
 
-        {{-- Flash Messages --}}
-        @if (session('success'))
-            <div class="flex items-center gap-3 px-5 py-3 bg-tertiary/10 text-tertiary rounded-2xl text-sm font-semibold">
-                <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-                {{ session('success') }}
-            </div>
-        @endif
-
-        @if (session('error'))
-            <div class="flex items-center gap-3 px-5 py-3 bg-error/10 text-error rounded-2xl text-sm font-semibold">
-                <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">error</span>
-                {{ session('error') }}
-            </div>
-        @endif
 
         {{-- Product Table --}}
         <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/10 shadow-[0_4px_16px_rgba(47,47,46,0.04)] overflow-hidden">

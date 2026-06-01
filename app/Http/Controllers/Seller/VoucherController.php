@@ -7,24 +7,7 @@ use Illuminate\Http\Request;
 
 class VoucherController extends Controller
 {
-    private function getSellerContext()
-    {
-        $context = app('aimeos.context')->get(false);
-        $user = auth()->user();
-
-        // Find seller site based on user ID (assuming seller site code or id is linked)
-        // Here we assume the seller has an approved site and we use their site
-        $siteManager = \Aimeos\MShop::create($context, 'locale/site');
-        
-        // Let's assume site code is seller's ID or similar. 
-        // For testing/simplicity, we can pass site code in query or use a default logic.
-        $siteCode = request()->query('site', 'default');
-        
-        $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap($siteCode, '', '', false);
-        $context->setLocale($locale);
-
-        return $context;
-    }
+    use HasSellerContext;
 
     public function index(Request $request)
     {

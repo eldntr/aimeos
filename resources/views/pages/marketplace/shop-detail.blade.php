@@ -49,7 +49,7 @@
                 <div class="px-4">
                     <p class="text-2xl font-black text-amber-500 flex items-center justify-center md:justify-start gap-1">
                         <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">star</span>
-                        4.8
+                        -
                     </p>
                     <p class="text-xs text-outline font-semibold uppercase tracking-wider mt-0.5">Rating Toko</p>
                 </div>

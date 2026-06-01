@@ -65,7 +65,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/merchants/{merchant}/approve', [AdminController::class, 'approve'])->name('admin.merchants.approve');
     Route::post('/admin/merchants/{merchant}/reject', [AdminController::class, 'reject'])->name('admin.merchants.reject');
 
-    Route::view('/merchant/dashboard', 'pages.merchant.dashboard')->name('merchant.dashboard');
+    Route::get('/merchant/dashboard', [MerchantController::class, 'dashboard'])->name('merchant.dashboard');
+    Route::view('/merchant/shop', 'pages.merchant.shop')->name('merchant.shop');
     Route::get('/merchant/products', [MerchantController::class, 'index'])->name('merchant.products.index');
     Route::get('/merchant/products/create', [MerchantController::class, 'create'])->name('merchant.products.create');
     Route::get('/merchant/products/{product}/edit', [MerchantController::class, 'edit'])->name('merchant.products.edit');
@@ -73,6 +74,25 @@ Route::middleware('auth')->group(function () {
     Route::post('/merchant/products', [MerchantController::class, 'store'])->name('merchant.products.store');
     Route::put('/merchant/products/{product}', [MerchantController::class, 'update'])->name('merchant.products.update');
     Route::delete('/merchant/products/{product}', [MerchantController::class, 'destroy'])->name('merchant.products.destroy');
+
+    // Merchant Orders
+    Route::get('/merchant/orders', [MerchantController::class, 'ordersIndex'])->name('merchant.orders.index');
+    Route::get('/merchant/orders/{id}', [MerchantController::class, 'ordersShow'])->name('merchant.orders.show');
+    Route::post('/merchant/orders/{id}/status', [MerchantController::class, 'ordersUpdateStatus'])->name('merchant.orders.update-status');
+    Route::post('/merchant/orders/{id}/pickup', [MerchantController::class, 'ordersRequestPickup'])->name('merchant.orders.request-pickup');
+
+    // Merchant Wallet / Earnings
+    Route::get('/merchant/wallet', [MerchantController::class, 'walletIndex'])->name('merchant.wallet.index');
+    Route::post('/merchant/wallet/withdraw', [MerchantController::class, 'walletWithdraw'])->name('merchant.wallet.withdraw');
+
+    // Merchant Vouchers
+    Route::get('/merchant/vouchers', [MerchantController::class, 'vouchersIndex'])->name('merchant.vouchers.index');
+    Route::get('/merchant/vouchers/create', [MerchantController::class, 'vouchersCreate'])->name('merchant.vouchers.create');
+    Route::post('/merchant/vouchers', [MerchantController::class, 'vouchersStore'])->name('merchant.vouchers.store');
+
+    // Merchant Product Variants (AJAX)
+    Route::post('/merchant/products/{product}/variants', [MerchantController::class, 'addVariantAJAX'])->name('merchant.products.variants.store');
+    Route::delete('/merchant/products/{product}/variants/{variant_id}', [MerchantController::class, 'deleteVariantAJAX'])->name('merchant.products.variants.destroy');
 });
 
 $params = [];

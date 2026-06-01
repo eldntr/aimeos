@@ -28,11 +28,27 @@ class ProductController extends Controller
             $siteManager = \Aimeos\MShop::create($context, 'locale/site');
             try {
                 $site = $siteManager->find($siteCodeQuery);
-                $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap($siteCodeQuery, '', '', false);
             } catch (\Exception $ex) {
-                // Fallback to default
                 $siteCodeQuery = 'default';
                 $site = $siteManager->find($siteCodeQuery);
+            }
+
+            if ($siteCodeQuery === 'default') {
+                $siteFilter = $siteManager->filter(true);
+                $siteItems = $siteManager->search($siteFilter);
+                $siteIds = [];
+                foreach ($siteItems as $item) {
+                    $siteIds[] = $item->getSiteId();
+                }
+                
+                $sites = [
+                    0 => $site->getSiteId(),
+                    1 => $siteIds,
+                    2 => $site->getSiteId(),
+                    3 => $siteIds
+                ];
+                $locale = new \Aimeos\MShop\Locale\Item\Standard(['locale.siteid' => $site->getSiteId()], $site, $sites);
+            } else {
                 $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap($siteCodeQuery, '', '', false);
             }
             $context->setLocale($locale);
@@ -40,11 +56,31 @@ class ProductController extends Controller
             return response()->json(['message' => 'Site not found.'], 404);
         }
 
+        $context->config()->set('mshop/locale/site/level', 4);
         $manager = \Aimeos\MShop::create($context, 'product');
         $filter  = $manager->filter(true); // status=1 (active only)
 
         if ($search) {
-            $filter->add($filter->compare('~=', 'product.label', $search));
+            $conditions = [];
+            $conditions[] = $filter->compare('~=', 'product.label', $search);
+            
+            try {
+                $siteFilter = $siteManager->filter();
+                $siteFilter->add($siteFilter->compare('~=', 'locale.site.label', $search));
+                $foundSites = $siteManager->search($siteFilter);
+                
+                if (!$foundSites->isEmpty()) {
+                    $matchingSiteIds = [];
+                    foreach ($foundSites as $siteItem) {
+                        $matchingSiteIds[] = $siteItem->getSiteId();
+                    }
+                    $conditions[] = $filter->compare('==', 'product.siteid', $matchingSiteIds);
+                }
+            } catch (\Exception $e) {
+                // ignore
+            }
+            
+            $filter->add($filter->or($conditions));
         }
 
         $filter->slice(($page - 1) * $perPage, $perPage);
@@ -141,6 +177,24 @@ class ProductController extends Controller
         
         // 1. Initial query in 'default' context to resolve the product's actual site code
         try {
+            $siteManager = \Aimeos\MShop::create($context, 'locale/site');
+            $site = $siteManager->find('default');
+            $siteFilter = $siteManager->filter(true);
+            $siteItems = $siteManager->search($siteFilter);
+            $siteIds = [];
+            foreach ($siteItems as $item) {
+                $siteIds[] = $item->getSiteId();
+            }
+            
+            $sites = [
+                0 => $site->getSiteId(),
+                1 => $siteIds,
+                2 => $site->getSiteId(),
+                3 => $siteIds
+            ];
+            $locale = new \Aimeos\MShop\Locale\Item\Standard(['locale.siteid' => $site->getSiteId()], $site, $sites);
+            $context->setLocale($locale);
+
             $manager = \Aimeos\MShop::create($context, 'product');
             $product = $manager->get($id);
             $siteDetails = $this->getSiteDetailsFromSiteId($context, $product->getSiteId());
@@ -318,6 +372,108 @@ class ProductController extends Controller
         }
 
         return response()->json(['data' => $variants]);
+    }
+
+    /**
+     * Return autocomplete suggestions for the search bar (products + shops).
+     * Lightweight — no pagination, max 5 products + 3 shops.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function suggest(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $query = trim($request->query('q', ''));
+
+        if (strlen($query) < 2) {
+            return response()->json(['products' => [], 'shops' => []]);
+        }
+
+        $context = app('aimeos.context')->get(false);
+
+        try {
+            $siteManager = \Aimeos\MShop::create($context, 'locale/site');
+            $site        = $siteManager->find('default');
+            $siteFilter  = $siteManager->filter(true);
+            $siteItems   = $siteManager->search($siteFilter);
+            $siteIds     = [];
+            foreach ($siteItems as $item) {
+                $siteIds[] = $item->getSiteId();
+            }
+            $sites  = [0 => $site->getSiteId(), 1 => $siteIds, 2 => $site->getSiteId(), 3 => $siteIds];
+            $locale = new \Aimeos\MShop\Locale\Item\Standard(['locale.siteid' => $site->getSiteId()], $site, $sites);
+            $context->setLocale($locale);
+        } catch (\Exception $e) {
+            return response()->json(['products' => [], 'shops' => []]);
+        }
+
+        // ── Products ──────────────────────────────────────────────────────
+        $products = [];
+        try {
+            $manager = \Aimeos\MShop::create($context, 'product');
+            $filter  = $manager->filter(true);
+            $filter->add($filter->compare('~=', 'product.label', $query));
+            $filter->slice(0, 5);
+            $results = $manager->search($filter, ['media', 'price']);
+
+            foreach ($results as $product) {
+                $siteDetails = $this->getSiteDetailsFromSiteId($context, $product->getSiteId());
+
+                // Fetch image
+                $image = null;
+                foreach ($product->getListItems('media', 'default') as $li) {
+                    if ($mi = $li->getRefItem()) {
+                        $image = $mi->getPreview() ?: $mi->getUrl();
+                        break;
+                    }
+                }
+
+                // Fetch first price
+                $price = null;
+                foreach ($product->getListItems('price', 'default') as $li) {
+                    if ($pi = $li->getRefItem()) {
+                        $price = 'Rp ' . number_format((float) $pi->getValue(), 0, ',', '.');
+                        break;
+                    }
+                }
+
+                $products[] = [
+                    'id'        => $product->getId(),
+                    'label'     => $product->getLabel(),
+                    'image'     => $image,
+                    'price'     => $price,
+                    'shop_name' => $siteDetails['name'],
+                    'url'       => url('/products/' . $product->getId()),
+                ];
+            }
+        } catch (\Exception $e) {
+            // ignore
+        }
+
+        // ── Shops ─────────────────────────────────────────────────────────
+        $shops = [];
+        try {
+            $siteFilter = $siteManager->filter();
+            $siteFilter->add($siteFilter->compare('~=', 'locale.site.label', $query));
+            $siteFilter->slice(0, 4);
+            $foundSites = $siteManager->search($siteFilter);
+
+            foreach ($foundSites as $siteItem) {
+                if ($siteItem->getCode() === 'default') {
+                    continue;
+                }
+                $shops[] = [
+                    'code'  => $siteItem->getCode(),
+                    'name'  => $siteItem->getLabel(),
+                    'url'   => url('/shops/' . $siteItem->getCode()),
+                ];
+                if (count($shops) >= 3) break;
+            }
+        } catch (\Exception $e) {
+            // ignore
+        }
+
+        return response()->json(['products' => $products, 'shops' => $shops]);
     }
 
     /**

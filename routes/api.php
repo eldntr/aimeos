@@ -50,6 +50,8 @@ Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
 Route::get('/products/{id}/variants', [ProductController::class, 'getVariants']);
 Route::get('/products/{id}/reviews', [ReviewController::class, 'index']);
+Route::get('/search/suggestions', [ProductController::class, 'suggest']);
+
 
 Route::get('/docs', function () {
     return view('swagger');

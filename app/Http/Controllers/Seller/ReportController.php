@@ -11,24 +11,7 @@ use Carbon\Carbon;
 
 class ReportController extends Controller
 {
-    protected function getNumericSiteId($siteid)
-    {
-        $parts = array_filter(explode('.', trim($siteid, '.')));
-        return end($parts);
-    }
-
-    protected function getSellerContext()
-    {
-        $context = app('aimeos.context')->get(false);
-        $user = auth()->user();
-        if ($user && $user->siteid) {
-            $siteManager = \Aimeos\MShop::create($context, 'locale/site');
-            $numericId = $this->getNumericSiteId($user->siteid);
-            $siteItem = $siteManager->get($numericId);
-            $context->setLocale(app('aimeos.locale')->get($context, $siteItem->getCode()));
-        }
-        return $context;
-    }
+    use HasSellerContext;
 
     /**
      * Get basic sales reports

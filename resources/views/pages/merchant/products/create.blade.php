@@ -16,20 +16,6 @@
             </div>
         </div>
 
-        {{-- Validation Errors --}}
-        @if ($errors->any())
-            <div class="bg-error/10 border border-error/20 rounded-2xl p-4">
-                <div class="flex items-center gap-2 mb-2">
-                    <span class="material-symbols-outlined text-error text-lg" style="font-variation-settings: 'FILL' 1;">error</span>
-                    <p class="text-sm font-bold text-error">Ada kesalahan pada form:</p>
-                </div>
-                <ul class="list-disc list-inside text-sm text-error/80 space-y-1">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
 
         {{-- Form --}}
         <form action="{{ route('merchant.products.store', $routeParams) }}" method="POST" enctype="multipart/form-data"
@@ -92,6 +78,43 @@
                 </div>
             </div>
 
+            {{-- Variant Toggle & Inputs --}}
+            <div class="space-y-4">
+                <div class="flex items-center gap-3">
+                    <input type="checkbox" id="has-variants" name="type" value="select" onchange="toggleVariants(this)"
+                           class="w-5 h-5 rounded-lg border-outline-variant/30 text-primary focus:ring-primary/30" />
+                    <label for="has-variants" class="text-sm font-bold text-on-surface cursor-pointer select-none">Produk ini memiliki beberapa variasi (seperti Warna, Ukuran, dll.)</label>
+                </div>
+
+                <div id="variants-section" class="hidden p-5 bg-surface-container-low rounded-2xl border border-outline-variant/10 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <p class="text-xs font-bold text-outline">Daftar Varian Produk</p>
+                        <button type="button" onclick="addVariantRow()"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary/15 text-primary text-xs font-bold rounded-full transition-colors">
+                            <span class="material-symbols-outlined text-sm">add</span>
+                            Tambah Baris
+                        </button>
+                    </div>
+
+                    <div id="variants-rows-container" class="space-y-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 variant-row">
+                            <div>
+                                <input type="text" name="variants[0][code]" disabled placeholder="Kode Varian (misal: MBA-M1-GOLD)"
+                                       class="w-full rounded-xl bg-surface-container-high border-none px-4 py-3 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/30 transition-all" />
+                            </div>
+                            <div class="flex gap-2">
+                                <input type="text" name="variants[0][label]" disabled placeholder="Nama Varian (misal: Gold / 8GB RAM)"
+                                       class="w-full rounded-xl bg-surface-container-high border-none px-4 py-3 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/30 transition-all" />
+                                <button type="button" onclick="removeVariantRow(this)"
+                                        class="p-3 bg-error/10 hover:bg-error/15 text-error rounded-xl flex items-center justify-center transition-colors shrink-0">
+                                    <span class="material-symbols-outlined text-sm">delete</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {{-- Image Upload --}}
             <div>
                 <label class="block text-sm font-bold text-on-surface mb-2">Foto Produk <span class="text-error">*</span></label>
@@ -127,6 +150,51 @@
 
     @push('scripts')
     <script>
+        let variantIndex = 1;
+
+        function toggleVariants(checkbox) {
+            const section = document.getElementById('variants-section');
+            if (checkbox.checked) {
+                section.classList.remove('hidden');
+                section.querySelectorAll('input').forEach(i => i.disabled = false);
+            } else {
+                section.classList.add('hidden');
+                section.querySelectorAll('input').forEach(i => i.disabled = true);
+            }
+        }
+
+        function addVariantRow() {
+            const container = document.getElementById('variants-rows-container');
+            const row = document.createElement('div');
+            row.className = "grid grid-cols-1 sm:grid-cols-2 gap-3 variant-row";
+            row.innerHTML = `
+                <div>
+                    <input type="text" name="variants[${variantIndex}][code]" required placeholder="Kode Varian (misal: MBA-M1-GOLD)"
+                           class="w-full rounded-xl bg-surface-container-high border-none px-4 py-3 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/30 transition-all" />
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" name="variants[${variantIndex}][label]" required placeholder="Nama Varian (misal: Gold / 8GB RAM)"
+                           class="w-full rounded-xl bg-surface-container-high border-none px-4 py-3 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/30 transition-all" />
+                    <button type="button" onclick="removeVariantRow(this)"
+                            class="p-3 bg-error/10 hover:bg-error/15 text-error rounded-xl flex items-center justify-center transition-colors shrink-0">
+                        <span class="material-symbols-outlined text-sm">delete</span>
+                    </button>
+                </div>
+            `;
+            container.appendChild(row);
+            variantIndex++;
+        }
+
+        function removeVariantRow(button) {
+            const row = button.closest('.variant-row');
+            const container = document.getElementById('variants-rows-container');
+            if (container.querySelectorAll('.variant-row').length > 1) {
+                row.remove();
+            } else {
+                alert('Minimal harus menyertakan 1 baris varian jika opsi ini aktif.');
+            }
+        }
+
         function previewImages(input) {
             const container = document.getElementById('image-preview-container');
             container.innerHTML = '';

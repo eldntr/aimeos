@@ -28,7 +28,7 @@
                 <span class="text-[9px] sm:text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-widest line-clamp-1">{{ $product['brand'] ?? 'Produk Pilihan' }}</span>
                 <div class="flex items-center gap-1">
                     <span class="material-symbols-outlined text-[10px] sm:text-xs text-primary" style="font-variation-settings: 'FILL' 1;">star</span>
-                    <span class="text-[10px] sm:text-xs font-bold">{{ $product['rating'] ?? '4.8' }}</span>
+                    <span class="text-[10px] sm:text-xs font-bold">{{ $product['rating'] ?? '-' }}</span>
                 </div>
             </div>
             <h3 class="text-sm sm:text-base md:text-lg font-semibold text-on-surface leading-snug mb-2 sm:mb-3 group-hover:text-primary transition-colors line-clamp-2">{{ $product['name'] ?? '-' }}</h3>
@@ -65,7 +65,7 @@
 
             <div class="flex items-center gap-1 text-tertiary">
                 <span class="material-symbols-outlined text-xs sm:text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
-                <span class="text-[10px] sm:text-xs font-bold">{{ $product['rating'] ?? '4.8' }}</span>
+                <span class="text-[10px] sm:text-xs font-bold">{{ $product['rating'] ?? '-' }}</span>
                 <span class="text-[10px] sm:text-xs text-outline">({{ $product['reviews'] ?? '0' }})</span>
             </div>
 

@@ -22,12 +22,36 @@ class CategoryController extends Controller
         }
         
         try {
-            $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap($siteCode, '', '', false);
-        } catch (\Exception $e) {
-            $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap('default', '', '', false);
-        }
-        $context->setLocale($locale);
+            $siteManager = \Aimeos\MShop::create($context, 'locale/site');
+            try {
+                $siteItem = $siteManager->find($siteCode);
+            } catch (\Exception $ex) {
+                $siteCode = 'default';
+                $siteItem = $siteManager->find($siteCode);
+            }
 
+            if ($siteCode === 'default') {
+                $siteFilter = $siteManager->filter(true);
+                $siteItems = $siteManager->search($siteFilter);
+                $siteIds = [];
+                foreach ($siteItems as $item) {
+                    $siteIds[] = $item->getSiteId();
+                }
+                
+                $sites = [
+                    0 => $siteItem->getSiteId(),
+                    1 => $siteIds,
+                    2 => $siteItem->getSiteId(),
+                    3 => $siteIds
+                ];
+                $locale = new \Aimeos\MShop\Locale\Item\Standard(['locale.siteid' => $siteItem->getSiteId()], $siteItem, $sites);
+            } else {
+                $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap($siteCode, '', '', false);
+            }
+            $context->setLocale($locale);
+        } catch (\Exception $e) {
+            // fallback
+        }
         return $context;
     }
 
@@ -104,7 +128,7 @@ class CategoryController extends Controller
         $manager = \Aimeos\MShop::create($context, 'product');
         $filter = $manager->filter();
         $filter->add($filter->compare('==', 'product.status', 1));
-        $filter->add($filter->compare('in', 'product.id', $productIds));
+        $filter->add($filter->compare('==', 'product.id', $productIds));
 
         $products = $manager->search($filter, ['media', 'price']);
 

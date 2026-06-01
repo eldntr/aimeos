@@ -18,8 +18,8 @@
     $roleLabel = $user?->role ?: ($user?->roles?->first()?->slug ?? 'member');
     $roleLabel = strtoupper($roleLabel);
 
-    $isMerchant = auth()->user()?->hasRole('merchant') || auth()->user()?->role === 'merchant';
-    $isAdmin = auth()->user()?->hasRole('admin') || auth()->user()?->role === 'admin';
+    $isMerchant = auth()->user() && !empty(auth()->user()->siteid) && auth()->user()->siteid !== '1.' && auth()->user()->seller_status === 'approved';
+    $isAdmin = false;
     $isCustomer = ! $isMerchant && ! $isAdmin;
 @endphp
 

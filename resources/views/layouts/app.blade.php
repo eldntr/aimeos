@@ -106,12 +106,16 @@
     @stack('styles')
 </head>
 <body class="bg-surface text-on-surface selection:bg-tertiary-container selection:text-on-tertiary-container">
-    @include('layouts.navigation')
+    @if(!request()->routeIs('merchant.*') && !request()->routeIs('admin.*'))
+        @include('layouts.navigation')
+    @endif
 
     <main>
-        <div class="max-w-7xl mx-auto px-4 md:px-8 pt-6">
-            @include('components.flash')
-        </div>
+        @if(!request()->routeIs('merchant.*') && !request()->routeIs('admin.*'))
+            <div class="max-w-7xl mx-auto px-4 md:px-8 pt-6">
+                @include('components.flash')
+            </div>
+        @endif
         @isset($slot)
             {{ $slot }}
         @endisset
@@ -119,7 +123,9 @@
         @yield('content')
     </main>
 
-    @include('components.marketplace.layout.footer')
+    @if(!request()->routeIs('merchant.*') && !request()->routeIs('admin.*'))
+        @include('components.marketplace.layout.footer')
+    @endif
 
     <script src="https://unpkg.com/htmx.org"></script>
     @stack('scripts')

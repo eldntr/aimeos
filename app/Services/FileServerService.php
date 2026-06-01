@@ -33,12 +33,17 @@ class FileServerService
      */
     public function uploadFile(UploadedFile $file): string
     {
-        $token = $this->generateJwtToken();
+        $secret = env('JWT_SECRET');
         $apiUrl = env('FILE_SERVER_URL');
-        
-        if (!$apiUrl) {
-            throw new \Exception("FILE_SERVER_URL is not configured in .env");
+
+        // Fallback to local storage (dummy mode) if file server is not configured
+        if (!$secret || !$apiUrl) {
+            $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
+            copy($file->getRealPath(), public_path('uploads/' . $filename));
+            return url('uploads/' . $filename);
         }
+
+        $token = $this->generateJwtToken();
         
         $filename = $file->getClientOriginalName();
         $filesize = $file->getSize();

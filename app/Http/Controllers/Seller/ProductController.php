@@ -9,41 +9,8 @@ use Illuminate\Support\Facades\Http;
 
 class ProductController extends Controller
 {
-    /**
-     * Get the Aimeos context bootstrapped to the seller's own site.
-     */
-    private function getSellerContext(): \Aimeos\MShop\ContextIface
-    {
-        $context  = app('aimeos.context')->get(false);
-        $user     = Auth::user();
-        $siteCode = $this->getSiteCodeFromSiteId($context, $user->siteid);
+    use HasSellerContext;
 
-        $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap($siteCode, '', '', false);
-        $context->setLocale($locale);
-
-        return $context;
-    }
-
-    /**
-     * Resolve site code from the siteid path stored in users.siteid.
-     * Aimeos stores siteid as a hierarchical path string (e.g. "/1/5/").
-     */
-    private function getSiteCodeFromSiteId(\Aimeos\MShop\ContextIface $context, string $siteid): string
-    {
-        $manager = \Aimeos\MShop::create($context, 'locale/site');
-        $filter  = $manager->filter();
-        // siteid path in Aimeos uses dots (e.g. "1.5.")
-        $parts   = array_filter(explode('.', trim($siteid, '.')));
-        $numericId = end($parts);
-        $filter->add($filter->compare('==', 'locale.site.id', (int) $numericId));
-        $sites   = $manager->search($filter);
-
-        if ($sites->isEmpty()) {
-            abort(403, 'Seller site not found.');
-        }
-
-        return $sites->first()->getCode();
-    }
 
     /**
      * List all products belonging to this seller's site.
@@ -179,6 +146,24 @@ class ProductController extends Controller
             
             $saved = $manager->save($product);
             
+            // Also add inverse mapping in catalog/lists for categories
+            if ($request->has('categories') && is_array($request->categories)) {
+                try {
+                    $catalogListManager = \Aimeos\MShop::create($context, 'catalog/lists');
+                    foreach ($request->categories as $categoryId) {
+                        $catalogListItem = $catalogListManager->create()
+                            ->setParentId($categoryId)
+                            ->setDomain('product')
+                            ->setRefId($saved->getId())
+                            ->setType('default')
+                            ->setStatus(1);
+                        $catalogListManager->save($catalogListItem);
+                    }
+                } catch (\Exception $e) {
+                    // ignore if failed
+                }
+            }
+            
             // Add variants if type is select
             if ($product->getType() === 'select' && $request->has('variants') && is_array($request->variants)) {
                 foreach ($request->variants as $variantData) {
@@ -253,6 +238,29 @@ class ProductController extends Controller
             foreach ($request->categories as $categoryId) {
                 $listItem = $this->createCatalogListItem($context, $categoryId);
                 $product->addListItem('catalog', $listItem);
+            }
+
+            // Also remove existing inverse mappings in catalog/lists
+            try {
+                $catalogListManager = \Aimeos\MShop::create($context, 'catalog/lists');
+                $clFilter = $catalogListManager->filter();
+                $clFilter->add($clFilter->compare('==', 'catalog.lists.refid', $product->getId()));
+                $clFilter->add($clFilter->compare('==', 'catalog.lists.domain', 'product'));
+                $oldCatalogLists = $catalogListManager->search($clFilter);
+                $catalogListManager->delete($oldCatalogLists);
+                
+                // Add new ones
+                foreach ($request->categories as $categoryId) {
+                    $catalogListItem = $catalogListManager->create()
+                        ->setParentId($categoryId)
+                        ->setDomain('product')
+                        ->setRefId($product->getId())
+                        ->setType('default')
+                        ->setStatus(1);
+                    $catalogListManager->save($catalogListItem);
+                }
+            } catch (\Exception $e) {
+                // ignore if failed
             }
         }
 
@@ -344,6 +352,19 @@ class ProductController extends Controller
 
         try {
             $manager->get($id); // ensures it exists within this site context
+
+            // Remove inverse mappings in catalog/lists
+            try {
+                $catalogListManager = \Aimeos\MShop::create($context, 'catalog/lists');
+                $clFilter = $catalogListManager->filter();
+                $clFilter->add($clFilter->compare('==', 'catalog.lists.refid', $id));
+                $clFilter->add($clFilter->compare('==', 'catalog.lists.domain', 'product'));
+                $oldCatalogLists = $catalogListManager->search($clFilter);
+                $catalogListManager->delete($oldCatalogLists);
+            } catch (\Exception $ex) {
+                // ignore
+            }
+
             $manager->delete($id);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Product not found.'], 404);
@@ -432,7 +453,7 @@ class ProductController extends Controller
             'priceRaw'    => $priceRaw,
             'categories'  => $categoryIds,
             'description' => $description,
-            'rating'      => '5.0',
+            'rating'      => '-',
         ];
     }
 

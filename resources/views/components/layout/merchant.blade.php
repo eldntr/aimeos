@@ -50,6 +50,34 @@
                     Produk Saya
                 </a>
 
+                <a href="{{ route('merchant.shop', $routeParams) }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150
+                   {{ str_starts_with($currentRoute, 'merchant.shop') ? 'bg-primary/10 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container-low' }}">
+                    <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' {{ str_starts_with($currentRoute, 'merchant.shop') ? '1' : '0' }};">storefront</span>
+                    Profil Toko & Bank
+                </a>
+
+                <a href="{{ route('merchant.orders.index', $routeParams) }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150
+                   {{ str_starts_with($currentRoute, 'merchant.orders') ? 'bg-primary/10 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container-low' }}">
+                    <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' {{ str_starts_with($currentRoute, 'merchant.orders') ? '1' : '0' }};">receipt_long</span>
+                    Pesanan Saya
+                </a>
+
+                <a href="{{ route('merchant.wallet.index', $routeParams) }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150
+                   {{ str_starts_with($currentRoute, 'merchant.wallet') ? 'bg-primary/10 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container-low' }}">
+                    <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' {{ str_starts_with($currentRoute, 'merchant.wallet') ? '1' : '0' }};">payments</span>
+                    Penghasilan Toko
+                </a>
+
+                <a href="{{ route('merchant.vouchers.index', $routeParams) }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150
+                   {{ str_starts_with($currentRoute, 'merchant.vouchers') ? 'bg-primary/10 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container-low' }}">
+                    <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' {{ str_starts_with($currentRoute, 'merchant.vouchers') ? '1' : '0' }};">confirmation_number</span>
+                    Voucher Toko
+                </a>
+
                 <p class="px-3 pt-5 pb-1 text-[11px] font-bold text-on-surface-variant/60 uppercase tracking-widest">Lainnya</p>
 
                 <a href="{{ route('landing', $routeParams) }}"
@@ -114,6 +142,26 @@
                         <span class="material-symbols-outlined text-xl">inventory_2</span>
                         Produk Saya
                     </a>
+                    <a href="{{ route('merchant.shop', $routeParams) }}"
+                       class="flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium {{ str_starts_with($currentRoute, 'merchant.shop') ? 'bg-primary/10 text-primary font-bold' : 'text-on-surface-variant' }}">
+                        <span class="material-symbols-outlined text-xl">storefront</span>
+                        Profil Toko & Bank
+                    </a>
+                    <a href="{{ route('merchant.orders.index', $routeParams) }}"
+                       class="flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium {{ str_starts_with($currentRoute, 'merchant.orders') ? 'bg-primary/10 text-primary font-bold' : 'text-on-surface-variant' }}">
+                        <span class="material-symbols-outlined text-xl">receipt_long</span>
+                        Pesanan Saya
+                    </a>
+                    <a href="{{ route('merchant.wallet.index', $routeParams) }}"
+                       class="flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium {{ str_starts_with($currentRoute, 'merchant.wallet') ? 'bg-primary/10 text-primary font-bold' : 'text-on-surface-variant' }}">
+                        <span class="material-symbols-outlined text-xl">payments</span>
+                        Penghasilan Toko
+                    </a>
+                    <a href="{{ route('merchant.vouchers.index', $routeParams) }}"
+                       class="flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium {{ str_starts_with($currentRoute, 'merchant.vouchers') ? 'bg-primary/10 text-primary font-bold' : 'text-on-surface-variant' }}">
+                        <span class="material-symbols-outlined text-xl">confirmation_number</span>
+                        Voucher Toko
+                    </a>
                     <a href="{{ route('landing', $routeParams) }}"
                        class="flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-on-surface-variant">
                         <span class="material-symbols-outlined text-xl">home</span>
@@ -125,6 +173,9 @@
 
         {{-- Main Content --}}
         <main class="flex-1 md:ml-[260px] pt-16 md:pt-0">
+            <div class="max-w-7xl mx-auto px-4 md:px-8 pt-6">
+                @include('components.flash')
+            </div>
             {{ $slot }}
         </main>
     </div>

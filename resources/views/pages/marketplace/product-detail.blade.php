@@ -11,6 +11,11 @@
     if (($routeParams['site'] ?? null) === '1.') {
         $routeParams['site'] = 'reborns';
     }
+    
+    $backUrl = url()->previous();
+    if (str_contains($backUrl, '/merchant') || str_contains($backUrl, '/login') || $backUrl === url()->current()) {
+        $backUrl = route('landing');
+    }
 @endphp
 <div class="relative min-h-screen overflow-hidden bg-surface-container-lowest">
     <div class="absolute inset-0 -z-10">
@@ -20,7 +25,7 @@
 
     <div class="max-w-[1440px] mx-auto px-5 sm:px-6 lg:px-8 pt-8 md:pt-10 pb-16 md:pb-24 space-y-10">
         <div class="flex items-center justify-between gap-4">
-            <a href="{{ url()->previous() }}" class="inline-flex items-center gap-2 text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors">
+            <a href="{{ $backUrl }}" class="inline-flex items-center gap-2 text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors">
                 <span class="material-symbols-outlined text-base">arrow_back</span>
                 Kembali
             </a>
@@ -135,7 +140,7 @@
                         <div class="flex items-center gap-3 text-sm">
                             <div class="inline-flex items-center gap-1 text-primary font-bold">
                                 <span class="material-symbols-outlined text-base" style="font-variation-settings: 'FILL' 1;">star</span>
-                                {{ $product['rating'] ?? '4.8' }}
+                                {{ $product['rating'] ?? '-' }}
                             </div>
                             <span class="text-on-surface-variant">•</span>
                             <span class="text-on-surface-variant">Lokasi: {{ $product['location'] ?? 'Indonesia' }}</span>
@@ -167,14 +172,18 @@
                         </button>
                     </div>
 
-                    <div class="rounded-2xl bg-surface-container-lowest p-4 border border-outline-variant/20">
-                        <a href="{{ route('shops.show', ['shop_code' => $product['shop_code'] ?? 'default']) }}" class="font-semibold text-sm hover:text-primary transition-colors hover:underline block">
-                            {{ $product['shop_name'] ?? 'Toko Reborns' }}
-                        </a>
-                        <p class="text-xs text-on-surface-variant mt-1">Penjual di Reborns</p>
-                        <div class="mt-3 inline-flex items-center gap-1 text-xs text-primary font-bold">
-                            <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">verified</span>
-                            Penjual Terverifikasi
+                    <div class="rounded-2xl bg-surface-container-lowest p-4 border border-outline-variant/20 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-lg shadow-sm shrink-0">
+                            {{ strtoupper(substr($product['shop_name'] ?? 'T', 0, 1)) }}
+                        </div>
+                        <div class="min-w-0">
+                            <a href="{{ route('shops.show', ['shop_code' => $product['shop_code'] ?? 'default']) }}" class="font-bold text-sm text-on-surface hover:text-primary transition-colors hover:underline block truncate">
+                                {{ $product['shop_name'] ?? 'Toko Reborns' }}
+                            </a>
+                            <div class="inline-flex items-center gap-1 text-[10px] text-primary font-bold mt-0.5">
+                                <span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">verified</span>
+                                Verified Seller
+                            </div>
                         </div>
                     </div>
                 </div>
