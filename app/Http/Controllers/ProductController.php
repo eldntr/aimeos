@@ -16,15 +16,25 @@ class ProductController extends Controller
     {
         $context = app('aimeos.context')->get(false);
 
-        $siteCode = $request->query('site', 'default');
+        $siteCodeQuery = $request->query('site') ?: ($request->route('site') ?: 'default');
+        if ($siteCodeQuery === '1.') {
+            $siteCodeQuery = 'reborns';
+        }
         $search   = $request->query('search', '');
         $page     = max(1, (int) $request->query('page', 1));
         $perPage  = 20;
 
         try {
             $siteManager = \Aimeos\MShop::create($context, 'locale/site');
-            $site = $siteManager->find($siteCode);
-            $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap($siteCode, '', '', false);
+            try {
+                $site = $siteManager->find($siteCodeQuery);
+                $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap($siteCodeQuery, '', '', false);
+            } catch (\Exception $ex) {
+                // Fallback to default
+                $siteCodeQuery = 'default';
+                $site = $siteManager->find($siteCodeQuery);
+                $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap($siteCodeQuery, '', '', false);
+            }
             $context->setLocale($locale);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Site not found.'], 404);
@@ -42,15 +52,69 @@ class ProductController extends Controller
 
         $data = [];
         foreach ($products as $product) {
+            $siteDetails = $this->getSiteDetailsFromSiteId($context, $product->getSiteId());
+            $siteCode = $siteDetails['code'] ?? 'default';
+
+            // Boot to product native context temporarily to load correct MinIO media domain URLs & prices
+            try {
+                $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap($siteCode, '', '', false);
+                $context->setLocale($locale);
+                
+                $siteManager = \Aimeos\MShop::create($context, 'product');
+                $siteProduct = $siteManager->get($product->getId(), ['media', 'price']);
+            } catch (\Exception $e) {
+                $siteProduct = $product;
+            }
+
+            $images = [];
+            foreach ($siteProduct->getListItems('media', 'default') as $listItem) {
+                if ($mediaItem = $listItem->getRefItem()) {
+                    $images[] = [
+                        'url' => $mediaItem->getUrl(),
+                        'preview' => $mediaItem->getPreview(),
+                    ];
+                }
+            }
+
+            $prices = [];
+            foreach ($siteProduct->getListItems('price', 'default') as $listItem) {
+                if ($priceItem = $listItem->getRefItem()) {
+                    $prices[] = [
+                        'value' => $priceItem->getValue(),
+                        'currency' => $priceItem->getCurrencyId(),
+                    ];
+                }
+            }
+
+            $priceLabel = null;
+            if (!empty($prices)) {
+                $firstPrice = $prices[0];
+                $priceLabel = number_format($firstPrice['value'], 0, ',', '.') . ' ' . strtoupper($firstPrice['currency']);
+            }
+
             $data[] = [
-                'id'     => $product->getId(),
-                'code'   => $product->getCode(),
-                'label'  => $product->getLabel(),
-                'type'   => $product->getType(),
-                'status' => $product->getStatus(),
-                'ctime'  => $product->getTimeCreated(),
-                'mtime'  => $product->getTimeModified(),
+                'id'       => $product->getId(),
+                'code'     => $product->getCode(),
+                'label'    => $product->getLabel(),
+                'type'     => $product->getType(),
+                'status'   => $product->getStatus(),
+                'ctime'    => $product->getTimeCreated(),
+                'mtime'    => $product->getTimeModified(),
+                'images'   => $images,
+                'image'    => $images[0]['url'] ?? null,
+                'prices'   => $prices,
+                'price'    => $priceLabel,
+                'shop_name' => $siteDetails['name'],
+                'shop_code' => $siteDetails['code'],
             ];
+        }
+
+        // Restore context to default site
+        try {
+            $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap($siteCodeQuery ?? 'default', '', '', false);
+            $context->setLocale($locale);
+        } catch (\Exception $e) {
+            // ignore
         }
 
         return response()->json([
@@ -74,31 +138,91 @@ class ProductController extends Controller
     public function show(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
         $context  = app('aimeos.context')->get(false);
-        $siteCode = $request->query('site', 'default');
+        
+        // 1. Initial query in 'default' context to resolve the product's actual site code
+        try {
+            $manager = \Aimeos\MShop::create($context, 'product');
+            $product = $manager->get($id);
+            $siteDetails = $this->getSiteDetailsFromSiteId($context, $product->getSiteId());
+            $siteCode = $siteDetails['code'] ?? 'default';
+        } catch (\Exception $e) {
+            $siteCode = 'default';
+        }
 
+        // 2. Bootstrap context to the product's actual native site code
         try {
             $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap($siteCode, '', '', false);
             $context->setLocale($locale);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Site not found.'], 404);
+            // fallback to default
+            try {
+                $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap('default', '', '', false);
+                $context->setLocale($locale);
+            } catch (\Exception $ex) {
+                // ignore
+            }
         }
 
+        // 3. Fetch product again inside its native site context to resolve correct media, prices, etc.
         try {
             $manager = \Aimeos\MShop::create($context, 'product');
-            $product = $manager->get($id);
+            $product = $manager->get($id, ['media', 'price', 'catalog', 'text']);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Product not found.'], 404);
         }
 
+        $images = [];
+        foreach ($product->getListItems('media', 'default') as $listItem) {
+            if ($mediaItem = $listItem->getRefItem()) {
+                $images[] = [
+                    'url' => $mediaItem->getUrl(),
+                    'preview' => $mediaItem->getPreview(),
+                ];
+            }
+        }
+
+        $prices = [];
+        foreach ($product->getListItems('price', 'default') as $listItem) {
+            if ($priceItem = $listItem->getRefItem()) {
+                $prices[] = [
+                    'value' => $priceItem->getValue(),
+                    'currency' => $priceItem->getCurrencyId(),
+                ];
+            }
+        }
+
+        $priceLabel = null;
+        if (!empty($prices)) {
+            $firstPrice = $prices[0];
+            $priceLabel = number_format($firstPrice['value'], 0, ',', '.') . ' ' . strtoupper($firstPrice['currency']);
+        }
+
+        $description = '';
+        foreach ($product->getListItems('text', 'default') as $listItem) {
+            if ($textItem = $listItem->getRefItem()) {
+                if ($textItem->getType() === 'short') {
+                    $description = $textItem->getContent();
+                    break;
+                }
+            }
+        }
+
         return response()->json([
             'data' => [
-                'id'     => $product->getId(),
-                'code'   => $product->getCode(),
-                'label'  => $product->getLabel(),
-                'type'   => $product->getType(),
-                'status' => $product->getStatus(),
-                'ctime'  => $product->getTimeCreated(),
-                'mtime'  => $product->getTimeModified(),
+                'id'          => $product->getId(),
+                'code'        => $product->getCode(),
+                'label'       => $product->getLabel(),
+                'type'        => $product->getType(),
+                'status'      => $product->getStatus(),
+                'ctime'       => $product->getTimeCreated(),
+                'mtime'       => $product->getTimeModified(),
+                'images'      => $images,
+                'image'       => $images[0]['url'] ?? null,
+                'prices'      => $prices,
+                'price'       => $priceLabel,
+                'description' => $description,
+                'shop_name'   => ($siteDetails = $this->getSiteDetailsFromSiteId($context, $product->getSiteId()))['name'],
+                'shop_code'   => $siteDetails['code'],
             ],
         ]);
     }
@@ -113,10 +237,18 @@ class ProductController extends Controller
     public function getVariants(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
         $context  = app('aimeos.context')->get(false);
-        $siteCode = $request->query('site', 'default');
+        $siteCode = $request->query('site') ?: ($request->route('site') ?: 'default');
+        if ($siteCode === '1.') {
+            $siteCode = 'reborns';
+        }
 
         try {
-            $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap($siteCode, '', '', false);
+            try {
+                $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap($siteCode, '', '', false);
+            } catch (\Exception $ex) {
+                $siteCode = 'default';
+                $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap($siteCode, '', '', false);
+            }
             $context->setLocale($locale);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Site not found.'], 404);
@@ -186,5 +318,32 @@ class ProductController extends Controller
         }
 
         return response()->json(['data' => $variants]);
+    }
+
+    /**
+     * Resolve site details (label and code) from the siteid path.
+     */
+    private function getSiteDetailsFromSiteId(\Aimeos\MShop\ContextIface $context, string $siteId): array
+    {
+        try {
+            $manager = \Aimeos\MShop::create($context, 'locale/site');
+            $filter  = $manager->filter();
+            $parts   = array_filter(explode('.', trim($siteId, '.')));
+            $numericId = end($parts);
+            if ($numericId) {
+                $filter->add($filter->compare('==', 'locale.site.id', (int) $numericId));
+                $sites   = $manager->search($filter);
+                if (!$sites->isEmpty()) {
+                    $site = $sites->first();
+                    return [
+                        'name' => $site->getLabel(),
+                        'code' => $site->getCode()
+                    ];
+                }
+            }
+        } catch (\Exception $e) {
+            // ignore and fallback
+        }
+        return ['name' => 'Toko Reborns', 'code' => 'default'];
     }
 }

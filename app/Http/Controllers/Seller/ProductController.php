@@ -54,7 +54,7 @@ class ProductController extends Controller
         $manager = \Aimeos\MShop::create($context, 'product');
         $filter  = $manager->filter();
 
-        $products = $manager->search($filter);
+        $products = $manager->search($filter, ['media', 'price', 'catalog', 'text']);
 
         $data = [];
         foreach ($products as $product) {
@@ -73,7 +73,7 @@ class ProductController extends Controller
 
         try {
             $manager = \Aimeos\MShop::create($context, 'product');
-            $product = $manager->get($id);
+            $product = $manager->get($id, ['media', 'price', 'catalog', 'text']);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Product not found.'], 404);
         }
@@ -91,6 +91,8 @@ class ProductController extends Controller
             'code'   => ['required', 'string', 'max:64'],
             'type'   => ['sometimes', 'string', 'in:default,bundle,select,voucher'],
             'status' => ['sometimes', 'integer', 'in:0,1'],
+            'price'  => ['sometimes', 'numeric', 'min:0'],
+            'description' => ['sometimes', 'string'],
             'images' => ['required', 'array', 'min:1', 'max:5'],
             'images.*' => ['file', 'mimes:jpeg,png,jpg,webp', 'max:5120'], // Max 5MB
             'video' => ['sometimes', 'file', 'mimes:mp4,webm', 'max:51200'], // Max 50MB
@@ -142,6 +144,38 @@ class ProductController extends Controller
                     $product->addListItem('catalog', $listItem);
                 }
             }
+
+            // Add price
+            if ($request->has('price')) {
+                $priceManager = \Aimeos\MShop::create($context, 'price');
+                $priceItem = $priceManager->create()
+                    ->setValue($request->price)
+                    ->setCurrencyId('IDR')
+                    ->setStatus(1);
+                $savedPrice = $priceManager->save($priceItem);
+                
+                $listItem = \Aimeos\MShop::create($context, 'product/lists')->create()
+                    ->setDomain('price')
+                    ->setType('default')
+                    ->setRefId($savedPrice->getId());
+                $product->addListItem('price', $listItem);
+            }
+
+            // Add description
+            if ($request->has('description') && $request->description) {
+                $textManager = \Aimeos\MShop::create($context, 'text');
+                $textItem = $textManager->create()
+                    ->setType('short')
+                    ->setContent(strip_tags($request->description))
+                    ->setStatus(1);
+                $savedText = $textManager->save($textItem);
+                
+                $listItem = \Aimeos\MShop::create($context, 'product/lists')->create()
+                    ->setDomain('text')
+                    ->setType('default')
+                    ->setRefId($savedText->getId());
+                $product->addListItem('text', $listItem);
+            }
             
             $saved = $manager->save($product);
             
@@ -183,6 +217,10 @@ class ProductController extends Controller
         $request->validate([
             'label'  => ['sometimes', 'string', 'max:255'],
             'status' => ['sometimes', 'integer', 'in:0,1'],
+            'price'  => ['sometimes', 'numeric', 'min:0'],
+            'description' => ['sometimes', 'string'],
+            'images' => ['sometimes', 'array', 'max:5'],
+            'images.*' => ['file', 'mimes:jpeg,png,jpg,webp', 'max:5120'], // Max 5MB
             'categories' => ['sometimes', 'array'],
             'categories.*' => ['string'],
             'variants' => ['sometimes', 'array'],
@@ -218,6 +256,63 @@ class ProductController extends Controller
             }
         }
 
+        // Update price
+        if ($request->has('price')) {
+            $listItems = $product->getListItems('price', 'default');
+            $product->deleteListItems($listItems, 'price');
+            
+            $priceManager = \Aimeos\MShop::create($context, 'price');
+            $priceItem = $priceManager->create()
+                ->setValue($request->price)
+                ->setCurrencyId('IDR')
+                ->setStatus(1);
+            $savedPrice = $priceManager->save($priceItem);
+            
+            $listItem = \Aimeos\MShop::create($context, 'product/lists')->create()
+                ->setDomain('price')
+                ->setType('default')
+                ->setRefId($savedPrice->getId());
+            $product->addListItem('price', $listItem);
+        }
+
+        // Update description
+        if ($request->has('description')) {
+            $listItems = $product->getListItems('text', 'default');
+            $product->deleteListItems($listItems, 'text');
+            
+            if ($request->description) {
+                $textManager = \Aimeos\MShop::create($context, 'text');
+                $textItem = $textManager->create()
+                    ->setType('short')
+                    ->setContent(strip_tags($request->description))
+                    ->setStatus(1);
+                $savedText = $textManager->save($textItem);
+                
+                $listItem = \Aimeos\MShop::create($context, 'product/lists')->create()
+                    ->setDomain('text')
+                    ->setType('default')
+                    ->setRefId($savedText->getId());
+                $product->addListItem('text', $listItem);
+            }
+        }
+
+        // Update images if provided
+        if ($request->hasFile('images')) {
+            $listItems = $product->getListItems('media', 'default');
+            $product->deleteListItems($listItems, 'media');
+            
+            $fileService = new \App\Services\FileServerService();
+            foreach ($request->file('images') as $file) {
+                $mediaUrl = $fileService->uploadFile($file);
+                
+                $mediaItem = $this->createMediaItem($context, $mediaUrl, $file->getMimeType());
+                $listItem = $this->createListItem($context, $mediaItem->getId());
+                
+                $product->addListItem('media', $listItem);
+            }
+            $fileService->triggerCompression();
+        }
+
         $saved = $manager->save($product);
         
         // Add new variants if provided (does not delete existing variants to prevent data loss)
@@ -235,8 +330,6 @@ class ProductController extends Controller
             }
             $saved = $manager->save($saved);
         }
-
-
 
         return response()->json(['data' => $this->formatProduct($saved)]);
     }
@@ -264,14 +357,82 @@ class ProductController extends Controller
      */
     private function formatProduct(\Aimeos\MShop\Product\Item\Iface $product): array
     {
+        $images = [];
+        try {
+            foreach ($product->getListItems('media', 'default') as $listItem) {
+                if ($mediaItem = $listItem->getRefItem()) {
+                    $images[] = [
+                        'url' => $mediaItem->getUrl(),
+                        'preview' => $mediaItem->getPreview(),
+                    ];
+                }
+            }
+        } catch (\Exception $e) {
+            // ignore if not loaded
+        }
+
+        $prices = [];
+        try {
+            foreach ($product->getListItems('price', 'default') as $listItem) {
+                if ($priceItem = $listItem->getRefItem()) {
+                    $prices[] = [
+                        'value' => $priceItem->getValue(),
+                        'currency' => $priceItem->getCurrencyId(),
+                    ];
+                }
+            }
+        } catch (\Exception $e) {
+            // ignore if not loaded
+        }
+
+        $priceLabel = '-';
+        $priceRaw = 0;
+        if (!empty($prices)) {
+            $firstPrice = $prices[0];
+            $priceRaw = $firstPrice['value'];
+            $priceLabel = 'Rp ' . number_format($firstPrice['value'], 0, ',', '.');
+        }
+
+        $categoryIds = [];
+        try {
+            foreach ($product->getListItems('catalog', 'default') as $listItem) {
+                $categoryIds[] = $listItem->getRefId();
+            }
+        } catch (\Exception $e) {
+            // ignore if not loaded
+        }
+
+        $description = '';
+        try {
+            foreach ($product->getListItems('text', 'default') as $listItem) {
+                if ($textItem = $listItem->getRefItem()) {
+                    if ($textItem->getType() === 'short') {
+                        $description = $textItem->getContent();
+                        break;
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            // ignore if not loaded
+        }
+
         return [
-            'id'     => $product->getId(),
-            'code'   => $product->getCode(),
-            'label'  => $product->getLabel(),
-            'type'   => $product->getType(),
-            'status' => $product->getStatus(),
-            'ctime'  => $product->getTimeCreated(),
-            'mtime'  => $product->getTimeModified(),
+            'id'          => $product->getId(),
+            'code'        => $product->getCode(),
+            'label'       => $product->getLabel(),
+            'name'        => $product->getLabel(), // alias for compatibility
+            'type'        => $product->getType(),
+            'status'      => $product->getStatus(),
+            'ctime'       => $product->getTimeCreated(),
+            'mtime'       => $product->getTimeModified(),
+            'images'      => $images,
+            'image'       => $images[0]['url'] ?? null,
+            'prices'      => $prices,
+            'price'       => $priceLabel,
+            'priceRaw'    => $priceRaw,
+            'categories'  => $categoryIds,
+            'description' => $description,
+            'rating'      => '5.0',
         ];
     }
 

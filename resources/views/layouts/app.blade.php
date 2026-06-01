@@ -1,36 +1,127 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="csrf-token" content="{{ csrf_token() }}">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>@yield('title', config('app.name', 'Reborns Marketplace'))</title>
+    <link rel="icon" type="image/png" href="{{ asset('images/logo_only.png') }}">
 
-        <title>{{ config('app.name', 'Laravel') }}</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 
-        <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-dim": "#962700",
+                        "on-secondary-fixed-variant": "#922d2f",
+                        "tertiary-dim": "#76318d",
+                        "error-dim": "#9f0519",
+                        "background": "#f9f6f5",
+                        "on-primary-fixed": "#000000",
+                        "secondary-dim": "#902c2e",
+                        "surface-tint": "#ab2d00",
+                        "surface-container": "#eae7e7",
+                        "surface-variant": "#dfdcdc",
+                        "on-secondary": "#ffefee",
+                        "surface-container-high": "#e4e2e1",
+                        "on-primary": "#ffefeb",
+                        "tertiary": "#833e9a",
+                        "inverse-primary": "#ff5722",
+                        "on-surface": "#2f2f2e",
+                        "tertiary-fixed-dim": "#d88cee",
+                        "surface-container-low": "#f3f0ef",
+                        "tertiary-fixed": "#e699fd",
+                        "surface-bright": "#f9f6f5",
+                        "secondary-fixed-dim": "#ffafac",
+                        "on-secondary-container": "#852327",
+                        "on-tertiary-container": "#570e6f",
+                        "outline-variant": "#afadac",
+                        "on-surface-variant": "#5c5b5b",
+                        "error": "#b31b25",
+                        "on-error-container": "#570008",
+                        "error-container": "#fb5151",
+                        "surface-dim": "#d6d4d3",
+                        "surface-container-highest": "#dfdcdc",
+                        "inverse-surface": "#0e0e0e",
+                        "primary-fixed": "#ff7851",
+                        "secondary-fixed": "#ffc3c0",
+                        "on-secondary-fixed": "#6a0e16",
+                        "primary": "#ab2d00",
+                        "tertiary-container": "#e699fd",
+                        "on-error": "#ffefee",
+                        "outline": "#787676",
+                        "on-primary-container": "#470e00",
+                        "on-tertiary": "#ffedfe",
+                        "primary-fixed-dim": "#ff5d2b",
+                        "on-tertiary-fixed": "#360049",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-on-surface": "#9e9c9c",
+                        "on-background": "#2f2f2e",
+                        "on-tertiary-fixed-variant": "#611b79",
+                        "surface": "#f9f6f5",
+                        "secondary": "#a03739",
+                        "on-primary-fixed-variant": "#581300",
+                        "secondary-container": "#ffc3c0",
+                        "primary-container": "#ff7851"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Plus Jakarta Sans"],
+                        "label": ["Plus Jakarta Sans"]
+                    }
+                },
+            },
+        }
+    </script>
 
-        <!-- Scripts -->
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
-    </head>
-    <body class="font-sans antialiased">
-        <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
-            @include('layouts.navigation')
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f9f6f5;
+            color: #2f2f2e;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
 
-            <!-- Page Heading -->
-            @if (isset($header))
-                <header class="bg-white dark:bg-gray-800 shadow">
-                    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                        {{ $header }}
-                    </div>
-                </header>
-            @endif
+    @stack('styles')
+</head>
+<body class="bg-surface text-on-surface selection:bg-tertiary-container selection:text-on-tertiary-container">
+    @include('layouts.navigation')
 
-            <!-- Page Content -->
-            <main>
-                {{ $slot }}
-            </main>
+    <main>
+        <div class="max-w-7xl mx-auto px-4 md:px-8 pt-6">
+            @include('components.flash')
         </div>
-    </body>
+        @isset($slot)
+            {{ $slot }}
+        @endisset
+
+        @yield('content')
+    </main>
+
+    @include('components.marketplace.layout.footer')
+
+    <script src="https://unpkg.com/htmx.org"></script>
+    @stack('scripts')
+</body>
 </html>

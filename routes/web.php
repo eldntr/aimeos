@@ -14,19 +14,65 @@ use Illuminate\Support\Facades\Route;
 */
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Web\MarketplaceController;
+use App\Http\Controllers\Web\AdminController;
+use App\Http\Controllers\Web\MerchantController;
 
 Route::get('/ready', function() {
     return 'OK';
 });
 
+Route::get('/', [MarketplaceController::class, 'landing'])->name('landing');
+Route::get('/categories', [MarketplaceController::class, 'categories'])->name('categories');
+Route::get('/categories/{selected_category}', [MarketplaceController::class, 'showCategory'])->name('categories.show');
+Route::get('/products/{id}', [MarketplaceController::class, 'productDetail'])->name('products.show');
+Route::get('/shops/{shop_code}', [MarketplaceController::class, 'shopDetail'])->name('shops.show');
+
+Route::view('/welcome', 'pages.welcome')->name('welcome');
+Route::view('/design-system-demo', 'pages.design-system-demo')->name('design-system-demo');
+Route::view('/info', 'pages.marketplace.info')->name('marketplace.info');
+// Cart: primary name 'marketplace.cart', alias 'cart.index'
+Route::get('/cart', function() { return view('pages.marketplace.cart'); })->name('marketplace.cart');
+// Checkout: primary name 'marketplace.checkout', alias 'checkout.index'
+Route::get('/checkout', function() { return view('pages.marketplace.checkout'); })->name('marketplace.checkout');
+// Route name aliases using URL aliases (prefix-free redirects so navigation route() calls work)
+Route::get('/cart-redirect', fn() => redirect('/cart'))->name('cart.index');
+Route::get('/checkout-redirect', fn() => redirect('/checkout'))->name('checkout.index');
+Route::view('/merchant/register', 'auth.merchant-register')->name('merchant.register');
+Route::post('/merchant/register', [RegisteredUserController::class, 'registerSeller'])->name('merchant.register.store');
+
+Route::view('/tentang-kami', 'pages.static.about')->name('tentang-kami');
+Route::view('/cara-kerja', 'pages.static.how-it-works')->name('cara-kerja');
+Route::view('/karir', 'pages.static.career')->name('karir');
+Route::view('/help-center', 'pages.static.help-center')->name('help-center');
+Route::view('/keamanan', 'pages.static.security')->name('keamanan');
+Route::view('/syarat-ketentuan', 'pages.static.terms')->name('syarat-ketentuan');
+
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', function () {
-        return view('dashboard');
+        return view('pages.dashboard');
     })->name('dashboard');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::view('/admin/dashboard', 'pages.admin.dashboard')->name('admin.dashboard');
+    Route::view('/admin/settings', 'pages.admin.settings.index')->name('admin.settings.index');
+    Route::get('/admin/merchants', [AdminController::class, 'merchantsIndex'])->name('admin.merchants.index');
+    Route::get('/admin/merchants/{merchant}', [AdminController::class, 'merchantShow'])->name('admin.merchants.show');
+    Route::post('/admin/merchants/{merchant}/approve', [AdminController::class, 'approve'])->name('admin.merchants.approve');
+    Route::post('/admin/merchants/{merchant}/reject', [AdminController::class, 'reject'])->name('admin.merchants.reject');
+
+    Route::view('/merchant/dashboard', 'pages.merchant.dashboard')->name('merchant.dashboard');
+    Route::get('/merchant/products', [MerchantController::class, 'index'])->name('merchant.products.index');
+    Route::get('/merchant/products/create', [MerchantController::class, 'create'])->name('merchant.products.create');
+    Route::get('/merchant/products/{product}/edit', [MerchantController::class, 'edit'])->name('merchant.products.edit');
+    Route::view('/merchant/products/media-manager', 'pages.merchant.products.media-manager')->name('merchant.products.media-manager');
+    Route::post('/merchant/products', [MerchantController::class, 'store'])->name('merchant.products.store');
+    Route::put('/merchant/products/{product}', [MerchantController::class, 'update'])->name('merchant.products.update');
+    Route::delete('/merchant/products/{product}', [MerchantController::class, 'destroy'])->name('merchant.products.destroy');
 });
 
 $params = [];

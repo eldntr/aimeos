@@ -9,10 +9,23 @@ class CategoryController extends Controller
     /**
      * Get the Aimeos default site context.
      */
-    private function getContext(): \Aimeos\MShop\ContextIface
+    private function getContext(Request $request = null): \Aimeos\MShop\ContextIface
     {
         $context = app('aimeos.context')->get(false);
-        $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap('default', '', '', false);
+        
+        $siteCode = 'default';
+        if ($request) {
+            $siteCode = $request->query('site') ?: ($request->route('site') ?: 'default');
+            if ($siteCode === '1.') {
+                $siteCode = 'reborns';
+            }
+        }
+        
+        try {
+            $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap($siteCode, '', '', false);
+        } catch (\Exception $e) {
+            $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap('default', '', '', false);
+        }
         $context->setLocale($locale);
 
         return $context;
@@ -23,7 +36,7 @@ class CategoryController extends Controller
      */
     public function index(Request $request): \Illuminate\Http\JsonResponse
     {
-        $context = $this->getContext();
+        $context = $this->getContext($request);
         $manager = \Aimeos\MShop::create($context, 'catalog');
 
         // Fetch the root node of the catalog tree
@@ -62,7 +75,7 @@ class CategoryController extends Controller
      */
     public function getProducts(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
-        $context = $this->getContext();
+        $context = $this->getContext($request);
         
         // Ensure catalog exists
         $catalogManager = \Aimeos\MShop::create($context, 'catalog');

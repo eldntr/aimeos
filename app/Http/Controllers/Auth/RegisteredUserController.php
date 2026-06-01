@@ -304,11 +304,15 @@ class RegisteredUserController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        return response()->json([
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'user' => $user
-        ], 201);
+        if ($request->wantsJson()) {
+            return response()->json([
+                'access_token' => $token,
+                'token_type' => 'Bearer',
+                'user' => $user
+            ], 201);
+        }
+
+        return redirect()->route('merchant.dashboard')->with('success', 'Pendaftaran merchant berhasil.');
     }
 
     /**

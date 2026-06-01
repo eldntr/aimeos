@@ -49,6 +49,26 @@ class User extends Authenticatable implements MustVerifyEmail
     ];
 
     /**
+     * Check if the user has a given role.
+     */
+    public function hasRole(string $role): bool
+    {
+        if (! empty($this->role)) {
+            return $this->role === $role;
+        }
+
+        if (method_exists($this, 'roles')) {
+            try {
+                return $this->roles->contains('slug', $role) || $this->roles->contains('name', $role);
+            } catch (\Exception $e) {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Get the bank details associated with the seller.
      */
     public function bankDetail()

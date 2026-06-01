@@ -62,9 +62,35 @@ class WishlistController extends Controller
             $pFilter = $productManager->filter();
             $pFilter->add($pFilter->compare('==', 'product.id', $productIds));
             
-            $productItems = $productManager->search($pFilter, ['attribute', 'media', 'price', 'text']);
+            $productItems = $productManager->search($pFilter, ['media', 'price', 'text']);
             foreach ($productItems as $productItem) {
-                $products[] = $productItem->toArray();
+                $images = [];
+                foreach ($productItem->getListItems('media', 'default') as $listItem) {
+                    if ($mediaItem = $listItem->getRefItem()) {
+                        $images[] = [
+                            'url' => $mediaItem->getUrl(),
+                            'preview' => $mediaItem->getPreview(),
+                        ];
+                    }
+                }
+                
+                $prices = [];
+                foreach ($productItem->getListItems('price', 'default') as $listItem) {
+                    if ($priceItem = $listItem->getRefItem()) {
+                        $prices[] = [
+                            'value' => $priceItem->getValue(),
+                            'currency' => $priceItem->getCurrencyId(),
+                        ];
+                    }
+                }
+                
+                $products[] = [
+                    'id' => $productItem->getId(),
+                    'label' => $productItem->getLabel(),
+                    'code' => $productItem->getCode(),
+                    'images' => $images,
+                    'prices' => $prices,
+                ];
             }
         }
 
