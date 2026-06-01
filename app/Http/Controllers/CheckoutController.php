@@ -49,7 +49,7 @@ class CheckoutController extends Controller
             $filter->compare('==', 'order.statusdelivery', OrderBase::STAT_UNFINISHED),
         ]));
         
-        return $orderManager->search($filter, ['order/product', 'order/address'])->first();
+        return $orderManager->search($filter, ['order/product', 'order/address', 'order/service'])->first();
     }
 
     private function getBasketController()
@@ -69,7 +69,7 @@ class CheckoutController extends Controller
             $filter->compare('==', 'order.statusdelivery', OrderBase::STAT_UNFINISHED),
         ]));
         
-        $order = $orderManager->search($filter, ['order/product', 'order/address'])->first();
+        $order = $orderManager->search($filter, ['order/product', 'order/address', 'order/service'])->first();
 
         if (!$order) {
             $order = $orderManager->create();
@@ -177,20 +177,22 @@ class CheckoutController extends Controller
     {
         $addressManager = \Aimeos\MShop::create($context, 'order/address');
 
-        // Delete existing addresses of same type
+        // find existing address of same type
         $filter = $addressManager->filter(true)->add([
             'order.address.parentid' => $orderId,
             'order.address.type'     => $type,
         ]);
-        foreach ($addressManager->search($filter) as $existing) {
-            $addressManager->delete($existing);
+        $existing = $addressManager->search($filter)->first();
+
+        if ($existing) {
+            $addrItem = $existing;
+        } else {
+            $addrItem = $addressManager->create();
+            $addrItem->setParentId($orderId);
+            $addrItem->setType($type);
+            $addrItem->setPosition(0);
         }
 
-        // Create new address item from customer address data
-        $addrItem = $addressManager->create();
-        $addrItem->setParentId($orderId);
-        $addrItem->setType($type);
-        $addrItem->setPosition(0);
         $addrItem->setFirstname($customerAddress->getFirstname());
         $addrItem->setLastname($customerAddress->getLastname());
         $addrItem->setAddress1($customerAddress->getAddress1());
@@ -311,13 +313,20 @@ class CheckoutController extends Controller
     {
         $serviceManager = \Aimeos\MShop::create($context, 'order/service');
 
-        // Remove existing service of same type for this order
+        // Check existing service of same type for this order
         $filter = $serviceManager->filter(true)->add([
             'order.service.parentid' => $orderId,
             'order.service.type'     => $type,
         ]);
-        foreach ($serviceManager->search($filter) as $existing) {
-            $serviceManager->delete($existing);
+        $existing = $serviceManager->search($filter)->first();
+
+        if ($existing) {
+            $serviceItem = $existing;
+        } else {
+            $serviceItem = $serviceManager->create();
+            $serviceItem->setParentId($orderId);
+            $serviceItem->setType($type);
+            $serviceItem->setPosition(1);
         }
 
         // Create & save new service item
@@ -325,12 +334,8 @@ class CheckoutController extends Controller
             ->setCurrencyId('IDR')
             ->setValue($price !== null ? (string)$price : '0.00');
 
-        $serviceItem = $serviceManager->create()
-            ->setParentId($orderId)
-            ->setType($type)
-            ->setCode($code)
+        $serviceItem->setCode($code)
             ->setName($name)
-            ->setPosition(1)
             ->setPrice($priceItem);
 
         $serviceManager->save($serviceItem);

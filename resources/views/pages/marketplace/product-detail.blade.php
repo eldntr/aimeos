@@ -153,6 +153,10 @@
                             <span class="material-symbols-outlined text-lg">shopping_bag</span>
                             Beli Sekarang
                         </button>
+                        <button id="btn-add-to-cart" class="w-full bg-surface-container-high text-on-surface py-3.5 rounded-2xl font-bold hover:bg-surface-container-highest transition-colors inline-flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-lg">add_shopping_cart</span>
+                            Tambah ke Keranjang
+                        </button>
                         <button id="btn-chat-seller" class="w-full bg-surface-container-high text-on-surface py-3.5 rounded-2xl font-bold hover:bg-surface-container-highest transition-colors inline-flex items-center justify-center gap-2">
                             <span class="material-symbols-outlined text-lg">chat</span>
                             Chat Penjual
@@ -207,6 +211,7 @@
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         
         const btnBuyNow = document.getElementById('btn-buy-now');
+        const btnAddToCart = document.getElementById('btn-add-to-cart');
         const btnChatSeller = document.getElementById('btn-chat-seller');
         const btnSaveWishlist = document.getElementById('btn-save-wishlist');
         const wishlistIcon = document.getElementById('wishlist-icon');
@@ -287,7 +292,14 @@
                     return;
                 }
                 
-                if (!res.ok) throw new Error('Gagal menambahkan ke keranjang.');
+                if (!res.ok) {
+                    let errMsg = 'Gagal menambahkan ke keranjang.';
+                    try {
+                        const errBody = await res.json();
+                        if (errBody.message) errMsg = errBody.message;
+                    } catch(e) {}
+                    throw new Error(errMsg);
+                }
                 
                 // Redirect directly to checkout
                 window.location.href = '{{ route('marketplace.checkout', $routeParams) }}';
@@ -297,6 +309,49 @@
                 btnBuyNow.innerHTML = origContent;
             }
         });
+
+        if (btnAddToCart) {
+            btnAddToCart.addEventListener('click', async (e) => {
+                if (!guardAuth(e)) return;
+                
+                const origContent = btnAddToCart.innerHTML;
+                btnAddToCart.disabled = true;
+                btnAddToCart.innerHTML = '<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Menambahkan...';
+                
+                try {
+                    const res = await fetch('/api/cart', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken
+                        },
+                        body: JSON.stringify({ product_id: productId, quantity: 1 })
+                    });
+                    
+                    if (res.status === 401) {
+                        window.location.href = loginUrl;
+                        return;
+                    }
+                    
+                    if (!res.ok) {
+                        let errMsg = 'Gagal menambahkan ke keranjang.';
+                        try {
+                            const errBody = await res.json();
+                            if (errBody.message) errMsg = errBody.message;
+                        } catch(e) {}
+                        throw new Error(errMsg);
+                    }
+                    
+                    showToast('Produk berhasil ditambahkan ke keranjang!');
+                } catch (err) {
+                    showToast(err.message || 'Terjadi kesalahan.', 'error');
+                } finally {
+                    btnAddToCart.disabled = false;
+                    btnAddToCart.innerHTML = origContent;
+                }
+            });
+        }
 
         btnChatSeller.addEventListener('click', (e) => {
             if (!guardAuth(e)) return;

@@ -498,6 +498,25 @@
     </div>
 </div>
 
+<!-- Premium Review Modal -->
+<div class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 px-6 animate-fade-in" id="review-modal">
+    <div class="w-full max-w-lg rounded-3xl bg-surface-container-lowest p-6 md:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.18)] max-h-[85vh] flex flex-col">
+        <div class="flex items-center justify-between mb-4 pb-2 border-b border-surface shrink-0">
+            <h2 class="text-lg font-bold text-on-surface flex items-center gap-2 text-primary">
+                <span class="material-symbols-outlined">star</span>
+                Beri Penilaian Produk
+            </h2>
+            <button type="button" class="text-on-surface-variant hover:text-on-surface" onclick="closeReviewModal();">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto no-scrollbar space-y-6 py-2" id="review-products-container">
+            <!-- Dynamically populated products from the order -->
+        </div>
+    </div>
+</div>
+
 <!-- Premium Vouchers Modal -->
 <div class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 px-6 animate-fade-in" id="vouchers-modal">
     <div class="w-full max-w-md rounded-3xl bg-surface-container-lowest p-6 md:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
@@ -1290,11 +1309,11 @@
         if (currentFilterTab === 'all') {
             filtered = loadedOrders;
         } else if (currentFilterTab === 'unpaid') {
-            filtered = loadedOrders.filter(o => o.status_payment === 1);
+            filtered = loadedOrders.filter(o => o.status_payment === 4);
         } else if (currentFilterTab === 'packaging') {
-            filtered = loadedOrders.filter(o => o.status_payment === 3 && o.status_delivery === 1);
+            filtered = loadedOrders.filter(o => o.status_payment === 6 && (o.status_delivery === 1 || o.status_delivery === 2));
         } else if (currentFilterTab === 'shipping') {
-            filtered = loadedOrders.filter(o => o.status_delivery === 2 || o.status_delivery === 3);
+            filtered = loadedOrders.filter(o => o.status_delivery === 3);
         } else if (currentFilterTab === 'delivered') {
             filtered = loadedOrders.filter(o => o.status_delivery === 4);
         }
@@ -1319,14 +1338,14 @@
             let badgeClass = 'bg-neutral-100 text-neutral-800 border-neutral-200';
             let actionBtnHtml = '';
             
-            if (o.status_payment === 1) {
+            if (o.status_payment === 4) {
                 statusText = 'Belum Bayar';
                 badgeClass = 'bg-amber-50 text-amber-800 border border-amber-200';
                 actionBtnHtml = '<a href="https://app.sandbox.midtrans.com/snap/v2/vtweb/mock-token-from-history-' + o.id + '" target="_blank" class="text-[10px] font-bold text-white bg-amber-500 hover:bg-amber-600 px-3.5 py-1.5 rounded-full shadow transition-all">Bayar Sekarang</a>';
-            } else if (o.status_payment === 3 && o.status_delivery === 1) {
+            } else if (o.status_payment === 6 && (o.status_delivery === 1 || o.status_delivery === 2)) {
                 statusText = 'Dikemas';
                 badgeClass = 'bg-blue-50 text-blue-800 border border-blue-200';
-            } else if (o.status_delivery === 2 || o.status_delivery === 3) {
+            } else if (o.status_delivery === 3) {
                 statusText = 'Dalam Pengiriman';
                 badgeClass = 'bg-indigo-50 text-indigo-800 border border-indigo-200';
             } else if (o.status_delivery === 4) {
@@ -1354,9 +1373,137 @@
         container.innerHTML = html;
     }
 
-    // Mock Review trigger
-    window.openReviewModal = function(orderId) {
-        showToast('Fitur review untuk pesanan #' + orderId + ' siap!');
+    // Product Review modal controls and submission
+    const reviewModal = document.getElementById('review-modal');
+
+    window.closeReviewModal = function() {
+        reviewModal.classList.add('hidden');
+        reviewModal.classList.remove('flex');
+    };
+
+    window.openReviewModal = async function(orderId) {
+        reviewModal.classList.remove('hidden');
+        reviewModal.classList.add('flex');
+        
+        const container = document.getElementById('review-products-container');
+        container.innerHTML = '<div class="flex flex-col items-center justify-center py-12 text-on-surface-variant">' +
+            '<div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>' +
+            '<p class="text-xs mt-3 font-semibold">Memuat produk pesanan...</p>' +
+            '</div>';
+            
+        try {
+            const res = await fetch('/api/user/orders/' + orderId, {
+                headers: { 'Accept': 'application/json' }
+            });
+            if (!res.ok) throw new Error('Gagal memuat produk.');
+            const body = await res.json();
+            const products = body.data?.products || [];
+            
+            if (products.length === 0) {
+                container.innerHTML = '<div class="text-center py-8 text-xs text-on-surface-variant font-semibold">Tidak ada produk untuk dinilai.</div>';
+                return;
+            }
+            
+            let html = '';
+            products.forEach(p => {
+                html += '<div class="space-y-4 border-b border-surface/50 pb-5 last:border-b-0 last:pb-0">' +
+                    '<div class="flex items-center gap-3">' +
+                    '<div class="w-10 h-10 bg-primary/5 text-primary flex items-center justify-center rounded-xl shrink-0">' +
+                    '<span class="material-symbols-outlined text-lg">shopping_bag</span>' +
+                    '</div>' +
+                    '<div class="min-w-0 flex-1">' +
+                    '<h4 class="text-xs font-extrabold text-on-surface truncate">' + p.name + '</h4>' +
+                    '<p class="text-[9px] font-mono text-on-surface-variant">Kode: ' + (p.code || '-') + '</p>' +
+                    '</div>' +
+                    '</div>' +
+                    '<form class="space-y-3" onsubmit="submitProductReview(event, \'' + p.id + '\')">' +
+                    '<div class="flex items-center gap-2">' +
+                    '<span class="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider mr-1">Rating:</span>' +
+                    '<div class="flex gap-1" data-rating-stars="' + p.id + '">' +
+                    '<button type="button" onclick="setRatingStars(\'' + p.id + '\', 1)" class="text-amber-400 hover:scale-110 transition-transform"><span class="material-symbols-outlined text-xl">star</span></button>' +
+                    '<button type="button" onclick="setRatingStars(\'' + p.id + '\', 2)" class="text-amber-400 hover:scale-110 transition-transform"><span class="material-symbols-outlined text-xl">star</span></button>' +
+                    '<button type="button" onclick="setRatingStars(\'' + p.id + '\', 3)" class="text-amber-400 hover:scale-110 transition-transform"><span class="material-symbols-outlined text-xl">star</span></button>' +
+                    '<button type="button" onclick="setRatingStars(\'' + p.id + '\', 4)" class="text-amber-400 hover:scale-110 transition-transform"><span class="material-symbols-outlined text-xl">star</span></button>' +
+                    '<button type="button" onclick="setRatingStars(\'' + p.id + '\', 5)" class="text-amber-400 hover:scale-110 transition-transform"><span class="material-symbols-outlined text-xl">star</span></button>' +
+                    '</div>' +
+                    '<input type="hidden" name="rating" id="rating-input-' + p.id + '" value="5">' +
+                    '</div>' +
+                    '<textarea name="comment" placeholder="Bagikan ulasan preloved Anda disini..." class="w-full text-xs rounded-2xl bg-surface-container-high border-none px-4 py-3 text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow resize-none h-16" required></textarea>' +
+                    '<div class="flex flex-wrap items-center justify-between gap-3">' +
+                    '<label class="cursor-pointer bg-surface-container-high hover:bg-surface-container-highest px-4 py-2 rounded-full flex items-center gap-1.5 text-[10px] font-bold text-on-surface-variant transition-all hover:scale-[1.02] active:scale-95">' +
+                    '<span class="material-symbols-outlined text-sm">add_a_photo</span>' +
+                    'Unggah Foto' +
+                    '<input type="file" name="photo" accept="image/*" class="hidden" onchange="previewReviewPhoto(this, \'' + p.id + '\')">' +
+                    '</label>' +
+                    '<span id="photo-preview-name-' + p.id + '" class="text-[9px] text-on-surface-variant italic truncate max-w-[150px]"></span>' +
+                    '<button type="submit" class="px-5 py-2 bg-primary hover:bg-primary-container text-white font-bold rounded-full text-[10px] shadow transition-all hover:scale-[1.02] active:scale-95 shrink-0">Kirim Ulasan</button>' +
+                    '</div>' +
+                    '</form>' +
+                    '</div>';
+            });
+            container.innerHTML = html;
+        } catch(e) {
+            container.innerHTML = '<div class="text-center py-8 text-xs text-error font-bold">' + e.message + '</div>';
+        }
+    };
+
+    window.setRatingStars = function(productId, rating) {
+        document.getElementById('rating-input-' + productId).value = rating;
+        const starContainer = document.querySelector(`[data-rating-stars="${productId}"]`);
+        const buttons = starContainer.querySelectorAll('button');
+        buttons.forEach((btn, index) => {
+            const icon = btn.querySelector('span');
+            if (index < rating) {
+                icon.className = 'material-symbols-outlined text-xl text-amber-400';
+            } else {
+                icon.className = 'material-symbols-outlined text-xl text-neutral-300';
+            }
+        });
+    };
+
+    window.previewReviewPhoto = function(input, productId) {
+        const label = document.getElementById('photo-preview-name-' + productId);
+        if (input.files && input.files[0]) {
+            label.textContent = input.files[0].name;
+        } else {
+            label.textContent = '';
+        }
+    };
+
+    window.submitProductReview = async function(event, productId) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const origContent = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<div class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>';
+        
+        try {
+            const res = await fetch('/api/products/' + productId + '/reviews', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: formData
+            });
+            
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.message || 'Gagal mengirim ulasan.');
+            
+            showToast('Ulasan berhasil terkirim!');
+            form.parentElement.innerHTML = '<div class="flex items-center gap-2 p-4 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-xs font-bold shadow-sm animate-fade-in">' +
+                '<span class="material-symbols-outlined text-base">check_circle</span>' +
+                'Ulasan Anda berhasil dikirim! Terima kasih atas masukan Anda.' +
+                '</div>';
+        } catch(e) {
+            showToast(e.message, 'error');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = origContent;
+        }
     };
 
     // ----------------------------------------------------
@@ -1477,8 +1624,8 @@
             const body = await res.json();
             const orders = body.data || [];
             
-            // Filter completed orders (status payment received = 3, delivery delivered = 4)
-            const completedOrders = orders.filter(o => o.status_payment === 3 || o.status_delivery === 4);
+            // Filter completed orders (status payment received = 6, delivery delivered = 4)
+            const completedOrders = orders.filter(o => o.status_payment === 6 || o.status_delivery === 4);
             
             if (completedOrders.length === 0) {
                 container.innerHTML = '<div class="flex flex-col items-center justify-center py-12 text-center text-on-surface-variant">' +
@@ -1559,6 +1706,8 @@
             openWishlistModal();
         } else if (hash === '#chat') {
             openSupportModal();
+        } else if (hash === '#notifications') {
+            switchTab('notifications');
         }
     }
     

@@ -43,7 +43,7 @@
             <span class="material-symbols-outlined leading-none">favorite</span>
         </a>
         <a
-            href="{{ $isCustomer ? route('cart.index', $routeParams) : route('profile.edit', $routeParams) }}"
+            href="{{ route('marketplace.cart', $routeParams) }}"
             class="hidden md:inline-flex relative h-9 w-9 items-center justify-center group hover:bg-white/10 rounded-full transition-colors duration-200"
             aria-label="Keranjang">
             <span class="material-symbols-outlined leading-none">shopping_cart</span>
@@ -91,12 +91,13 @@
         <div class="relative hidden md:block" data-notification-root>
             <button
                 type="button"
-                class="inline-flex h-9 w-9 items-center justify-center cursor-pointer hover:bg-white/10 rounded-full transition-colors duration-200"
+                class="relative inline-flex h-9 w-9 items-center justify-center cursor-pointer hover:bg-white/10 rounded-full transition-colors duration-200"
                 aria-label="Notifikasi"
                 aria-haspopup="dialog"
                 aria-expanded="false"
                 data-notification-trigger>
                 <span class="material-symbols-outlined leading-none">notifications</span>
+                <span id="navbar-notification-dot" class="absolute top-1 right-1 w-2 h-2 bg-white rounded-full border-2 border-primary hidden"></span>
             </button>
 
             <div
@@ -106,29 +107,17 @@
                 data-notification-modal>
                 <div class="px-4 py-3 border-b border-outline-variant/20 flex items-center justify-between">
                     <h3 class="font-bold text-base">Notifikasi</h3>
-                    <span class="text-xs text-on-surface-variant">3 baru</span>
+                    <span id="navbar-notification-count" class="text-xs text-on-surface-variant">0 baru</span>
                 </div>
 
-                <div class="max-h-80 overflow-y-auto no-scrollbar">
-                    <a href="#" class="block px-4 py-3 hover:bg-surface-container-low transition-colors border-b border-outline-variant/10">
-                        <p class="text-sm font-semibold">Flash Sale dimulai</p>
-                        <p class="text-xs text-on-surface-variant mt-1">Diskon barang elektronik sampai 60% sedang berjalan.</p>
-                        <p class="text-[11px] text-outline mt-1">2 menit lalu</p>
-                    </a>
-                    <a href="#" class="block px-4 py-3 hover:bg-surface-container-low transition-colors border-b border-outline-variant/10">
-                        <p class="text-sm font-semibold">Harga produk turun</p>
-                        <p class="text-xs text-on-surface-variant mt-1">Vintage Watch incaranmu turun ke Rp 790.000.</p>
-                        <p class="text-[11px] text-outline mt-1">15 menit lalu</p>
-                    </a>
-                    <a href="#" class="block px-4 py-3 hover:bg-surface-container-low transition-colors">
-                        <p class="text-sm font-semibold">Produk baru di kategori Hobi</p>
-                        <p class="text-xs text-on-surface-variant mt-1">Kamera analog retro baru saja ditambahkan seller.</p>
-                        <p class="text-[11px] text-outline mt-1">1 jam lalu</p>
-                    </a>
+                <div id="navbar-notification-list" class="max-h-80 overflow-y-auto no-scrollbar">
+                    <div class="flex flex-col items-center justify-center py-6 text-on-surface-variant">
+                        <div class="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                    </div>
                 </div>
 
                 <div class="px-4 py-3 border-t border-outline-variant/20 bg-surface-container-lowest">
-                    <a href="#" class="text-sm font-semibold text-primary hover:underline">Lihat semua notifikasi</a>
+                    <a href="{{ route('profile.edit', $routeParams) }}#notifications" class="text-sm font-semibold text-primary hover:underline">Lihat semua notifikasi</a>
                 </div>
             </div>
         </div>
@@ -204,13 +193,13 @@
     <div class="hidden md:hidden absolute top-full right-5 left-5 mt-3 bg-[#F8FAFC] text-on-surface rounded-2xl border border-outline-variant/20 shadow-[0_24px_48px_rgba(47,47,46,0.18)] p-3 z-50" data-mobile-menu>
         <div class="flex flex-col gap-1 text-sm font-semibold">
             @auth
+            @if(Route::has('marketplace.cart'))
+                <a href="{{ route('marketplace.cart', $routeParams) }}" class="px-3 py-2 rounded-lg hover:bg-surface-container-low transition-colors">Keranjang</a>
+            @endif
             @if($isCustomer)
-                @if(Route::has('cart.index'))
-                    <a href="{{ route('cart.index', $routeParams) }}" class="px-3 py-2 rounded-lg hover:bg-surface-container-low transition-colors">Keranjang</a>
-                @endif
                 <a href="{{ route('profile.edit', $routeParams) }}#wishlist" class="px-3 py-2 rounded-lg hover:bg-surface-container-low transition-colors">Wishlist Saya</a>
-                @if(Route::has('checkout.index'))
-                    <a href="{{ route('checkout.index', $routeParams) }}" class="px-3 py-2 rounded-lg hover:bg-surface-container-low transition-colors">Checkout</a>
+                @if(Route::has('marketplace.checkout'))
+                    <a href="{{ route('marketplace.checkout', $routeParams) }}" class="px-3 py-2 rounded-lg hover:bg-surface-container-low transition-colors">Checkout</a>
                 @endif
             @endif
             @if($isMerchant)
@@ -286,13 +275,72 @@
 
         const trigger = root.querySelector('[data-notification-trigger]');
         const modal = root.querySelector('[data-notification-modal]');
+        const listContainer = document.getElementById('navbar-notification-list');
+        const countBadge = document.getElementById('navbar-notification-count');
+        const dot = document.getElementById('navbar-notification-dot');
         if (!trigger || !modal) return;
 
         let lockedByClick = false;
 
+        async function fetchNavbarNotifications() {
+            try {
+                const res = await fetch('/api/notifications', {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!res.ok) throw new Error();
+                const body = await res.json();
+                const items = body.data?.data || [];
+                const unreadCount = body.unread_count || 0;
+
+                // Update unread count UI
+                if (unreadCount > 0) {
+                    countBadge.textContent = unreadCount + ' baru';
+                    dot.classList.remove('hidden');
+                } else {
+                    countBadge.textContent = '0 baru';
+                    dot.classList.add('hidden');
+                }
+
+                if (items.length === 0) {
+                    listContainer.innerHTML = '<div class="flex flex-col items-center justify-center py-8 text-center text-on-surface-variant">' +
+                        '<span class="material-symbols-outlined text-3xl opacity-40">notifications_off</span>' +
+                        '<p class="text-xs font-semibold mt-2">Tidak ada notifikasi</p>' +
+                        '</div>';
+                    return;
+                }
+
+                let html = '';
+                // Limit to 5 notifications in the dropdown
+                items.slice(0, 5).forEach(item => {
+                    const isUnread = !item.read_at;
+                    const title = item.data?.title || 'Informasi Baru';
+                    const message = item.data?.message || 'Ada pemberitahuan baru di akun kamu.';
+                    
+                    const date = new Date(item.created_at);
+                    const formattedTime = date.toLocaleDateString('id-ID', {
+                        day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                    });
+
+                    html += '<a href="{{ route("profile.edit", $routeParams) }}#notifications" class="block px-4 py-3 hover:bg-surface-container-low transition-colors border-b border-outline-variant/10 ' + 
+                        (isUnread ? 'bg-primary/5' : '') + '">' +
+                        '<p class="text-sm font-semibold text-on-surface flex items-center justify-between">' + title + 
+                        (isUnread ? '<span class="w-1.5 h-1.5 bg-primary rounded-full"></span>' : '') + '</p>' +
+                        '<p class="text-xs text-on-surface-variant mt-1 line-clamp-2">' + message + '</p>' +
+                        '<p class="text-[10px] text-outline mt-1">' + formattedTime + '</p>' +
+                        '</a>';
+                });
+                listContainer.innerHTML = html;
+            } catch (e) {
+                listContainer.innerHTML = '<div class="flex flex-col items-center justify-center py-8 text-center text-error">' +
+                    '<p class="text-xs font-bold">Gagal memuat notifikasi</p>' +
+                    '</div>';
+            }
+        }
+
         const openModal = () => {
             modal.classList.remove('hidden');
             trigger.setAttribute('aria-expanded', 'true');
+            fetchNavbarNotifications();
         };
 
         const closeModal = () => {
@@ -331,6 +379,9 @@
                 closeModal();
             }
         });
+
+        // Fetch once on page load to set the dot status
+        fetchNavbarNotifications();
     })();
 
     (() => {

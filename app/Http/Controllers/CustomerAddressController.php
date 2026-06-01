@@ -9,7 +9,24 @@ class CustomerAddressController extends Controller
 {
     private function getContext()
     {
-        return app('aimeos.context')->get(false);
+        $context = app('aimeos.context')->get(false);
+        $localeManager = \Aimeos\MShop::create($context, 'locale');
+        $localeItem = $localeManager->bootstrap('default', '', '', false);
+        
+        $siteManager = \Aimeos\MShop::create($context, 'locale/site');
+        $siteItem = $siteManager->create();
+        $siteItem->setId('1.');
+        $siteItem->setCode('default');
+        
+        $ref = new \ReflectionClass($localeItem);
+        if ($ref->hasProperty('siteItem')) {
+            $prop = $ref->getProperty('siteItem');
+            $prop->setAccessible(true);
+            $prop->setValue($localeItem, $siteItem);
+        }
+        
+        $context->setLocale($localeItem);
+        return $context;
     }
 
     private function getAddressManager()

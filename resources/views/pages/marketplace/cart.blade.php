@@ -14,19 +14,35 @@
 @endphp
 
 @auth
-<div class="min-h-screen bg-surface">
-    <!-- Hero Strip -->
-    <div class="bg-gradient-to-r from-primary to-primary-fixed-dim py-8 px-5 md:px-8">
-        <div class="max-w-6xl mx-auto flex items-center gap-4">
-            <a href="{{ url()->previous() }}" class="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
-                <span class="material-symbols-outlined text-white text-xl">arrow_back</span>
+<div class="relative min-h-screen overflow-hidden bg-surface-container-lowest">
+    <div class="absolute inset-0 -z-10">
+        <div class="absolute -top-40 -right-32 h-96 w-96 rounded-full bg-primary/5 blur-[100px]"></div>
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(171,45,0,0.05),_transparent_55%)]"></div>
+    </div>
+
+    <div class="max-w-[1440px] mx-auto px-5 sm:px-6 lg:px-8 pt-8 md:pt-10 pb-16 md:pb-24 space-y-10">
+        <div class="flex items-center justify-between gap-4">
+            @php
+                $previousUrl = url()->previous();
+                if (str_contains($previousUrl, 'checkout')) {
+                    $previousUrl = route('landing', $routeParams);
+                }
+            @endphp
+            <a href="{{ $previousUrl }}" class="inline-flex items-center gap-2 text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors">
+                <span class="material-symbols-outlined text-base">arrow_back</span>
+                Kembali
             </a>
-            <div>
-                <h1 class="text-2xl md:text-3xl font-black text-white tracking-tight">Keranjang Belanja</h1>
-                <p class="text-white/70 text-sm mt-0.5" id="cart-item-count-header">Memuat...</p>
+            <div class="flex items-center gap-2 text-xs text-on-surface-variant">
+                <a href="{{ route('landing') }}" class="hover:text-primary">Beranda</a>
+                <span>/</span>
+                <span class="text-on-surface font-semibold">Keranjang</span>
             </div>
         </div>
-    </div>
+
+        <div class="space-y-2">
+            <h1 class="text-3xl md:text-4xl font-black tracking-tight text-on-surface">Keranjang Belanja</h1>
+            <p class="text-on-surface-variant" id="cart-item-count-header">Memuat...</p>
+        </div>
 
     <div class="max-w-6xl mx-auto px-5 md:px-8 py-8 md:py-12">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">

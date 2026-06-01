@@ -55,7 +55,7 @@ class CartController extends Controller
             $filter->compare('==', 'order.statusdelivery', OrderBase::STAT_UNFINISHED),
         ]));
         
-        $order = $orderManager->search($filter, ['order/product'])->first();
+        $order = $orderManager->search($filter, ['order/product', 'order/address', 'order/service'])->first();
         
         if (!$order) {
             $order = $orderManager->create();
@@ -191,8 +191,47 @@ class CartController extends Controller
         $productManager = \Aimeos\MShop::create($context, 'product');
         
         try {
-            $product = $productManager->get($request->product_id, ['attribute', 'media', 'price', 'text']);
-            $basketController->addProduct($product, $quantity);
+            $product = $productManager->get($request->product_id);
+            $siteId = $product->getSiteId();
+            
+            $parts = array_filter(explode('.', trim($siteId, '.')));
+            $numericId = end($parts);
+            $siteCode = 'default';
+            if ($numericId) {
+                $siteManager = \Aimeos\MShop::create($context, 'locale/site');
+                $filter = $siteManager->filter()->add(['locale.site.id' => (int) $numericId]);
+                $site = $siteManager->search($filter)->first();
+                if ($site) {
+                    $siteCode = $site->getCode();
+                }
+            }
+
+            if ($siteCode !== 'default') {
+                $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap($siteCode, '', '', false);
+                $context->setLocale($locale);
+            }
+
+            $nativeProductManager = \Aimeos\MShop::create($context, 'product');
+            $product = $nativeProductManager->get($request->product_id, ['attribute', 'media', 'price', 'text']);
+            
+            if ($siteCode !== 'default') {
+                $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap('default', '', '', false);
+                $context->setLocale($locale);
+            }
+
+            $existingPos = null;
+            foreach ($basket->getProducts() as $pos => $productItem) {
+                if ($productItem->getProductId() == $request->product_id) {
+                    $existingPos = $pos;
+                    break;
+                }
+            }
+
+            if ($existingPos !== null) {
+                $basketController->updateProduct((int) $existingPos, $quantity);
+            } else {
+                $basketController->addProduct($product, $quantity);
+            }
             $this->saveBasket($basketController);
 
             return response()->json([
@@ -200,6 +239,7 @@ class CartController extends Controller
                 'data' => $this->formatBasketResponse($basketController)
             ], 201);
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Cart Add Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json(['message' => $e->getMessage()], 422);
         }
     }
