@@ -248,6 +248,18 @@ class MarketplaceController extends Controller
             $priceLabel = 'Rp ' . number_format($priceRaw, 0, ',', '.');
         }
 
+        $shopCode = Arr::get($product, 'shop_code', 'default');
+        $sellerUserId = null;
+        if ($shopCode !== 'default') {
+            $site = \DB::table('mshop_locale_site')->where('code', $shopCode)->first();
+            if ($site) {
+                $seller = \DB::table('users')->where('siteid', $site->id)->first();
+                if ($seller) {
+                    $sellerUserId = $seller->id;
+                }
+            }
+        }
+
         return [
             'id' => $product['id'] ?? null,
             'name' => $product['label'] ?? ($product['code'] ?? 'Produk'),
@@ -258,7 +270,8 @@ class MarketplaceController extends Controller
             'rating' => Arr::get($product, 'rating', '-'),
             'location' => Arr::get($product, 'location', 'Indonesia'),
             'shop_name' => Arr::get($product, 'shop_name', 'Toko Reborns'),
-            'shop_code' => Arr::get($product, 'shop_code', 'default'),
+            'shop_code' => $shopCode,
+            'seller_user_id' => $sellerUserId,
             'description' => Arr::get($product, 'description') ?? ($detail ? ($product['label'] ?? 'Deskripsi produk belum tersedia.') : null),
             'badge' => Arr::get($product, 'badge'),
             'badgeType' => Arr::get($product, 'badgeType', 'success'),

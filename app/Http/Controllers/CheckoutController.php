@@ -208,16 +208,75 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Get dummy shipping options.
+     * Get shipping options using RajaOngkir calculator
      */
     public function getShippingOptions()
     {
+        $order = $this->getOrderForUser();
+        if (!$order) {
+            return response()->json(['data' => []]);
+        }
+
+        $context = $this->getContextWithLocale();
+        $addressManager = \Aimeos\MShop::create($context, 'order/address');
+        $filter = $addressManager->filter(true)->add([
+            'order.address.parentid' => $order->getId(),
+            'order.address.type'     => 'delivery',
+        ]);
+        $deliveryAddress = $addressManager->search($filter)->first();
+
+        // Map Indonesian cities to simulated RajaOngkir city IDs
+        $cityId = '152'; // Default: Jakarta Pusat
+        if ($deliveryAddress) {
+            $cityName = strtolower($deliveryAddress->getCity());
+            if (str_contains($cityName, 'barat')) $cityId = '151';
+            elseif (str_contains($cityName, 'bandung')) $cityId = '23';
+            elseif (str_contains($cityName, 'surabaya')) $cityId = '444';
+            elseif (str_contains($cityName, 'yogyakarta') || str_contains($cityName, 'jogja')) $cityId = '501';
+            elseif (str_contains($cityName, 'medan')) $cityId = '256';
+            elseif (str_contains($cityName, 'semarang')) $cityId = '399';
+            elseif (str_contains($cityName, 'depok')) $cityId = '115';
+            elseif (str_contains($cityName, 'bekasi')) $cityId = '55';
+        }
+
+        // Calculate total weight (default 1kg per product)
+        $weightGrams = 0;
+        foreach ($order->getProducts() as $product) {
+            $weightGrams += ($product->getQuantity() * 1000);
+        }
+        $weightGrams = max(1000, $weightGrams);
+
+        $rajaOngkir = new \App\Services\RajaOngkirService();
+        
+        $couriers = ['jne', 'jnt', 'sicepat'];
+        $options = [];
+
+        foreach ($couriers as $courier) {
+            $res = $rajaOngkir->calculateCost($cityId, $weightGrams, $courier);
+            if (!empty($res) && isset($res['costs'][0]['cost'][0]['value'])) {
+                $costVal = $res['costs'][0]['cost'][0]['value'];
+                $serviceName = $res['name'] . ' (' . ($res['costs'][0]['service'] ?? 'REG') . ')';
+                $code = $courier . '_' . strtolower($res['costs'][0]['service'] ?? 'reg');
+                
+                $options[] = [
+                    'code' => $code,
+                    'name' => $serviceName,
+                    'price' => (float) $costVal
+                ];
+            }
+        }
+
+        // If no options are calculated, return fallback
+        if (empty($options)) {
+            $options = [
+                ['code' => 'jne_reg', 'name' => 'JNE Reguler (REG)', 'price' => 15000],
+                ['code' => 'jnt_reg', 'name' => 'J&T Express (REG)', 'price' => 12000],
+                ['code' => 'sicepat_reg', 'name' => 'SiCepat Ekspres (REG)', 'price' => 10000],
+            ];
+        }
+
         return response()->json([
-            'data' => [
-                ['code' => 'jne_reg', 'name' => 'JNE Reguler', 'price' => 15000],
-                ['code' => 'jnt_ez', 'name' => 'J&T EZ', 'price' => 12000],
-                ['code' => 'sicepat_halu', 'name' => 'SiCepat HALU', 'price' => 10000],
-            ]
+            'data' => $options
         ]);
     }
 
@@ -235,25 +294,55 @@ class CheckoutController extends Controller
             return response()->json(['message' => 'Keranjang kosong.'], 400);
         }
 
-        $options = [
-            'jne_reg' => ['name' => 'JNE Reguler', 'price' => 15000],
-            'jnt_ez'  => ['name' => 'J&T EZ', 'price' => 12000],
-            'sicepat_halu' => ['name' => 'SiCepat HALU', 'price' => 10000],
-        ];
+        // Extract courier and service from code (e.g. jne_reg)
+        $parts = explode('_', $request->shipping_code);
+        $courier = $parts[0] ?? 'jne';
+        
+        $context = $this->getContextWithLocale();
+        $addressManager = \Aimeos\MShop::create($context, 'order/address');
+        $filter = $addressManager->filter(true)->add([
+            'order.address.parentid' => $order->getId(),
+            'order.address.type'     => 'delivery',
+        ]);
+        $deliveryAddress = $addressManager->search($filter)->first();
 
-        if (!array_key_exists($request->shipping_code, $options)) {
-            return response()->json(['message' => 'Layanan pengiriman tidak valid.'], 400);
+        $cityId = '152'; // Default
+        if ($deliveryAddress) {
+            $cityName = strtolower($deliveryAddress->getCity());
+            if (str_contains($cityName, 'barat')) $cityId = '151';
+            elseif (str_contains($cityName, 'bandung')) $cityId = '23';
+            elseif (str_contains($cityName, 'surabaya')) $cityId = '444';
+            elseif (str_contains($cityName, 'yogyakarta') || str_contains($cityName, 'jogja')) $cityId = '501';
+            elseif (str_contains($cityName, 'medan')) $cityId = '256';
+            elseif (str_contains($cityName, 'semarang')) $cityId = '399';
+            elseif (str_contains($cityName, 'depok')) $cityId = '115';
+            elseif (str_contains($cityName, 'bekasi')) $cityId = '55';
         }
 
-        $selected = $options[$request->shipping_code];
-        $context = $this->getContextWithLocale();
+        $weightGrams = 0;
+        foreach ($order->getProducts() as $product) {
+            $weightGrams += ($product->getQuantity() * 1000);
+        }
+        $weightGrams = max(1000, $weightGrams);
 
-        // Directly upsert into order/service table
-        $this->upsertOrderService($context, $order->getId(), 'delivery', $request->shipping_code, $selected['name'], $selected['price']);
+        $rajaOngkir = new \App\Services\RajaOngkirService();
+        $res = $rajaOngkir->calculateCost($cityId, $weightGrams, $courier);
+
+        if (!empty($res) && isset($res['costs'][0]['cost'][0]['value'])) {
+            $price = (float) $res['costs'][0]['cost'][0]['value'];
+            $name = $res['name'] . ' (' . ($res['costs'][0]['service'] ?? 'REG') . ')';
+        } else {
+            // Fallback
+            $price = 15000;
+            $name = 'JNE Reguler (REG)';
+        }
+
+        $context = $this->getContextWithLocale();
+        $this->upsertOrderService($context, $order->getId(), 'delivery', $request->shipping_code, $name, $price);
 
         return response()->json([
             'message' => 'Layanan pengiriman berhasil dipilih.',
-            'data'    => ['shipping_code' => $request->shipping_code, 'shipping_name' => $selected['name'], 'price' => $selected['price']]
+            'data'    => ['shipping_code' => $request->shipping_code, 'shipping_name' => $name, 'price' => $price]
         ]);
     }
 

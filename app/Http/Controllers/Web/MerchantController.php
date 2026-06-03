@@ -139,13 +139,117 @@ class MerchantController extends Controller
             $salesData = $salesBody['data'] ?? [];
         } catch (\Exception $e) {}
 
+        // --- NEW PREMIUM MERCHANT DASHBOARD METRICS ---
+        $wallet = [
+            'total_revenue' => 0.0,
+            'total_withdrawn' => 0.0,
+            'pending_withdrawal' => 0.0,
+            'available_balance' => 0.0
+        ];
+        $pendingEscrow = 0.0;
+        $lowStockItems = [];
+        $activeDisputes = [];
+        $recentOrders = [];
+
+        if ($user && $user->siteid) {
+            // 1. Fetch Wallet Breakdown (Settled vs Pending Withdrawal)
+            try {
+                $walletResponse = app(SellerWalletController::class)->getWallet($request);
+                $walletBody = $walletResponse->getData(true);
+                $wallet = $walletBody['data'] ?? $wallet;
+            } catch (\Exception $e) {}
+
+            // 2. Fetch Escrow Pending Balance (statuspayment = 2)
+            try {
+                $pendingEscrow = (float) \DB::table('mshop_order')
+                    ->where('siteid', $user->siteid)
+                    ->where('statuspayment', 2) // PAY_RECEIVED (Escrow)
+                    ->sum('price');
+            } catch (\Exception $e) {}
+
+            // 3. Fetch Low Stock Items (stocklevel <= 5)
+            try {
+                $lowStockItems = \DB::table('mshop_stock')
+                    ->join('mshop_product', 'mshop_stock.prodid', '=', 'mshop_product.id')
+                    ->where('mshop_stock.siteid', $user->siteid)
+                    ->whereNotNull('mshop_stock.stocklevel')
+                    ->where('mshop_stock.stocklevel', '<=', 5)
+                    ->orderBy('mshop_stock.stocklevel', 'asc')
+                    ->get(['mshop_product.id', 'mshop_product.label as name', 'mshop_stock.stocklevel'])
+                    ->all();
+            } catch (\Exception $e) {}
+
+            // 4. Fetch Active disputes (sengketa terbuka)
+            try {
+                $activeDisputes = \DB::table('mshop_review')
+                    ->join('mshop_order', 'mshop_review.refid', '=', 'mshop_order.id')
+                    ->where('mshop_order.siteid', $user->siteid)
+                    ->where('mshop_review.domain', 'order')
+                    ->where('mshop_review.status', 1) // Terbuka
+                    ->orderBy('mshop_review.ctime', 'desc')
+                    ->get(['mshop_review.id', 'mshop_review.refid as order_id', 'mshop_review.comment as complaint', 'mshop_review.ctime'])
+                    ->all();
+            } catch (\Exception $e) {}
+
+            // 5. Fetch Recent Orders
+            try {
+                $ordersData = \DB::table('mshop_order')
+                    ->where('siteid', $user->siteid)
+                    ->orderBy('ctime', 'desc')
+                    ->limit(5)
+                    ->get(['id', 'price', 'statuspayment', 'statusdelivery', 'ctime'])
+                    ->all();
+                
+                foreach ($ordersData as $order) {
+                    $recentOrders[] = [
+                        'id' => $order->id,
+                        'price' => (float)$order->price,
+                        'payment_status' => $this->getPaymentStatusText($order->statuspayment),
+                        'delivery_status' => $this->getDeliveryStatusText($order->statusdelivery),
+                        'created_at' => $order->ctime
+                    ];
+                }
+            } catch (\Exception $e) {}
+        }
+
         return view('pages.merchant.dashboard', [
             'merchantProfile' => $merchantProfile,
             'totalProducts' => $totalProducts,
             'activeProducts' => $activeProducts,
             'latestProducts' => $latestProducts,
-            'salesData' => $salesData
+            'salesData' => $salesData,
+            'wallet' => $wallet,
+            'pendingEscrow' => $pendingEscrow,
+            'lowStockItems' => $lowStockItems,
+            'activeDisputes' => $activeDisputes,
+            'recentOrders' => $recentOrders
         ]);
+    }
+
+    private function getPaymentStatusText($code)
+    {
+        switch ($code) {
+            case -1: return 'Dibatalkan';
+            case 0: return 'Belum Bayar';
+            case 1: return 'Menunggu Pembayaran';
+            case 2: return 'Pembayaran Escrow';
+            case 3: return 'Pembayaran Berhasil';
+            case 4: return 'Refunded';
+            default: return 'Pending';
+        }
+    }
+
+    private function getDeliveryStatusText($code)
+    {
+        switch ($code) {
+            case -1: return 'Gagal Kirim';
+            case 0: return 'Belum Diproses';
+            case 1: return 'Sedang Dipacking';
+            case 2: return 'Dalam Pengiriman';
+            case 3: return 'Telah Sampai';
+            case 4: return 'Selesai';
+            default: return 'Pending';
+        }
     }
 
     protected function loadCategories(Request $request)

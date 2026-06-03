@@ -365,8 +365,12 @@
         btnChatSeller.addEventListener('click', (e) => {
             if (!guardAuth(e)) return;
             
-            // Redirect to profile page and trigger chat modal using hash
-            window.location.href = '{{ route('profile.edit', $routeParams) }}#chat';
+            const sellerId = '{{ $product['seller_user_id'] ?? '' }}';
+            if (sellerId) {
+                window.location.href = '/chatify/' + sellerId;
+            } else {
+                window.location.href = '/chatify';
+            }
         });
 
         btnSaveWishlist.addEventListener('click', async (e) => {

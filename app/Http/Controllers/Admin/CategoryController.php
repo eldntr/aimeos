@@ -13,7 +13,8 @@ class CategoryController extends Controller
         $request->validate([
             'label' => 'required|string|max:255',
             'code' => 'required|string|max:255', // Usually code must be unique
-            'status' => 'boolean'
+            'status' => 'boolean',
+            'commission_rate' => 'sometimes|numeric|min:0|max:100'
         ]);
 
         $context = app('aimeos.context')->get(false);
@@ -39,13 +40,18 @@ class CategoryController extends Controller
             $manager->insert($item);
             $manager->commit();
 
+            // Store commission rate using SystemSetting
+            $commissionRate = $request->input('commission_rate', 5.0);
+            \App\Models\SystemSetting::setVal('category_commission_' . $item->getId(), (float) $commissionRate);
+
             return response()->json([
                 'message' => 'Kategori master berhasil ditambahkan.',
                 'data' => [
                     'id' => $item->getId(),
                     'code' => $item->getCode(),
                     'label' => $item->getLabel(),
-                    'status' => $item->getStatus()
+                    'status' => $item->getStatus(),
+                    'commission_rate' => $commissionRate
                 ]
             ], 201);
         } catch (\Exception $e) {
@@ -58,7 +64,8 @@ class CategoryController extends Controller
     {
         $request->validate([
             'label' => 'sometimes|string|max:255',
-            'status' => 'sometimes|boolean'
+            'status' => 'sometimes|boolean',
+            'commission_rate' => 'sometimes|numeric|min:0|max:100'
         ]);
 
         $context = app('aimeos.context')->get(false);
@@ -80,13 +87,21 @@ class CategoryController extends Controller
             $manager->save($item);
             $manager->commit();
 
+            // Store commission rate if passed
+            if ($request->has('commission_rate')) {
+                \App\Models\SystemSetting::setVal('category_commission_' . $id, (float) $request->commission_rate);
+            }
+
+            $rate = (float) \App\Models\SystemSetting::getVal('category_commission_' . $id, 5.0);
+
             return response()->json([
                 'message' => 'Kategori master berhasil diperbarui.',
                 'data' => [
                     'id' => $item->getId(),
                     'code' => $item->getCode(),
                     'label' => $item->getLabel(),
-                    'status' => $item->getStatus()
+                    'status' => $item->getStatus(),
+                    'commission_rate' => $rate
                 ]
             ]);
         } catch (\Aimeos\MShop\Exception $e) {

@@ -27,8 +27,8 @@ class EnsureIsAdmin
             $defaultSiteId = '1.';
         }
 
-        // Asumsi admin adalah user di default site atau siteid empty
-        if (!$user || ($user->siteid !== $defaultSiteId && $user->siteid !== '' && $user->siteid !== null)) {
+        // Asumsi admin adalah user di default site atau siteid empty, atau superuser = 1
+        if (!$user || ($user->superuser !== 1 && $user->siteid !== $defaultSiteId && $user->siteid !== '' && $user->siteid !== null)) {
             return response()->json(['message' => 'Unauthorized. Admin access required.'], 403);
         }
 

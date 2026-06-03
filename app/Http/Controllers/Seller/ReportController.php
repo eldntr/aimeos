@@ -83,4 +83,95 @@ class ReportController extends Controller
             return response()->json(['message' => 'Gagal mengambil laporan penjualan.'], 500);
         }
     }
+
+    /**
+     * Export all merchant sales into a beautifully structured CSV file
+     */
+    public function export(Request $request)
+    {
+        try {
+            $user = auth()->user();
+            if (!$user || !$user->siteid) {
+                return response()->json(['message' => 'Unauthorized'], 401);
+            }
+
+            $orders = \DB::table('mshop_order')
+                ->where('siteid', $user->siteid)
+                ->orderBy('ctime', 'desc')
+                ->get(['id', 'price', 'statuspayment', 'statusdelivery', 'ctime']);
+
+            $filename = 'laporan_penjualan_merchant_' . Carbon::now()->format('Ymd_His') . '.csv';
+            
+            $headers = [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                'Pragma' => 'no-cache',
+                'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+                'Expires' => '0'
+            ];
+
+            $callback = function() use ($orders) {
+                $file = fopen('php://output', 'w');
+                // CSV headers
+                fputcsv($file, [
+                    'ID Pesanan', 
+                    'Tanggal Transaksi', 
+                    'Total Pembayaran (Gross)', 
+                    'Komisi Platform (5%)', 
+                    'Pendapatan Bersih Penjual', 
+                    'Status Pembayaran', 
+                    'Status Pengiriman'
+                ]);
+
+                foreach ($orders as $order) {
+                    $gross = (float) $order->price;
+                    $commission = ($gross * 5) / 100;
+                    $net = $gross - $commission;
+
+                    fputcsv($file, [
+                        $order->id,
+                        $order->ctime,
+                        $gross,
+                        $commission,
+                        $net,
+                        $this->getPaymentStatusText($order->statuspayment),
+                        $this->getDeliveryStatusText($order->statusdelivery)
+                    ]);
+                }
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, $headers);
+
+        } catch (\Exception $e) {
+            Log::error('MerchantReport export error: ' . $e->getMessage());
+            return redirect()->back()->withErrors(['error' => 'Gagal mengekspor laporan.']);
+        }
+    }
+
+    private function getPaymentStatusText($code)
+    {
+        switch ($code) {
+            case -1: return 'Dibatalkan';
+            case 0: return 'Belum Bayar';
+            case 1: return 'Menunggu Pembayaran';
+            case 2: return 'Pembayaran Escrow';
+            case 3: return 'Pembayaran Berhasil';
+            case 4: return 'Refunded';
+            default: return 'Pending';
+        }
+    }
+
+    private function getDeliveryStatusText($code)
+    {
+        switch ($code) {
+            case -1: return 'Gagal Kirim';
+            case 0: return 'Belum Diproses';
+            case 1: return 'Sedang Dipacking';
+            case 2: return 'Dalam Pengiriman';
+            case 3: return 'Telah Sampai';
+            case 4: return 'Selesai';
+            default: return 'Pending';
+        }
+    }
 }

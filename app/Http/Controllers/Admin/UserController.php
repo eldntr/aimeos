@@ -8,6 +8,38 @@ use App\Models\User;
 
 class UserController extends Controller
 {
+    public function index(Request $request)
+    {
+        $query = User::query();
+        if ($request->filled('search')) {
+            $searchTerm = '%' . $request->search . '%';
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('name', 'like', $searchTerm)
+                  ->orWhere('email', 'like', $searchTerm);
+            });
+        }
+        $users = $query->orderBy('id', 'desc')->paginate(20);
+
+        // Map users to include calculated role
+        $items = collect($users->items())->map(function($user) {
+            if ($user->superuser == 1) {
+                $user->role = 'Admin';
+            } elseif ($user->siteid && $user->siteid !== '1.') {
+                $user->role = 'Merchant';
+            } else {
+                $user->role = 'Pelanggan';
+            }
+            return $user;
+        });
+
+        return response()->json([
+            'data' => $items,
+            'current_page' => $users->currentPage(),
+            'last_page' => $users->lastPage(),
+            'total' => $users->total()
+        ]);
+    }
+
     public function updateStatus(Request $request, $id)
     {
         $request->validate([

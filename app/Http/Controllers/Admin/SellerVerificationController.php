@@ -66,4 +66,38 @@ class SellerVerificationController extends Controller
 
         return response()->json(['message' => 'Seller rejected successfully']);
     }
+
+    /**
+     * Get a list of all active/approved sellers
+     */
+    public function activeSellers()
+    {
+        $sellers = User::whereNotNull('siteid')
+            ->where('siteid', '!=', '1.')
+            ->where('seller_status', 'approved')
+            ->get();
+
+        return response()->json(['data' => $sellers]);
+    }
+
+    /**
+     * Toggle active/blocked status of a seller
+     */
+    public function toggleSellerStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:0,1'
+        ]);
+
+        $seller = User::findOrFail($id);
+        $seller->status = (int) $request->status;
+        $seller->save();
+
+        $statusText = $seller->status === 1 ? 'diaktifkan' : 'ditangguhkan (suspend)';
+
+        return response()->json([
+            'message' => "Status merchant berhasil diubah menjadi $statusText.",
+            'data' => $seller
+        ]);
+    }
 }

@@ -87,6 +87,7 @@ class CategoryController extends Controller
                 'code' => $node->getCode(),
                 'label' => $node->getLabel(),
                 'status' => $node->getStatus(),
+                'commission_rate' => (float) \App\Models\SystemSetting::getVal('category_commission_' . $node->getId(), 5.0),
                 'children' => $this->formatCategoryTree($node->getChildren()),
             ];
             $result[] = $item;

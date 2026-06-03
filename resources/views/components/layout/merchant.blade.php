@@ -109,18 +109,6 @@
             </div>
         </aside>
 
-        {{-- Mobile Header --}}
-        <div class="md:hidden fixed top-0 inset-x-0 z-40 bg-surface-container-lowest border-b border-outline-variant/15 px-4 py-3 flex items-center justify-between">
-            <a href="{{ route('landing', $routeParams) }}">
-                <img src="{{ asset('images/logo_with_text.png') }}" alt="Reborns" class="h-6" onerror="this.textContent='Reborns';this.className='text-lg font-black text-primary';" />
-            </a>
-            <div class="flex items-center gap-2">
-                <span class="text-sm font-semibold text-on-surface-variant">{{ $storeName }}</span>
-                <button type="button" class="p-2 rounded-xl hover:bg-surface-container-low transition-colors" data-merchant-menu-trigger>
-                    <span class="material-symbols-outlined text-xl">menu</span>
-                </button>
-            </div>
-        </div>
 
         {{-- Mobile Menu Overlay --}}
         <div class="hidden md:hidden fixed inset-0 z-50 bg-on-surface/40 backdrop-blur-sm" data-merchant-menu-overlay>
@@ -172,11 +160,51 @@
         </div>
 
         {{-- Main Content --}}
-        <main class="flex-1 md:ml-[260px] pt-16 md:pt-0">
-            <div class="max-w-7xl mx-auto px-4 md:px-8 pt-6">
+        <main class="flex-1 md:ml-[260px] flex flex-col bg-background min-h-screen">
+            {{-- Modern Merchant Header --}}
+            <header class="h-16 px-6 md:px-8 flex items-center justify-between md:justify-end bg-surface-container-lowest/50 backdrop-blur-md border-b border-outline-variant/15 sticky top-0 z-20">
+                {{-- Left side mobile trigger --}}
+                <div class="flex items-center gap-2 md:hidden">
+                    <button type="button" class="p-2 rounded-xl hover:bg-surface-container-low transition-colors" data-merchant-menu-trigger>
+                        <span class="material-symbols-outlined text-xl">menu</span>
+                    </button>
+                    <span class="text-sm font-black text-primary">{{ $storeName }}</span>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <!-- Live Chatify Shortcut -->
+                    <a href="/chatify" class="w-9 h-9 rounded-xl hover:bg-surface-container-high flex items-center justify-center text-on-surface-variant transition-colors mr-1" title="Buka Chat Penjual">
+                        <span class="material-symbols-outlined text-xl">chat</span>
+                    </a>
+
+                    <!-- Notification Bell Dropdown -->
+                    <div class="relative" data-header-notification-root>
+                        <button type="button" class="w-9 h-9 rounded-xl hover:bg-surface-container-high flex items-center justify-center text-on-surface-variant transition-colors relative" data-header-notification-trigger>
+                            <span class="material-symbols-outlined text-xl">notifications</span>
+                            <span id="header-notification-dot" class="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-600 rounded-full hidden border border-surface-container-lowest"></span>
+                        </button>
+                        
+                        <!-- Dropdown Modal -->
+                        <div class="absolute right-0 mt-2 w-80 bg-surface-container-lowest border border-outline-variant/15 rounded-2xl shadow-2xl overflow-hidden hidden z-50 transform origin-top-right transition-all duration-200" data-header-notification-modal>
+                            <div class="px-4 py-3 border-b border-outline-variant/10 flex justify-between items-center bg-surface-container-low">
+                                <span class="font-bold text-xs">Pemberitahuan</span>
+                                <span id="header-notification-count" class="text-[10px] px-2 py-0.5 rounded-full bg-primary text-white font-extrabold hidden">0 baru</span>
+                            </div>
+                            <div id="header-notification-list" class="max-h-72 overflow-y-auto divide-y divide-outline-variant/5 no-scrollbar text-xs">
+                                <!-- Notifications dynamically loaded -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="max-w-7xl mx-auto w-full px-4 md:px-8 pt-6">
                 @include('components.flash')
             </div>
-            {{ $slot }}
+            
+            <div class="flex-grow">
+                {{ $slot }}
+            </div>
         </main>
     </div>
 
@@ -186,13 +214,114 @@
             const trigger = document.querySelector('[data-merchant-menu-trigger]');
             const overlay = document.querySelector('[data-merchant-menu-overlay]');
             const close = document.querySelector('[data-merchant-menu-close]');
-            if (!trigger || !overlay) return;
+            if (trigger && overlay) {
+                trigger.addEventListener('click', () => overlay.classList.remove('hidden'));
+                close?.addEventListener('click', () => overlay.classList.add('hidden'));
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) overlay.classList.add('hidden');
+                });
+            }
 
-            trigger.addEventListener('click', () => overlay.classList.remove('hidden'));
-            close?.addEventListener('click', () => overlay.classList.add('hidden'));
-            overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) overlay.classList.add('hidden');
-            });
+            // Notification Bell Center logic
+            const root = document.querySelector('[data-header-notification-root]');
+            if (!root) return;
+            const notifTrigger = root.querySelector('[data-header-notification-trigger]');
+            const modal = root.querySelector('[data-header-notification-modal]');
+            const listContainer = document.getElementById('header-notification-list');
+            const countBadge = document.getElementById('header-notification-count');
+            const dot = document.getElementById('header-notification-dot');
+
+            if (notifTrigger && modal) {
+                notifTrigger.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    modal.classList.toggle('hidden');
+                });
+
+                document.addEventListener('click', (e) => {
+                    if (!root.contains(e.target)) {
+                        modal.classList.add('hidden');
+                    }
+                });
+            }
+
+            async function fetchNotifications() {
+                try {
+                    const res = await fetch('/api/notifications?per_page=5');
+                    if (!res.ok) return;
+                    const result = await res.json();
+                    
+                    const unreadCount = result.unread_count || 0;
+                    
+                    if (unreadCount > 0) {
+                        countBadge.textContent = `${unreadCount} baru`;
+                        countBadge.classList.remove('hidden');
+                        dot.classList.remove('hidden');
+                    } else {
+                        countBadge.textContent = `0 baru`;
+                        countBadge.classList.add('hidden');
+                        dot.classList.add('hidden');
+                    }
+
+                    listContainer.innerHTML = '';
+                    const notifications = result.data.data || [];
+                    
+                    if (notifications.length === 0) {
+                        listContainer.innerHTML = `
+                            <div class="p-6 text-center text-on-surface-variant/60 flex flex-col items-center gap-2">
+                                <span class="material-symbols-outlined text-2xl opacity-40">notifications_off</span>
+                                <p class="font-bold text-[11px]">Belum ada pemberitahuan</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    notifications.forEach(n => {
+                        const item = document.createElement('div');
+                        item.className = `p-3 hover:bg-surface-container-low transition-colors cursor-pointer border-b border-outline-variant/10 ${!n.read_at ? 'bg-primary/5 font-bold' : ''}`;
+                        
+                        const title = n.data?.title || 'Notifikasi Baru';
+                        const message = n.data?.message || 'Anda menerima pesan sistem baru.';
+                        const date = new Date(n.created_at).toLocaleDateString('id-ID', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+
+                        item.innerHTML = `
+                            <div class="flex flex-col gap-0.5">
+                                <div class="flex justify-between items-start gap-2">
+                                    <span class="font-bold text-on-surface text-[11px] truncate">${title}</span>
+                                    <span class="text-[9px] text-on-surface-variant/70 shrink-0 font-medium">${date}</span>
+                                </div>
+                                <p class="text-on-surface-variant text-[10px] leading-relaxed line-clamp-2">${message}</p>
+                            </div>
+                        `;
+
+                        item.addEventListener('click', async () => {
+                            if (!n.read_at) {
+                                try {
+                                    await fetch(`/api/notifications/${n.id}/read`, {
+                                        method: 'PATCH',
+                                        headers: {
+                                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                            'Content-Type': 'application/json'
+                                        }
+                                    });
+                                    fetchNotifications();
+                                } catch (err) {
+                                    console.error(err);
+                                }
+                            }
+                        });
+
+                        listContainer.appendChild(item);
+                    });
+                } catch (err) {
+                    console.error('Error fetching notifications:', err);
+                }
+            }
+
+            fetchNotifications();
+            setInterval(fetchNotifications, 30000);
         })();
     </script>
     @endpush

@@ -169,5 +169,176 @@
                 </div>
             </div>
         </div>
+
+        {{-- Buku Kas & Riwayat Mutasi Dompet --}}
+        <div class="bg-surface-container-lowest border border-outline-variant/10 rounded-2xl p-6 shadow-[0_4px_16px_rgba(47,47,46,0.02)] space-y-6 print:border-none print:shadow-none" id="ledger-section">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-outline-variant/10 pb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-on-surface flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">receipt_long</span>
+                        Buku Kas & Riwayat Mutasi Dompet
+                    </h2>
+                    <p class="text-xs text-on-surface-variant mt-0.5">Daftar lengkap uang masuk dari penjualan (Credit) dan penarikan dana (Debit) secara terperinci.</p>
+                </div>
+                <div class="flex gap-2 shrink-0 print:hidden">
+                    <button type="button" onclick="window.print()" class="px-4 py-2 rounded-full border border-outline-variant/35 text-xs font-bold text-on-surface hover:bg-surface-container-high transition-colors flex items-center gap-1.5 shadow-sm">
+                        <span class="material-symbols-outlined text-base">print</span>
+                        Cetak Laporan
+                    </button>
+                </div>
+            </div>
+
+            {{-- Filters --}}
+            <div class="flex flex-col sm:flex-row gap-4 items-center justify-between print:hidden">
+                <div class="relative w-full sm:max-w-xs">
+                    <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant/75 text-lg">search</span>
+                    <input type="text" id="ledger-search" oninput="filterLedger()" class="w-full rounded-full bg-surface-container-low border border-outline-variant/20 pl-10 pr-4 py-2.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Cari pesanan atau keterangan..." />
+                </div>
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <select id="ledger-type-filter" onchange="filterLedger()" class="rounded-full bg-surface-container-low border border-outline-variant/20 px-4 py-2.5 text-xs font-bold text-on-surface focus:outline-none">
+                        <option value="">Semua Tipe</option>
+                        <option value="credit">Uang Masuk (Credit)</option>
+                        <option value="debit">Tarik Dana (Debit)</option>
+                    </select>
+                </div>
+            </div>
+
+            {{-- Table --}}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="border-b border-outline-variant/10 text-outline uppercase font-bold text-[10px] tracking-wider bg-surface-container-low/50">
+                            <th class="p-3">Ref ID</th>
+                            <th class="p-3">Tanggal</th>
+                            <th class="p-3">Keterangan</th>
+                            <th class="p-3 text-center">Tipe</th>
+                            <th class="p-3 text-right">Jumlah</th>
+                            <th class="p-3 text-right">Saldo Kas</th>
+                            <th class="p-3 text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ledger-table-body" class="divide-y divide-outline-variant/10 font-medium">
+                        <!-- Dynamic ledger entries -->
+                        <tr>
+                            <td colspan="7" class="text-center py-8 text-outline">Memuat riwayat mutasi...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </section>
+
+    {{-- Print Stylesheet --}}
+    <style>
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #ledger-section, #ledger-section * {
+                visibility: visible;
+            }
+            #ledger-section {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                border: none !important;
+                box-shadow: none !important;
+                background: white !important;
+                color: black !important;
+            }
+            .print\:hidden {
+                display: none !important;
+            }
+        }
+    </style>
+
+    @push('scripts')
+    <script>
+        let allLedger = [];
+        let filteredLedger = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadLedger();
+        });
+
+        async function loadLedger() {
+            try {
+                const res = await fetch('/api/seller/wallet/ledger');
+                const result = await res.json();
+                if (res.ok && result.data) {
+                    allLedger = result.data;
+                    filterLedger();
+                } else {
+                    document.getElementById('ledger-table-body').innerHTML = `<tr><td colspan="7" class="text-center py-8 text-rose-600 font-bold">Gagal memuat buku kas.</td></tr>`;
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('ledger-table-body').innerHTML = `<tr><td colspan="7" class="text-center py-8 text-rose-600 font-bold">Error jaringan.</td></tr>`;
+            }
+        }
+
+        function filterLedger() {
+            const search = document.getElementById('ledger-search').value.toLowerCase().trim();
+            const type = document.getElementById('ledger-type-filter').value;
+
+            filteredLedger = allLedger.filter(m => {
+                const matchesSearch = String(m.id).toLowerCase().includes(search) || 
+                                      String(m.reference).toLowerCase().includes(search) ||
+                                      (m.description && String(m.description).toLowerCase().includes(search));
+                const matchesType = type === '' ? true : m.type === type;
+                return matchesSearch && matchesType;
+            });
+
+            renderLedgerTable();
+        }
+
+        function renderLedgerTable() {
+            const tbody = document.getElementById('ledger-table-body');
+            tbody.innerHTML = '';
+
+            if (filteredLedger.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-outline">Tidak ada riwayat mutasi kas ditemukan.</td></tr>`;
+                return;
+            }
+
+            filteredLedger.forEach(m => {
+                const date = new Date(m.date_string).toLocaleDateString('id-ID', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                const typeBadge = m.type === 'credit'
+                    ? `<span class="inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800">Uang Masuk</span>`
+                    : `<span class="inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-rose-100 text-rose-800">Penarikan</span>`;
+
+                const amountText = m.type === 'credit'
+                    ? `+Rp ${Number(m.amount).toLocaleString('id-ID')}`
+                    : `-Rp ${Number(m.amount).toLocaleString('id-ID')}`;
+
+                const amountClass = m.type === 'credit' ? 'text-emerald-600 font-black' : 'text-rose-600 font-black';
+
+                const statusClass = m.status === 'Berhasil' || m.status === 'Saldo Cair'
+                    ? 'text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md'
+                    : 'text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded-md';
+
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-surface-container-low/50 transition-colors border-b border-outline-variant/10';
+                row.innerHTML = `
+                    <td class="p-3 font-bold text-on-surface">${m.id}</td>
+                    <td class="p-3 text-on-surface-variant/80">${date}</td>
+                    <td class="p-3 font-semibold text-on-surface max-w-xs truncate" title="${m.description}">${m.reference} — <span class="text-on-surface-variant font-medium">${m.description}</span></td>
+                    <td class="p-3 text-center">${typeBadge}</td>
+                    <td class="p-3 text-right ${amountClass}">${amountText}</td>
+                    <td class="p-3 text-right font-black text-on-surface">Rp ${Number(m.balance_after).toLocaleString('id-ID')}</td>
+                    <td class="p-3 text-center"><span class="text-[10px] uppercase ${statusClass}">${m.status}</span></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+    </script>
+    @endpush
 </x-layout.merchant>

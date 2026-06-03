@@ -107,6 +107,13 @@
         @endauth
 
         @auth
+        <!-- Chatify Quick Chat Shortcut -->
+        <a
+            href="/chatify"
+            class="hidden md:inline-flex relative h-9 w-9 items-center justify-center group hover:bg-white/10 rounded-full transition-colors duration-200 mr-1"
+            aria-label="Obrolan Chat">
+            <span class="material-symbols-outlined leading-none">chat</span>
+        </a>
         <div class="relative hidden md:block" data-notification-root>
             <button
                 type="button"

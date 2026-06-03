@@ -150,13 +150,16 @@ Route::middleware('auth:sanctum')->group(function () {
             // Seller wallet & reports
             Route::get('/wallet', [WalletController::class, 'getWallet']);
             Route::post('/withdraw', [WalletController::class, 'withdraw']);
+            Route::get('/wallet/ledger', [WalletController::class, 'getLedger']);
             Route::get('/reports/sales', [ReportController::class, 'getSales']);
+            Route::get('/reports/export', [ReportController::class, 'export']);
         });
     });
 
     // Admin routes
     Route::middleware('admin')->prefix('admin')->group(function () {
         Route::get('/dashboard/stats', [\App\Http\Controllers\Admin\DashboardController::class, 'getStats']);
+        Route::get('/users', [\App\Http\Controllers\Admin\UserController::class, 'index']);
         Route::patch('/users/{id}/status', [\App\Http\Controllers\Admin\UserController::class, 'updateStatus']);
         
         Route::post('/categories', [\App\Http\Controllers\Admin\CategoryController::class, 'store']);
@@ -175,8 +178,25 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/notifications/broadcast', [\App\Http\Controllers\Admin\NotificationController::class, 'broadcast']);
         
         Route::get('/sellers/pending', [SellerVerificationController::class, 'index']);
+        Route::get('/sellers/active', [SellerVerificationController::class, 'activeSellers']);
+        Route::patch('/sellers/{id}/status', [SellerVerificationController::class, 'toggleSellerStatus']);
         Route::post('/sellers/{id}/approve', [SellerVerificationController::class, 'approve']);
         Route::post('/sellers/{id}/reject', [SellerVerificationController::class, 'reject']);
+
+        Route::get('/products', [\App\Http\Controllers\Admin\ProductController::class, 'index']);
+        Route::post('/products/{id}/ban', [\App\Http\Controllers\Admin\ProductController::class, 'ban']);
+        Route::delete('/products/{id}', [\App\Http\Controllers\Admin\ProductController::class, 'destroy']);
+
+        Route::get('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'index']);
+        Route::post('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'store']);
+
+        Route::get('/disputes', [\App\Http\Controllers\Admin\ComplaintModerationController::class, 'getDisputes']);
+        Route::post('/disputes/{id}/resolve', [\App\Http\Controllers\Admin\ComplaintModerationController::class, 'resolveDispute']);
+        Route::get('/orders', [\App\Http\Controllers\Admin\ComplaintModerationController::class, 'getOrders']);
+
+        // Review/Ulasan Moderation Routes
+        Route::get('/reviews', [\App\Http\Controllers\Admin\ReviewModerationController::class, 'index']);
+        Route::patch('/reviews/{id}/status', [\App\Http\Controllers\Admin\ReviewModerationController::class, 'updateStatus']);
     });
 });
 
