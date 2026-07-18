@@ -173,6 +173,21 @@ body {
   border-radius: 6px;
   outline: none;
 }
+
+.messenger-sendCard {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  min-height: 60px;
+  padding: 10px 15px;
+  background: var(--messenger-color-bg);
+  position: absolute;
+  width: 100%;
+  bottom: 0;
+  z-index: 2;
+  box-shadow: 0px -5px 17px rgba(0, 0, 0, 0.06);
+}
+
 .messenger-listView-tabs {
   display: inline-flex;
   width: 100%;

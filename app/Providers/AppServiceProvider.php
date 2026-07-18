@@ -64,6 +64,13 @@ class AppServiceProvider extends ServiceProvider
             return URL::temporarySignedRoute('verification.verify', $time, $params);
         };
 
+        // Custom HTML Email Template for VerifyEmail
+        \Illuminate\Auth\Notifications\VerifyEmail::toMailUsing(function ($notifiable, $url) {
+            return (new \Illuminate\Notifications\Messages\MailMessage)
+                ->subject('Verifikasi Alamat Email Anda')
+                ->view('emails.auth.verify', ['url' => $url, 'user' => $notifiable]);
+        });
+
 
         // Aimeos admin check for backend
         \Illuminate\Support\Facades\Gate::define('admin', function($user, $class, $roles) {

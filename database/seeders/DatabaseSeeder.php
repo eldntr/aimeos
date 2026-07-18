@@ -14,6 +14,19 @@ class DatabaseSeeder extends Seeder
      */
     public function run()
     {
-        // \App\Models\User::factory(10)->create();
+        $email = env('ADMIN_EMAIL', 'admin@reborns.id');
+        $password = env('ADMIN_PASSWORD', 'admin123');
+        
+        $user = \App\Models\User::where('email', $email)->first();
+        if (!$user) {
+            \Illuminate\Support\Facades\Artisan::call('aimeos:account', [
+                'email' => $email,
+                '--password' => $password,
+                '--admin' => true,
+            ]);
+            $this->command->info("Admin created: $email");
+        } else {
+            $this->command->info("Admin $email already exists.");
+        }
     }
 }

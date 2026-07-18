@@ -6,9 +6,28 @@
 <meta name="messenger-color" content="{{ $messengerColor }}">
 <meta name="messenger-theme" content="{{ $dark_mode }}">
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<meta name="url" content="{{ url('').'/'.config('chatify.routes.prefix') }}" data-user="{{ Auth::user()->id }}">
+<meta name="url" content="{{ '/'.config('chatify.routes.prefix') }}" data-user="{{ Auth::user()->id }}">
 
 {{-- scripts --}}
+<script>
+  // Mock Pusher to prevent console errors when keys are not configured
+  class MockChannel {
+      bind(event, callback) {}
+      trigger(event, data) { return true; }
+  }
+  class MockConnection {
+      bind(event, callback) {}
+  }
+  class PusherMock {
+      constructor(key, options) {
+          this.connection = new MockConnection();
+      }
+      subscribe(channelName) {
+          return new MockChannel();
+      }
+      unsubscribe(channelName) {}
+  }
+</script>
 <script
   src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="{{ asset('js/chatify/font.awesome.min.js') }}"></script>

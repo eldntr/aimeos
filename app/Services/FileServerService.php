@@ -92,7 +92,7 @@ class FileServerService
         
         // 3. Complete Upload
         $completeResponse = Http::withToken($token)
-            ->post("$apiUrl/api/files/$fileId/complete-upload", []);
+            ->post("$apiUrl/api/files/$fileId/complete-upload", new \stdClass());
             
         if (!$completeResponse->successful()) {
             throw new \Exception("Failed to notify complete-upload: " . $completeResponse->body());

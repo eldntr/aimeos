@@ -37,7 +37,12 @@ class CategoryController extends Controller
             $item->setCode($request->code);
             $item->setStatus($request->input('status', 1));
 
-            $manager->insert($item);
+            // Find root node to insert under
+            $filter = $manager->filter()->add(['catalog.level' => 0]);
+            $rootNode = $manager->search($filter)->first();
+            $parentId = $rootNode ? $rootNode->getId() : null;
+
+            $manager->insert($item, $parentId);
             $manager->commit();
 
             // Store commission rate using SystemSetting

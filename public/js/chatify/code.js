@@ -30,8 +30,7 @@ const setMessengerId = (id) => $("meta[name=id]").attr("content", id);
  * Pusher initialization
  *-------------------------------------------------------------
  */
-Pusher.logToConsole = chatify.pusher.debug;
-const pusher = new Pusher(chatify.pusher.key, {
+const pusher = new PusherMock(chatify.pusher.key, {
     encrypted: chatify.pusher.options.encrypted,
     cluster: chatify.pusher.options.cluster,
     wsHost: chatify.pusher.options.host,
@@ -392,6 +391,7 @@ function IDinfo(id) {
       dataType: "JSON",
       success: (data) => {
         if (!data?.fetch) {
+          alert("Gagal: Kontak tidak ditemukan di database!");
           NProgress.done();
           NProgress.remove();
           return;
@@ -404,6 +404,8 @@ function IDinfo(id) {
           "background-image",
           'url("' + data.user_avatar + '")'
         );
+        // Show messaging view
+        $(".messenger-messagingView").show();
         // Show shared and actions
         $(".messenger-infoView-btns .delete-conversation").show();
         $(".messenger-infoView-shared").show();
@@ -422,8 +424,9 @@ function IDinfo(id) {
         $("#message-form").trigger("reset");
         cancelAttachment();
         messageInput.focus();
+        alert("Sukses: Data chat berhasil dimuat! Harusnya chatroom tampil sekarang.");
       },
-      error: () => {
+      error: (xhr, status, error) => {
         console.error("Couldn't fetch user data!");
         // remove loading bar
         NProgress.done();

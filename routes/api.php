@@ -200,3 +200,4 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 
+Route::post('/log-error', function (\Illuminate\Http\Request $request) { \Illuminate\Support\Facades\Log::error('JS ERROR: ' . json_encode($request->all())); return response()->json(['status' => 'ok']); });

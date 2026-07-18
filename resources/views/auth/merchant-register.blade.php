@@ -37,10 +37,9 @@
 
     <x-auth-validation-errors class="mb-6" :errors="$errors" />
 
-    <form method="POST" action="{{ route('merchant.register.store', $routeParams) }}" enctype="multipart/form-data" class="space-y-8">
+    <form method="POST" action="{{ route('merchant.register.store') }}" enctype="multipart/form-data" class="space-y-8">
         @csrf
 
-        @guest
         <section class="bg-surface-container-lowest p-6 md:p-8 rounded-3xl shadow-[0_12px_36px_rgba(47,47,46,0.06)]">
             <h2 class="text-lg md:text-xl font-bold text-on-surface mb-6">Informasi Akun</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -49,7 +48,7 @@
                     <input
                         name="name"
                         type="text"
-                        value="{{ old('name') }}"
+                        value="{{ old('name', auth()->user()?->name) }}"
                         required
                         autofocus
                         class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40"
@@ -60,13 +59,14 @@
                     <input
                         name="email"
                         type="email"
-                        value="{{ old('email') }}"
+                        value="{{ old('email', auth()->user()?->email) }}"
+                        {{ auth()->check() ? 'readonly' : '' }}
                         required
-                        class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40"
+                        class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 {{ auth()->check() ? 'opacity-70 cursor-not-allowed' : '' }}"
                     />
                 </label>
                 <label class="space-y-2">
-                    <span class="text-xs font-semibold text-on-surface-variant">Password</span>
+                    <span class="text-xs font-semibold text-on-surface-variant">{{ auth()->check() ? 'Konfirmasi Password Anda' : 'Password' }}</span>
                     <input
                         name="password"
                         type="password"
@@ -76,7 +76,7 @@
                     />
                 </label>
                 <label class="space-y-2">
-                    <span class="text-xs font-semibold text-on-surface-variant">Konfirmasi Password</span>
+                    <span class="text-xs font-semibold text-on-surface-variant">Ketik Ulang Password</span>
                     <input
                         name="password_confirmation"
                         type="password"
@@ -85,22 +85,35 @@
                     />
                 </label>
             </div>
+            @guest
             <div class="mt-6 text-sm text-on-surface-variant">
                 Sudah punya akun?
                 <a href="{{ route('login', $routeParams) }}" class="text-primary font-semibold hover:underline">Masuk di sini</a>
             </div>
+            @endguest
         </section>
-        @endguest
 
         <section class="bg-surface-container-lowest p-6 md:p-8 rounded-3xl shadow-[0_12px_36px_rgba(47,47,46,0.06)]">
             <h2 class="text-lg md:text-xl font-bold text-on-surface mb-6">Informasi Toko</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <label class="space-y-2 md:col-span-2">
-                    <span class="text-xs font-semibold text-on-surface-variant">Nama Toko</span>
+                <label class="space-y-2">
+                    <span class="text-xs font-semibold text-on-surface-variant">Kode Toko (Tanpa Spasi, misal: toko-murah)</span>
                     <input
-                        name="store_name"
+                        name="code"
                         type="text"
-                        value="{{ old('store_name') }}"
+                        value="{{ old('code') }}"
+                        required
+                        pattern="^[a-zA-Z0-9\-]+$"
+                        title="Hanya huruf, angka, dan strip (-)"
+                        class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40"
+                    />
+                </label>
+                <label class="space-y-2">
+                    <span class="text-xs font-semibold text-on-surface-variant">Nomor Telepon / WhatsApp</span>
+                    <input
+                        name="telephone"
+                        type="text"
+                        value="{{ old('telephone') }}"
                         required
                         class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40"
                     />
@@ -114,8 +127,8 @@
                         class="w-full rounded-2xl bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40"
                     >{{ old('address') }}</textarea>
                 </label>
-                <label class="space-y-2">
-                    <span class="text-xs font-semibold text-on-surface-variant">Nama Bank</span>
+                <label class="space-y-2 md:col-span-2">
+                    <span class="text-xs font-semibold text-on-surface-variant">Nama Bank (misal: BCA, Mandiri)</span>
                     <input
                         name="bank_name"
                         type="text"
@@ -134,15 +147,26 @@
                         class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40"
                     />
                 </label>
+                <label class="space-y-2">
+                    <span class="text-xs font-semibold text-on-surface-variant">Atas Nama Rekening</span>
+                    <input
+                        name="bank_account_name"
+                        type="text"
+                        value="{{ old('bank_account_name') }}"
+                        required
+                        class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40"
+                    />
+                </label>
                 <label class="space-y-2 md:col-span-2">
                     <span class="text-xs font-semibold text-on-surface-variant">Upload KTP</span>
                     <input
-                        name="ktp"
+                        name="ktp_image"
                         type="file"
                         required
+                        accept="image/*"
                         class="w-full rounded-2xl bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface file:mr-4 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-primary"
                     />
-                    <p class="text-xs text-on-surface-variant mt-2">Pastikan foto KTP jelas dan tidak buram.</p>
+                    <p class="text-xs text-on-surface-variant mt-2">Pastikan foto KTP jelas dan tidak buram (Maks 5MB).</p>
                 </label>
             </div>
         </section>

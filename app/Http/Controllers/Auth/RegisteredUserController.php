@@ -191,7 +191,7 @@ class RegisteredUserController extends Controller
     /**
      * Register a new Seller (Merchant) via API.
      */
-    public function registerSeller(Request $request): \Illuminate\Http\JsonResponse
+    public function registerSeller(Request $request): \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse
     {
         $request->validate([
             'code' => ['required', 'string', 'max:255', 'unique:mshop_locale_site', 'regex:/^[a-z0-9\-]+(\.[a-z0-9\-]+)?$/i'],
@@ -205,6 +205,15 @@ class RegisteredUserController extends Controller
             'bank_name' => ['required', 'string', 'max:255'],
             'ktp_image' => ['required', 'image', 'max:5120'], // Max 5MB
         ]);
+
+        \Log::info('RegisterSeller triggered', [
+            'url' => $request->url(),
+            'query' => $request->query(),
+            'route_params' => $request->route()->parameters(),
+            'all_input' => $request->all(),
+            'config_site' => config('shop.mshop.locale.site'),
+        ]);
+
 
         $context = app('aimeos.context')->get();
         $siteManager = \Aimeos\MShop::create($context, 'locale/site');

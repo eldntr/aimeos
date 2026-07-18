@@ -1,4 +1,16 @@
 @include('Chatify::layouts.headLinks')
+<script>
+window.onerror = function(message, source, lineno, colno, error) {
+    fetch('/log-error?msg=' + encodeURIComponent(message + ' at ' + lineno));
+};
+window.addEventListener('load', function() {
+    if (window.jQuery) {
+        $(document).ajaxError(function(event, jqXHR, ajaxSettings, thrownError) {
+            fetch('/log-error?msg=' + encodeURIComponent('AJAX ERROR: ' + ajaxSettings.url + ' STATUS: ' + jqXHR.status));
+        });
+    }
+});
+</script>
 <div class="messenger">
     {{-- ----------------------Users/Groups lists side---------------------- --}}
     <div class="messenger-listView {{ !!$id ? 'conversation-active' : '' }}">

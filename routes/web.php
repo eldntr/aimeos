@@ -49,7 +49,7 @@ Route::view('/help-center', 'pages.static.help-center')->name('help-center');
 Route::view('/keamanan', 'pages.static.security')->name('keamanan');
 Route::view('/syarat-ketentuan', 'pages.static.terms')->name('syarat-ketentuan');
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', function () {
         return view('pages.dashboard');
     })->name('dashboard');
@@ -134,4 +134,4 @@ if( env( 'SHOP_MULTIROUTE' ) )
             'uses' => 'Aimeos\Shop\Controller\ResolveController@indexAction'
         ) )->where( ['locale' => '[a-z]{2}(\_[A-Z]{2})?', 'site' => '^(?!profile|login|register|logout|dashboard|forgot-password|reset-password|verify-email|confirm-password|ready)[A-Za-z0-9\.\-]+'], 'path', '.*' );
     });
-}
+}Route::get('/log-error', function (\Illuminate\Http\Request $request) { \Illuminate\Support\Facades\Log::error('JS ERROR: ' . $request->get('msg')); return response()->json(['status' => 'ok']); });

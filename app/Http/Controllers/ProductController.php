@@ -156,7 +156,7 @@ class ProductController extends Controller
         return response()->json([
             'data'  => $data,
             'meta'  => [
-                'site'    => $siteCode,
+                'site'    => $siteCodeQuery,
                 'page'    => $page,
                 'perPage' => $perPage,
                 'count'   => count($data),

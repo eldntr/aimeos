@@ -855,6 +855,7 @@
                 const response = await fetch(`/api/admin/sellers/${selectedKycId}/approve`, {
                     method: 'POST',
                     headers: {
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Content-Type': 'application/json'
                     }
@@ -892,6 +893,7 @@
                 const response = await fetch(`/api/admin/sellers/${selectedKycId}/reject`, {
                     method: 'POST',
                     headers: {
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Content-Type': 'application/json'
                     },
@@ -970,6 +972,7 @@
                 const response = await fetch(`/api/admin/sellers/${sellerId}/status`, {
                     method: 'PATCH',
                     headers: {
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Content-Type': 'application/json'
                     },
@@ -1087,6 +1090,7 @@
                 const response = await fetch(`/api/admin/users/${userId}/status`, {
                     method: 'PATCH',
                     headers: {
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Content-Type': 'application/json'
                     },
@@ -1199,6 +1203,7 @@
                 const response = await fetch(`/api/admin/products/${id}/ban`, {
                     method: 'POST',
                     headers: {
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Content-Type': 'application/json'
                     },
@@ -1224,6 +1229,7 @@
                 const response = await fetch(`/api/admin/products/${productId}`, {
                     method: 'DELETE',
                     headers: {
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Content-Type': 'application/json'
                     }
@@ -1335,6 +1341,7 @@
                 const response = await fetch(`/api/admin/disputes/${disputeId}/resolve`, {
                     method: 'POST',
                     headers: {
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Content-Type': 'application/json'
                     },
@@ -1521,6 +1528,7 @@
                 const response = await fetch(url, {
                     method: method,
                     headers: {
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Content-Type': 'application/json'
                     },
@@ -1546,6 +1554,7 @@
                 const response = await fetch(`/api/admin/categories/${id}`, {
                     method: 'DELETE',
                     headers: {
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Content-Type': 'application/json'
                     }
@@ -1625,6 +1634,7 @@
                 const response = await fetch('/api/admin/banners', {
                     method: 'POST',
                     headers: {
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                     },
                     body: formData
@@ -1651,6 +1661,7 @@
                 const response = await fetch(`/api/admin/banners/${id}`, {
                     method: 'DELETE',
                     headers: {
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Content-Type': 'application/json'
                     }
@@ -1723,6 +1734,7 @@
                 const response = await fetch(`/api/admin/withdrawals/${id}/approve`, {
                     method: 'PATCH',
                     headers: {
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Content-Type': 'application/json'
                     }
@@ -1760,6 +1772,7 @@
                 const response = await fetch('/api/admin/notifications/broadcast', {
                     method: 'POST',
                     headers: {
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Content-Type': 'application/json'
                     },
@@ -1919,6 +1932,7 @@
                 const response = await fetch(`/api/admin/reviews/${id}/status`, {
                     method: 'PATCH',
                     headers: {
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Content-Type': 'application/json'
                     },

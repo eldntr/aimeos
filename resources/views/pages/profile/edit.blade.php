@@ -148,6 +148,37 @@
             </div>
             <!-- TAB PANEL: SUMMARY (original features) -->
             <div data-tab-panel="summary" class="space-y-8">
+                
+                @if(auth()->user()->seller_status === 'rejected' || (auth()->user()->seller_status === 'pending' && empty(auth()->user()->ktp_url)))
+                <section class="bg-gradient-to-r from-primary/10 to-primary-container/10 border-l-4 border-primary p-6 md:p-8 rounded-2xl shadow-[0_12px_36px_rgba(47,47,46,0.06)]">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div>
+                            <h2 class="text-lg md:text-xl font-bold text-on-surface">Mulai Berjualan di Reborns</h2>
+                            <p class="mt-1 text-sm text-on-surface-variant">Jadilah bagian dari ekosistem kami. Daftarkan toko Anda sekarang dan raih jutaan pembeli!</p>
+                        </div>
+                        <a href="{{ route('merchant.register') }}" class="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-primary to-primary-container text-white font-bold rounded-full shadow-lg hover:scale-105 transition-transform shrink-0 whitespace-nowrap">
+                            Daftar Jadi Penjual
+                        </a>
+                    </div>
+                </section>
+                @elseif(auth()->user()->seller_status === 'pending' && !empty(auth()->user()->ktp_url))
+                <section class="bg-yellow-50 border-l-4 border-yellow-500 p-6 md:p-8 rounded-2xl shadow-[0_12px_36px_rgba(47,47,46,0.06)]">
+                    <h2 class="text-lg md:text-xl font-bold text-on-surface">Pendaftaran Toko Sedang Diproses</h2>
+                    <p class="mt-1 text-sm text-on-surface-variant">Kami sedang meninjau pendaftaran toko Anda. Mohon tunggu informasi selanjutnya via email.</p>
+                </section>
+                @else
+                <section class="bg-green-50 border-l-4 border-green-500 p-6 md:p-8 rounded-2xl shadow-[0_12px_36px_rgba(47,47,46,0.06)]">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div>
+                            <h2 class="text-lg md:text-xl font-bold text-on-surface">Toko Anda Sudah Aktif!</h2>
+                            <p class="mt-1 text-sm text-on-surface-variant">Kelola produk dan pesanan Anda melalui Dasbor Penjual.</p>
+                        </div>
+                        <a href="{{ route('merchant.dashboard') }}" class="inline-flex items-center justify-center px-6 py-3 bg-gray-800 text-white font-bold rounded-full shadow-lg hover:scale-105 transition-transform shrink-0 whitespace-nowrap">
+                            Ke Dasbor Penjual
+                        </a>
+                    </div>
+                </section>
+                @endif
                 @if (! $isAdmin)
                 <section class="space-y-4">
                     <div class="flex items-end justify-between">

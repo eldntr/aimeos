@@ -1,0 +1,29 @@
+web_server:
+  bind_address: 0.0.0.0
+  port: 5000
+web:
+  host: 187.77.125.195
+  protocol: http
+main_db:
+  host: mariadb
+  user: postal
+  password: postal_password
+  database: postal
+message_db:
+  host: mariadb
+  user: postal
+  password: postal_password
+  prefix: postal
+rabbitmq:
+  host: rabbitmq
+  user: postal
+  password: postal_password
+  vhost: postal
+dns:
+  mx_records:
+    - mx.reborns.id
+  smtp_server_hostname: reborns.id
+  spf_include: spf.reborns.id
+  return_path: rp.reborns.id
+  route_domain: routes.reborns.id
+  track_domain: track.reborns.id
