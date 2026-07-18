@@ -3,7 +3,7 @@
         $routeParams = request()->route('site') ? ['site' => request()->route('site')] : [];
     @endphp
 
-    <section class="max-w-4xl mx-auto px-5 sm:px-8 py-8 md:py-12 space-y-8">
+    <section class="max-w-6xl mx-auto px-5 sm:px-8 py-8 md:py-12 space-y-8">
         {{-- Header --}}
         <div>
             <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-on-surface">

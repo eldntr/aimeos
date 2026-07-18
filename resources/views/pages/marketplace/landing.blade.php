@@ -1,6 +1,8 @@
 @extends('layouts.app')
 
-@section('title', 'Reborns | Kalau Bisa jadi uang, Kenapa Dibuang?')
+@section('title', 'Reborns | Jual Beli Barang Bekas & Preloved Berkualitas')
+@section('meta_description', 'Temukan barang preloved & bekas berkualitas dengan harga terbaik di Reborns Marketplace. Jual barang bekas tidak terpakai milikmu atau beli produk thrift original dari penjual terpercaya.')
+@section('meta_keywords', 'jual barang bekas, beli preloved, thrift shop, baju bekas berkualitas, barang bekas layak pakai, reborns indonesia, fashion second hand')
 
 @section('content')
 <div class="max-w-[1120px] mx-auto px-5 sm:px-7 lg:px-8 pt-6 md:pt-8 space-y-7 md:space-y-8">

@@ -1,6 +1,9 @@
 @extends('layouts.app')
 
 @section('title', 'Reborns | ' . ($product['name'] ?? 'Detail Produk'))
+@section('meta_description', \Illuminate\Support\Str::limit(strip_tags($product['description'] ?? 'Beli ' . ($product['name'] ?? 'produk') . ' preloved/bekas berkualitas dengan kondisi terbaik dan harga bersahabat di Reborns Marketplace.'), 150))
+@section('meta_keywords', 'reborns, preloved, second hand, bekas berkualitas, ' . ($product['name'] ?? '') . ', ' . ($product['brand'] ?? 'produk') . ', thrift item')
+@section('og_image', $product['image'] ?? asset('images/logo_with_text.png'))
 
 @section('content')
 @php

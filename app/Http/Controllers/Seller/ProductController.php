@@ -146,6 +146,9 @@ class ProductController extends Controller
             
             $saved = $manager->save($product);
             
+            // Create stock entry for product
+            $this->saveStockItem($context, $saved->getId());
+            
             // Also add inverse mapping in catalog/lists for categories
             if ($request->has('categories') && is_array($request->categories)) {
                 try {
@@ -176,6 +179,9 @@ class ProductController extends Controller
 
                     $listItem = $this->createVariantListItem($context, $savedVariant->getId());
                     $saved->addListItem('product', $listItem);
+
+                    // Create stock entry for variant product
+                    $this->saveStockItem($context, $savedVariant->getId());
                 }
                 $saved = $manager->save($saved); // Save again with attached variants
             }
@@ -323,6 +329,9 @@ class ProductController extends Controller
 
         $saved = $manager->save($product);
         
+        // Ensure stock entry exists for product
+        $this->saveStockItem($context, $saved->getId());
+        
         // Add new variants if provided (does not delete existing variants to prevent data loss)
         if ($saved->getType() === 'select' && $request->has('variants') && is_array($request->variants)) {
             foreach ($request->variants as $variantData) {
@@ -335,6 +344,9 @@ class ProductController extends Controller
 
                 $listItem = $this->createVariantListItem($context, $savedVariant->getId());
                 $saved->addListItem('product', $listItem);
+
+                // Create stock entry for variant product
+                $this->saveStockItem($context, $savedVariant->getId());
             }
             $saved = $manager->save($saved);
         }
@@ -705,6 +717,29 @@ class ProductController extends Controller
         } catch (\Exception $e) {
             $manager->rollback();
             return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    /**
+     * Create or update a stock entry to ensure product has stock (null = unlimited stock)
+     */
+    private function saveStockItem(\Aimeos\MShop\Context\Item\Iface $context, string $productId, ?int $stockLevel = null): void
+    {
+        try {
+            $stockManager = \Aimeos\MShop::create($context, 'stock');
+            
+            $filter = $stockManager->filter();
+            $filter->add($filter->compare('==', 'stock.productid', $productId));
+            $stocks = $stockManager->search($filter);
+            
+            $stockItem = $stocks->first() ?: $stockManager->create();
+            $stockItem->setProductId($productId)
+                ->setStockLevel($stockLevel)
+                ->setType('default');
+            
+            $stockManager->save($stockItem);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Gagal menyimpan stock: ' . $e->getMessage());
         }
     }
 }

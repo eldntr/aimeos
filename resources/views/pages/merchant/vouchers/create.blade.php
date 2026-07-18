@@ -3,7 +3,7 @@
         $routeParams = request()->route('site') ? ['site' => request()->route('site')] : [];
     @endphp
 
-    <section class="max-w-2xl mx-auto px-5 sm:px-8 py-8 md:py-12 space-y-6">
+    <section class="max-w-6xl mx-auto px-5 sm:px-8 py-8 md:py-12 space-y-6">
         {{-- Header --}}
         <div class="flex items-center gap-3">
             <a href="{{ route('merchant.vouchers.index', $routeParams) }}"
@@ -33,7 +33,7 @@
 
         {{-- Form --}}
         <form action="{{ route('merchant.vouchers.store', $routeParams) }}" method="POST"
-              class="bg-surface-container-lowest rounded-2xl p-6 md:p-8 border border-outline-variant/10 shadow-[0_4px_16px_rgba(47,47,46,0.04)] space-y-5">
+              class="max-w-3xl bg-surface-container-lowest rounded-2xl p-6 md:p-8 border border-outline-variant/10 shadow-[0_4px_16px_rgba(47,47,46,0.04)] space-y-5">
             @csrf
 
             {{-- Coupon Code & Name --}}

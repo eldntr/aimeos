@@ -19,10 +19,13 @@ use App\Http\Controllers\Web\MarketplaceController;
 use App\Http\Controllers\Web\AdminController;
 use App\Http\Controllers\Web\MerchantController;
 use App\Http\Controllers\Admin\ChatKeywordController;
+use App\Http\Controllers\SitemapController;
 
 Route::get('/ready', function() {
     return 'OK';
 });
+
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 
 Route::get('/', [MarketplaceController::class, 'landing'])->name('landing');
 Route::get('/categories', [MarketplaceController::class, 'categories'])->name('categories');
@@ -110,6 +113,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/marketplace/chat', function () {
         return view('pages.marketplace.chat');
     })->name('marketplace.chat');
+    Route::redirect('/chatify', '/marketplace/chat');
 
     // Custom Profile Pages
     Route::get('/profile/orders', function () {

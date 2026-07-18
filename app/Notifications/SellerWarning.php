@@ -21,7 +21,7 @@ class SellerWarning extends Notification
 
     public function via($notifiable)
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail($notifiable)
@@ -35,5 +35,13 @@ class SellerWarning extends Notification
                     ->line('Mohon perbaiki detail produk Anda atau pastikan produk Anda tidak melanggar ketentuan hukum/hak cipta yang berlaku sebelum menghubungi tim admin untuk pengaktifan kembali.')
                     ->action('Buka Halaman Merchant', url('/'))
                     ->line('Terima kasih atas kerja sama Anda dalam menjaga ekosistem marketplace yang sehat.');
+    }
+
+    public function toArray($notifiable)
+    {
+        return [
+            'title' => 'Produk Dinonaktifkan (Banned)',
+            'message' => 'Produk "' . $this->productLabel . '" Anda dinonaktifkan oleh administrator. Alasan: ' . $this->reason,
+        ];
     }
 }

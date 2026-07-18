@@ -173,7 +173,7 @@
 
                 <div class="flex items-center gap-4">
                     <!-- Live Chatify Shortcut -->
-                    <a href="/chatify" class="w-9 h-9 rounded-xl hover:bg-surface-container-high flex items-center justify-center text-on-surface-variant transition-colors mr-1" title="Buka Chat Penjual">
+                    <a href="{{ route('marketplace.chat', $routeParams) }}" class="w-9 h-9 rounded-xl hover:bg-surface-container-high flex items-center justify-center text-on-surface-variant transition-colors mr-1" title="Buka Chat Penjual">
                         <span class="material-symbols-outlined text-xl">chat</span>
                     </a>
 
@@ -197,6 +197,22 @@
                     </div>
                 </div>
             </header>
+
+            @if(auth()->check() && auth()->user()->status === 0)
+                <div class="max-w-7xl mx-auto w-full px-4 md:px-8 pt-6">
+                    <div class="bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl p-4 flex items-start gap-3 shadow-sm">
+                        <span class="material-symbols-outlined text-rose-600 shrink-0">error</span>
+                        <div class="text-xs">
+                            <p class="font-extrabold text-sm text-rose-900">Akun Merchant Ditangguhkan (Blocked)</p>
+                            <p class="mt-1 text-rose-800/90 leading-relaxed font-medium">
+                                Akun toko Anda saat ini telah ditangguhkan/dibekukan oleh administrator. 
+                                Anda tidak dapat menambah/mengedit produk, mengelola voucher, atau melakukan transaksi apa pun. 
+                                Silakan hubungi dukungan administrator jika Anda ingin mengajukan banding atau merasa ini adalah kesalahan.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             <div class="max-w-7xl mx-auto w-full px-4 md:px-8 pt-6">
                 @include('components.flash')

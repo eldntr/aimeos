@@ -16,19 +16,38 @@ class CartController extends Controller
         $context = app('aimeos.context')->get(false);
         
         $localeManager = \Aimeos\MShop::create($context, 'locale');
-        $localeItem = $localeManager->bootstrap('default', '', '', false);
+        $localeItem = $localeManager->bootstrap('default', '', 'IDR', false);
         
         // Bypass Aimeos' broken site item fetching during tests by force-injecting a mock site item
         $siteManager = \Aimeos\MShop::create($context, 'locale/site');
-        $siteItem = $siteManager->create();
-        $siteItem->setId('1.');
-        $siteItem->setCode('default');
         
-        $ref = new \ReflectionClass($localeItem);
-        if ($ref->hasProperty('siteItem')) {
-            $prop = $ref->getProperty('siteItem');
-            $prop->setAccessible(true);
-            $prop->setValue($localeItem, $siteItem);
+        try {
+            $site = $siteManager->find('default');
+            $siteFilter = $siteManager->filter(true);
+            $siteItems = $siteManager->search($siteFilter);
+            $siteIds = [];
+            foreach ($siteItems as $item) {
+                $siteIds[] = $item->getSiteId();
+            }
+            
+            $sites = [
+                0 => $site->getSiteId(),
+                1 => $siteIds,
+                2 => $site->getSiteId(),
+                3 => $siteIds
+            ];
+            $localeItem = new \Aimeos\MShop\Locale\Item\Standard($localeItem->toArray(), $site, $sites);
+        } catch (\Exception $e) {
+            $siteItem = $siteManager->create();
+            $siteItem->setId('1.');
+            $siteItem->setCode('default');
+            
+            $ref = new \ReflectionClass($localeItem);
+            if ($ref->hasProperty('siteItem')) {
+                $prop = $ref->getProperty('siteItem');
+                $prop->setAccessible(true);
+                $prop->setValue($localeItem, $siteItem);
+            }
         }
         
         $context->setLocale($localeItem);
@@ -212,11 +231,31 @@ class CartController extends Controller
             }
 
             $nativeProductManager = \Aimeos\MShop::create($context, 'product');
-            $product = $nativeProductManager->get($request->product_id, ['attribute', 'media', 'price', 'text']);
+            $product = $nativeProductManager->get($request->product_id, ['attribute', 'media', 'price', 'text', 'catalog', 'product']);
+            
+            if ($product->getType() === 'select') {
+                $variantIds = [];
+                foreach ($product->getListItems('product', 'default') as $listItem) {
+                    $variantIds[] = $listItem->getRefId();
+                }
+                if (!empty($variantIds)) {
+                    $filter = $nativeProductManager->filter();
+                    $filter->add($filter->compare('==', 'product.id', $variantIds));
+                    $filter->add($filter->compare('==', 'product.status', 1));
+                    $firstVariant = $nativeProductManager->search($filter, ['attribute', 'media', 'price', 'text', 'catalog'])->first();
+                    if ($firstVariant) {
+                        if ($firstVariant->getListItems('price')->isEmpty()) {
+                            foreach ($product->getListItems('price') as $priceList) {
+                                $firstVariant->addListItem('price', $priceList, $priceList->getRefItem());
+                            }
+                        }
+                        $product = $firstVariant;
+                    }
+                }
+            }
             
             if ($siteCode !== 'default') {
-                $locale = \Aimeos\MShop::create($context, 'locale')->bootstrap('default', '', '', false);
-                $context->setLocale($locale);
+                $context->setLocale($this->getContextWithLocale()->locale());
             }
 
             $existingPos = null;

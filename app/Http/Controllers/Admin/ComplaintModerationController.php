@@ -16,7 +16,30 @@ class ComplaintModerationController extends Controller
     {
         $context = app('aimeos.context')->get(false);
         $localeManager = MShop::create($context, 'locale');
-        $localeItem = $localeManager->bootstrap('default', '', '', false);
+        $localeItem = $localeManager->bootstrap('default', '', 'IDR', false);
+        
+        $siteManager = MShop::create($context, 'locale/site');
+        
+        try {
+            $site = $siteManager->find('default');
+            $siteFilter = $siteManager->filter(true);
+            $siteItems = $siteManager->search($siteFilter);
+            $siteIds = [];
+            foreach ($siteItems as $item) {
+                $siteIds[] = $item->getSiteId();
+            }
+            
+            $sites = [
+                0 => $site->getSiteId(),
+                1 => $siteIds,
+                2 => $site->getSiteId(),
+                3 => $siteIds
+            ];
+            $localeItem = new \Aimeos\MShop\Locale\Item\Standard($localeItem->toArray(), $site, $sites);
+        } catch (\Exception $e) {
+            // fallback
+        }
+        
         $context->setLocale($localeItem);
         return $context;
     }

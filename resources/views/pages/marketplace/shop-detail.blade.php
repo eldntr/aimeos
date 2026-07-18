@@ -1,6 +1,8 @@
 @extends('layouts.app')
 
 @section('title', 'Reborns | ' . ($shop['label'] ?? 'Detail Toko'))
+@section('meta_description', 'Kunjungi toko ' . ($shop['label'] ?? 'Merchant') . ' di Reborns Marketplace. Temukan barang bekas & preloved pilihan kondisi terbaik dari penjual tepercaya.')
+@section('meta_keywords', 'reborns, toko preloved, ' . ($shop['label'] ?? 'merchant') . ', jual barang bekas, thrift seller')
 
 @section('content')
 <div class="relative min-h-screen overflow-hidden bg-surface-container-lowest">

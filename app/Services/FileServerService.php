@@ -38,8 +38,16 @@ class FileServerService
 
         // Fallback to local storage (dummy mode) if file server is not configured
         if (!$secret || !$apiUrl) {
-            $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
-            copy($file->getRealPath(), public_path('uploads/' . $filename));
+            $extension = $file->guessExtension() ?: $file->getClientOriginalExtension();
+            $extension = preg_replace('/[^a-zA-Z0-9]/', '', $extension);
+            $filename = \Illuminate\Support\Str::random(40) . ($extension ? '.' . $extension : '');
+            
+            $uploadsPath = public_path('uploads');
+            if (!file_exists($uploadsPath)) {
+                mkdir($uploadsPath, 0755, true);
+            }
+            
+            copy($file->getRealPath(), $uploadsPath . '/' . $filename);
             return url('uploads/' . $filename);
         }
 
@@ -107,8 +115,10 @@ class FileServerService
     public function triggerCompression(): void
     {
         $apiUrl = env('FILE_SERVER_URL');
-        if ($apiUrl) {
-            Http::withToken('2afc271012598e4f2d703a9b0ea637d6b7d625ff8b14c2fb46e872f9ba8d5a55')
+        $token = env('FILE_SERVER_INTERNAL_TOKEN');
+        
+        if ($apiUrl && $token) {
+            Http::withToken($token)
                 ->post("$apiUrl/internal/files/compress-pending");
         }
     }

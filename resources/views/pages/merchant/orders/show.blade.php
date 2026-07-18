@@ -32,7 +32,7 @@
         }
     @endphp
 
-    <section class="max-w-4xl mx-auto px-5 sm:px-8 py-8 md:py-12 space-y-6">
+    <section class="max-w-6xl mx-auto px-5 sm:px-8 py-8 md:py-12 space-y-6">
         {{-- Header --}}
         <div class="flex items-center gap-3">
             <a href="{{ route('merchant.orders.index', $routeParams) }}"

@@ -19,7 +19,7 @@ class SellerRejected extends Notification
 
     public function via($notifiable)
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail($notifiable)
@@ -32,5 +32,13 @@ class SellerRejected extends Notification
                     ->line('Silakan unggah ulang dokumen KTP Anda yang lebih jelas dan sesuai ketentuan melalui tautan di bawah ini.')
                     ->action('Unggah Ulang KTP', url('/'))
                     ->line('Terima kasih atas pengertian Anda.');
+    }
+
+    public function toArray($notifiable)
+    {
+        return [
+            'title' => 'Verifikasi Penjual Ditolak',
+            'message' => 'Maaf, pengajuan toko Anda ditolak oleh administrator. Alasan: ' . $this->reason,
+        ];
     }
 }

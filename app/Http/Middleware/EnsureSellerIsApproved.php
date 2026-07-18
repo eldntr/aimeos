@@ -18,6 +18,12 @@ class EnsureSellerIsApproved
     {
         $user = $request->user();
 
+        if ($user && $user->status === 0) {
+            return response()->json([
+                'message' => 'Akun toko/merchant Anda ditangguhkan (blocked) oleh administrator.',
+            ], 403);
+        }
+
         if ($user && $user->seller_status !== 'approved') {
             return response()->json([
                 'message' => 'Your seller account has not been approved yet. Current status: ' . $user->seller_status,

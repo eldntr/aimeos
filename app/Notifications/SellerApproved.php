@@ -12,7 +12,7 @@ class SellerApproved extends Notification
 
     public function via($notifiable)
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail($notifiable)
@@ -24,5 +24,13 @@ class SellerApproved extends Notification
                     ->line('Anda sekarang dapat mengakses dasbor penjual secara penuh dan mulai menambahkan produk ke etalase toko Anda.')
                     ->action('Buka Dasbor Penjual', url('/'))
                     ->line('Terima kasih telah bergabung bersama kami!');
+    }
+
+    public function toArray($notifiable)
+    {
+        return [
+            'title' => 'Verifikasi Penjual Disetujui',
+            'message' => 'Selamat! Pendaftaran toko Anda telah disetujui oleh administrator. Sekarang Anda bisa mulai berjualan.',
+        ];
     }
 }

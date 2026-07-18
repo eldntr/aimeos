@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Notifications\SellerApproved;
 use App\Notifications\SellerRejected;
+use App\Notifications\SellerSuspended;
+use App\Notifications\SellerReactivated;
 use Illuminate\Http\Request;
 
 class SellerVerificationController extends Controller
@@ -92,6 +94,12 @@ class SellerVerificationController extends Controller
         $seller = User::findOrFail($id);
         $seller->status = (int) $request->status;
         $seller->save();
+
+        if ($seller->status === 1) {
+            $seller->notify(new SellerReactivated());
+        } else {
+            $seller->notify(new SellerSuspended());
+        }
 
         $statusText = $seller->status === 1 ? 'diaktifkan' : 'ditangguhkan (suspend)';
 

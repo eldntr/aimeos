@@ -7,6 +7,29 @@
     <title>@yield('title', config('app.name', 'Reborns Marketplace'))</title>
     <link rel="icon" type="image/png" href="{{ asset('images/logo_only.png') }}">
 
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="@yield('meta_description', 'Reborns Marketplace - Tempat terbaik jual beli barang bekas & preloved berkualitas. Temukan pakaian thrift, elektronik, hobi, dan fashion preloved unik lainnya dengan transaksi 100% aman.')">
+    <meta name="keywords" content="@yield('meta_keywords', 'barang bekas, preloved, thrift shop indonesia, baju bekas, jual barang bekas, beli preloved, marketplace barang bekas, reborns, preloved berkualitas, thrift online')">
+    <meta name="author" content="Reborns">
+    <meta name="robots" content="@yield('meta_robots', 'index, follow')">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="@yield('og_type', 'website')">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:title" content="@yield('og_title', $__env->yieldContent('title', config('app.name', 'Reborns Marketplace')))">
+    <meta property="og:description" content="@yield('og_description', $__env->yieldContent('meta_description', 'Temukan barang preloved berkualitas di Reborns. Marketplace preloved terpercaya, aman, dan penuh pilihan untuk mendukung gaya hidup berkelanjutan.'))">
+    <meta property="og:image" content="@yield('og_image', asset('images/logo_with_text.png'))">
+    <meta property="og:site_name" content="Reborns">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="@yield('twitter_card', 'summary_large_image')">
+    <meta name="twitter:url" content="{{ url()->current() }}">
+    <meta name="twitter:title" content="@yield('twitter_title', $__env->yieldContent('title', config('app.name', 'Reborns Marketplace')))">
+    <meta name="twitter:description" content="@yield('twitter_description', $__env->yieldContent('meta_description', 'Temukan barang preloved berkualitas di Reborns. Marketplace preloved terpercaya, aman, dan penuh pilihan untuk mendukung gaya hidup berkelanjutan.'))">
+    <meta name="twitter:image" content="@yield('twitter_image', asset('images/logo_with_text.png'))">
+
+    <link rel="canonical" href="{{ url()->current() }}">
+
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -131,11 +154,46 @@
         };
         window.handleProductImageError = function(img) {
             const div = document.createElement('div');
-            div.className = 'w-full h-full bg-neutral-100 flex flex-col items-center justify-center p-3 text-center border border-neutral-200 rounded-xl text-neutral-400 text-[10px] min-h-[100px]';
-            div.innerHTML = `
-                <span class="material-symbols-outlined text-lg mb-1">broken_image</span>
-                <span>Gagal memuat gambar</span>
-            `;
+            const originalClasses = img.className || '';
+            const imgClasses = originalClasses.split(' ');
+            const keptClasses = imgClasses.filter(c => {
+                return c.startsWith('w-') || 
+                       c.startsWith('h-') || 
+                       c.startsWith('rounded-') || 
+                       c.startsWith('border') || 
+                       c === 'shrink-0' || 
+                       c === 'flex-shrink-0' ||
+                       c.startsWith('max-w-') ||
+                       c.startsWith('max-h-') ||
+                       c.startsWith('aspect-');
+            });
+            
+            div.className = keptClasses.join(' ') + ' bg-neutral-100 flex flex-col items-center justify-center text-center text-neutral-400 text-[10px]';
+            
+            if (!keptClasses.some(c => c.startsWith('w-') || c.startsWith('max-w-'))) {
+                div.classList.add('w-full');
+            }
+            if (!keptClasses.some(c => c.startsWith('h-') || c.startsWith('max-h-'))) {
+                div.classList.add('h-full');
+            }
+
+            const width = img.offsetWidth || img.clientWidth || (originalClasses.match(/w-(\d+)/) ? parseInt(originalClasses.match(/w-(\d+)/)[1]) * 4 : 0);
+            const height = img.offsetHeight || img.clientHeight || (originalClasses.match(/h-(\d+)/) ? parseInt(originalClasses.match(/h-(\d+)/)[1]) * 4 : 0);
+            
+            const isSmall = (width > 0 && width < 80) || (height > 0 && height < 80) || 
+                            originalClasses.includes('w-10') || originalClasses.includes('w-12') || 
+                            originalClasses.includes('w-16') || originalClasses.includes('w-20') ||
+                            originalClasses.includes('h-10') || originalClasses.includes('h-12') || 
+                            originalClasses.includes('h-16') || originalClasses.includes('h-20');
+            
+            if (isSmall) {
+                div.innerHTML = `<span class="material-symbols-outlined text-base">broken_image</span>`;
+            } else {
+                div.innerHTML = `
+                    <span class="material-symbols-outlined text-lg mb-1">broken_image</span>
+                    <span class="px-2 leading-tight">Gagal memuat gambar</span>
+                `;
+            }
             img.replaceWith(div);
         };
     </script>

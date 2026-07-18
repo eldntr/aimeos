@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Aimeos\MShop;
 use Illuminate\Support\Facades\Log;
 use Aimeos\MShop\Order\Item\Base;
+use App\Notifications\OrderStatusUpdated;
 
 class OrderController extends Controller
 {
@@ -148,6 +149,23 @@ class OrderController extends Controller
             $orderManager->save($order);
             $orderManager->commit();
             
+            // Send notification to customer
+            try {
+                $customerId = $order->getCustomerId();
+                $customer = \App\Models\User::find($customerId);
+                if ($customer) {
+                    $statusType = 'accepted';
+                    if ($request->status !== 'accept') {
+                        $statusType = 'rejected';
+                    } elseif ($request->filled('tracking_number')) {
+                        $statusType = 'shipped';
+                    }
+                    $customer->notify(new OrderStatusUpdated($order->getId(), $statusType, $request->tracking_number));
+                }
+            } catch (\Exception $ex) {
+                Log::error('Failed to send OrderStatusUpdated notification in updateStatus: ' . $ex->getMessage());
+            }
+            
             return response()->json([
                 'message' => 'Status pesanan berhasil diperbarui.',
                 'data' => [
@@ -180,6 +198,17 @@ class OrderController extends Controller
             
             $orderManager->save($order);
             $orderManager->commit();
+
+            // Send notification to customer
+            try {
+                $customerId = $order->getCustomerId();
+                $customer = \App\Models\User::find($customerId);
+                if ($customer) {
+                    $customer->notify(new OrderStatusUpdated($order->getId(), 'shipped'));
+                }
+            } catch (\Exception $ex) {
+                Log::error('Failed to send OrderStatusUpdated notification in requestPickup: ' . $ex->getMessage());
+            }
             
             return response()->json([
                 'message' => 'Permintaan pickup berhasil. Kurir akan segera menjemput paket.',

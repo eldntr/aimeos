@@ -389,6 +389,50 @@
         };
 
 
+        // Custom Error Modal Popup
+        function showErrorModal(message) {
+            const existing = document.getElementById('chat-error-modal');
+            if (existing) existing.remove();
+
+            const modal = document.createElement('div');
+            modal.id = 'chat-error-modal';
+            modal.className = 'fixed inset-0 z-[99999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity duration-300';
+            
+            const container = document.createElement('div');
+            container.className = 'bg-white rounded-[2rem] p-6 max-w-[340px] w-full shadow-2xl border border-neutral-100 text-center transform scale-90 transition-transform duration-300 flex flex-col items-center';
+            
+            container.innerHTML = `
+                <div class="w-14 h-14 bg-rose-50 border border-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mb-4 shrink-0 shadow-sm shadow-rose-100">
+                    <span class="material-symbols-outlined text-3xl font-bold">gpp_bad</span>
+                </div>
+                <h3 class="font-headline font-black text-on-surface text-base mb-2">Pesan Diblokir</h3>
+                <p class="text-neutral-500 text-xs leading-relaxed mb-6 px-1">${message}</p>
+                <button type="button" class="w-full py-3 bg-rose-600 hover:bg-rose-700 active:scale-[0.98] text-white text-xs font-black rounded-xl transition-all shadow-md shadow-rose-600/10">
+                    Mengerti
+                </button>
+            `;
+            
+            modal.appendChild(container);
+            document.body.appendChild(modal);
+            
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                container.classList.remove('scale-90');
+            }, 10);
+            
+            const closeBtn = container.querySelector('button');
+            const closeModal = () => {
+                modal.classList.add('opacity-0');
+                container.classList.add('scale-90');
+                setTimeout(() => modal.remove(), 300);
+            };
+            
+            closeBtn.addEventListener('click', closeModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+        }
+
         // Send Message Form Submit
         chatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -415,7 +459,7 @@
                 const data = await res.json();
 
                 if (data.error && data.error.status > 0) {
-                    alert(data.error_msg || data.error.message || "Gagal mengirim pesan!");
+                    showErrorModal(data.error_msg || data.error.message || "Gagal mengirim pesan!");
                     chatInput.value = msgText; // restore input
                 } else {
                     fetchMessages(targetId, true);
@@ -503,7 +547,7 @@
 
                 const data = await res.json();
                 if (data.error && data.error.status > 0) {
-                    alert(data.error_msg || data.error.message || "Gagal mengirim info produk!");
+                    showErrorModal(data.error_msg || data.error.message || "Gagal mengirim info produk!");
                 } else {
                     fetchMessages(activeChatUserId, true);
                     fetchConversations();
@@ -560,23 +604,29 @@
                     return;
                 }
 
-                let html = '';
+                modalProductsList.innerHTML = '';
                 products.forEach(p => {
-                    const cleanLabel = (p.label || p.code || 'Produk').replace(/'/g, "\\'");
-                    const cleanPrice = (p.price || 'Rp 0').replace(/'/g, "\\'");
-                    const cleanImage = (p.image || '').replace(/'/g, "\\'");
+                    const label = p.label || p.code || 'Produk';
+                    const price = p.price || 'Rp 0';
+                    const image = p.image || '';
 
-                    html += `
-                        <div class="flex items-center gap-3 p-3 bg-neutral-50 rounded-2xl border border-neutral-100 hover:border-primary/30 transition-all cursor-pointer" onclick="selectModalProduct('${p.id}', '${cleanLabel}', '${cleanPrice}', '${cleanImage}')">
-                            <img src="${p.image || 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=150&q=80'}" class="w-12 h-12 object-cover rounded-xl border border-neutral-200 shrink-0" onerror="handleProductImageError(this)">
-                            <div class="flex-1 min-w-0">
-                                <h4 class="font-extrabold text-xs text-on-surface truncate">${p.label || p.code}</h4>
-                                <p class="text-xs font-black text-primary mt-0.5">${p.price}</p>
-                            </div>
-                            <button type="button" class="px-4 py-2 bg-primary text-white text-[10px] font-black rounded-full hover:bg-primary-dim transition-colors shadow">Pilih</button>
-                        </div>`;
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center gap-3 p-3 bg-neutral-50 rounded-2xl border border-neutral-100 hover:border-primary/30 transition-all cursor-pointer';
+                    div.innerHTML = `
+                        <img src="${image || 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=150&q=80'}" class="w-12 h-12 object-cover rounded-xl border border-neutral-200 shrink-0" onerror="handleProductImageError(this)">
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-extrabold text-xs text-on-surface truncate">${label}</h4>
+                            <p class="text-xs font-black text-primary mt-0.5">${price}</p>
+                        </div>
+                        <button type="button" class="px-4 py-2 bg-primary text-white text-[10px] font-black rounded-full hover:bg-primary-dim transition-colors shadow">Pilih</button>
+                    `;
+
+                    div.addEventListener('click', () => {
+                        selectModalProduct(p.id, label, price, image);
+                    });
+
+                    modalProductsList.appendChild(div);
                 });
-                modalProductsList.innerHTML = html;
             } catch (err) {
                 modalProductsList.innerHTML = `
                     <div class="py-12 text-center text-error text-xs">
