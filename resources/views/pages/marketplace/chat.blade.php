@@ -124,12 +124,14 @@
         const roomPlaceholder = document.getElementById('chat-placeholder');
 
         let activeChatUserId = null;
+        let activeChatShopCode = null;
         let messagesPollInterval = null;
         let conversationsPollInterval = null;
 
-        // Parse query parameter
+        // Parse query parameters
         const urlParams = new URLSearchParams(window.location.search);
-        const queryUserId = urlParams.get('user_id');
+        const queryShop = urlParams.get('shop');        // preferred: shop_code
+        const queryUserId = urlParams.get('user_id');  // legacy fallback
 
         // Fetch Conversations
         async function fetchConversations() {
@@ -144,10 +146,13 @@
                     return item.user.name.toLowerCase().includes(searchTerm);
                 });
 
-                // If query user ID is present but not in contacts list, inject them as a temp contact
-                if (queryUserId && !data.some(item => item.user.id == queryUserId)) {
-                    // Let's fetch the target user's details first
-                    const userDetailsRes = await fetch(`/marketplace/chat/messages?user_id=${queryUserId}`);
+                // If query shop_code is present but not in contacts list, inject them as a temp contact
+                const shouldInjectNew = (queryShop || queryUserId)
+                    && !data.some(item => item.user.id == activeChatUserId);
+
+                if (shouldInjectNew) {
+                    const param = queryShop ? `shop=${queryShop}` : `user_id=${queryUserId}`;
+                    const userDetailsRes = await fetch(`/marketplace/chat/messages?${param}`);
                     if (userDetailsRes.ok) {
                         const userDetails = await userDetailsRes.json();
                         filteredData.unshift({
@@ -211,10 +216,16 @@
             }
         }
 
-        // Fetch Messages
-        async function fetchMessages(userId, autoScroll = false) {
+        // Fetch Messages — accepts either a userId (number) or shopCode (string)
+        async function fetchMessages(userIdOrShopCode, autoScroll = false) {
             try {
-                const res = await fetch(`/marketplace/chat/messages?user_id=${userId}`);
+                // Determine if it's a numeric user_id or a shop_code string
+                const isNumeric = /^\d+$/.test(String(userIdOrShopCode));
+                const param = isNumeric
+                    ? `user_id=${userIdOrShopCode}`
+                    : `shop=${userIdOrShopCode}`;
+
+                const res = await fetch(`/marketplace/chat/messages?${param}`);
                 if (!res.ok) return;
                 const data = await res.json();
 
@@ -237,7 +248,10 @@
                 }
 
                 roomName.textContent = data.target_user.name;
+                // Store BOTH the internal user_id and shop_code to avoid exposing IDs in URLs
                 targetIdInput.value = data.target_user.id;
+                activeChatUserId = data.target_user.id;
+                activeChatShopCode = data.target_user.shop_code || null;
 
                 let html = '';
                 let lastDate = null;
@@ -353,6 +367,26 @@
                 if (activeChatUserId) fetchMessages(activeChatUserId);
             }, 3000);
 
+            // Select Conversation by userId or shopCode
+        window.selectConversation = async function(userIdOrShopCode) {
+            // Clear poll
+            if (messagesPollInterval) clearInterval(messagesPollInterval);
+
+            const isNumeric = /^\d+$/.test(String(userIdOrShopCode));
+
+            // Show room panels
+            document.getElementById('page-messages-body').classList.remove('hidden');
+            document.getElementById('page-chat-form').classList.remove('hidden');
+            document.getElementById('chat-room-header').classList.remove('hidden');
+            document.getElementById('chat-placeholder').classList.add('hidden');
+
+            await fetchMessages(userIdOrShopCode, true);
+
+            // Poll messages every 3 seconds using the resolved user_id (internal)
+            messagesPollInterval = setInterval(() => {
+                if (activeChatUserId) fetchMessages(activeChatUserId);
+            }, 3000);
+
             // Re-render conversation list items to update active status class
             fetchConversations();
         };
@@ -397,7 +431,10 @@
 
         // Initialize
         fetchConversations().then(() => {
-            if (queryUserId) {
+            // Support both ?shop=shop_code (preferred) and ?user_id=id (legacy)
+            if (queryShop) {
+                selectConversation(queryShop);
+            } else if (queryUserId) {
                 selectConversation(queryUserId);
             }
         });

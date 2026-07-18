@@ -215,6 +215,7 @@
 
     (() => {
         const productId = '{{ $product['id'] }}';
+        const productShopCode = '{{ $product['shop_code'] ?? '' }}';
         const isAuthenticated = {{ auth()->check() ? 'true' : 'false' }};
         const loginUrl = '{{ route('login', $routeParams) }}';
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -364,14 +365,10 @@
 
         btnChatSeller.addEventListener('click', (e) => {
             if (!guardAuth(e)) return;
-            
-            // Default to Seller ID 4 (Default Seller) if product is associated with default site (null seller_user_id)
-            let sellerId = '{{ $product['seller_user_id'] ?? '' }}';
-            if (!sellerId) {
-                sellerId = '4'; // Fallback to Default Seller
-            }
-            
-            window.location.href = `/marketplace/chat?user_id=${sellerId}&product_id=${productId}`;
+
+            // Use shop_code for privacy; fallback to 'default' if not available
+            const shopCode = productShopCode || 'default';
+            window.location.href = `/marketplace/chat?shop=${shopCode}&product_id=${productId}`;
         });
 
         btnSaveWishlist.addEventListener('click', async (e) => {

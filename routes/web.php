@@ -18,6 +18,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Web\MarketplaceController;
 use App\Http\Controllers\Web\AdminController;
 use App\Http\Controllers\Web\MerchantController;
+use App\Http\Controllers\Admin\ChatKeywordController;
 
 Route::get('/ready', function() {
     return 'OK';
@@ -65,6 +66,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/admin/merchants/{merchant}', [AdminController::class, 'merchantShow'])->name('admin.merchants.show');
     Route::post('/admin/merchants/{merchant}/approve', [AdminController::class, 'approve'])->name('admin.merchants.approve');
     Route::post('/admin/merchants/{merchant}/reject', [AdminController::class, 'reject'])->name('admin.merchants.reject');
+
+    // Admin: Chat Blocked Keywords
+    Route::get('/admin/chat-keywords', [ChatKeywordController::class, 'index'])->name('admin.chat-keywords.index');
+    Route::post('/admin/chat-keywords', [ChatKeywordController::class, 'store'])->name('admin.chat-keywords.store');
+    Route::patch('/admin/chat-keywords/{keyword}/toggle', [ChatKeywordController::class, 'toggle'])->name('admin.chat-keywords.toggle');
+    Route::delete('/admin/chat-keywords/{keyword}', [ChatKeywordController::class, 'destroy'])->name('admin.chat-keywords.destroy');
 
     Route::get('/merchant/dashboard', [MerchantController::class, 'dashboard'])->name('merchant.dashboard');
     Route::view('/merchant/shop', 'pages.merchant.shop')->name('merchant.shop');
