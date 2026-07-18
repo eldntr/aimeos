@@ -36,9 +36,22 @@
             </div>
             <!-- Contacts / Conversations List -->
             <div id="page-conversations-list" class="flex-1 overflow-y-auto p-2 space-y-1 no-scrollbar bg-neutral-50/20">
-                <!-- Dynamic Conversations -->
-                <div class="flex items-center justify-center h-full text-neutral-400 text-xs py-10">
-                    <span class="material-symbols-outlined text-3xl animate-spin text-neutral-300">sync</span>
+                <!-- Skeleton Loading Contacts -->
+                <div class="flex items-center gap-3 p-3 rounded-2xl">
+                    <div class="skeleton w-10 h-10 rounded-full shrink-0"></div>
+                    <div class="hidden sm:flex flex-col flex-1 gap-1.5"><div class="skeleton h-2.5 w-28"></div><div class="skeleton h-2 w-36"></div></div>
+                </div>
+                <div class="flex items-center gap-3 p-3 rounded-2xl">
+                    <div class="skeleton w-10 h-10 rounded-full shrink-0"></div>
+                    <div class="hidden sm:flex flex-col flex-1 gap-1.5"><div class="skeleton h-2.5 w-24"></div><div class="skeleton h-2 w-32"></div></div>
+                </div>
+                <div class="flex items-center gap-3 p-3 rounded-2xl">
+                    <div class="skeleton w-10 h-10 rounded-full shrink-0"></div>
+                    <div class="hidden sm:flex flex-col flex-1 gap-1.5"><div class="skeleton h-2.5 w-32"></div><div class="skeleton h-2 w-40"></div></div>
+                </div>
+                <div class="flex items-center gap-3 p-3 rounded-2xl">
+                    <div class="skeleton w-10 h-10 rounded-full shrink-0"></div>
+                    <div class="hidden sm:flex flex-col flex-1 gap-1.5"><div class="skeleton h-2.5 w-20"></div><div class="skeleton h-2 w-28"></div></div>
                 </div>
             </div>
         </div>
@@ -62,7 +75,14 @@
 
             <!-- Message History Body -->
             <div id="page-messages-body" class="hidden flex-1 overflow-y-auto p-6 space-y-4 no-scrollbar bg-neutral-50/50">
-                <!-- Dynamic Messages -->
+                <!-- Skeleton messages shown while loading the first time -->
+                <div id="messages-skeleton" class="space-y-5">
+                    <div class="flex items-end gap-3"><div class="skeleton w-8 h-8 rounded-full shrink-0"></div><div class="skeleton h-10 w-48 rounded-2xl rounded-bl-sm"></div></div>
+                    <div class="flex items-end gap-3 flex-row-reverse"><div class="skeleton w-8 h-8 rounded-full shrink-0"></div><div class="skeleton h-8 w-36 rounded-2xl rounded-br-sm"></div></div>
+                    <div class="flex items-end gap-3"><div class="skeleton w-8 h-8 rounded-full shrink-0"></div><div class="skeleton h-14 w-60 rounded-2xl rounded-bl-sm"></div></div>
+                    <div class="flex items-end gap-3 flex-row-reverse"><div class="skeleton w-8 h-8 rounded-full shrink-0"></div><div class="skeleton h-10 w-44 rounded-2xl rounded-br-sm"></div></div>
+                    <div class="flex items-end gap-3"><div class="skeleton w-8 h-8 rounded-full shrink-0"></div><div class="skeleton h-8 w-32 rounded-2xl rounded-bl-sm"></div></div>
+                </div>
             </div>
 
             <!-- Floating Product Attachment Banner -->

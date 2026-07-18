@@ -14,9 +14,21 @@
 
         <!-- Wishlist Items Grid -->
         <div id="wishlist-items-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div class="flex flex-col items-center justify-center py-20 text-neutral-400 col-span-full">
-                <div class="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin"></div>
-                <p class="text-xs mt-3 font-semibold">Memuat wishlist Anda...</p>
+            <!-- Skeleton Loading Cards -->
+            <div class="flex items-center gap-4 p-4 bg-white rounded-3xl border border-neutral-100 shadow-sm">
+                <div class="skeleton w-16 h-16 rounded-2xl shrink-0"></div>
+                <div class="flex-1 space-y-2"><div class="skeleton h-3 w-3/4"></div><div class="skeleton h-2.5 w-1/2"></div><div class="skeleton h-3 w-20 mt-1"></div></div>
+                <div class="skeleton w-8 h-8 rounded-full shrink-0"></div>
+            </div>
+            <div class="flex items-center gap-4 p-4 bg-white rounded-3xl border border-neutral-100 shadow-sm">
+                <div class="skeleton w-16 h-16 rounded-2xl shrink-0"></div>
+                <div class="flex-1 space-y-2"><div class="skeleton h-3 w-2/3"></div><div class="skeleton h-2.5 w-1/3"></div><div class="skeleton h-3 w-16 mt-1"></div></div>
+                <div class="skeleton w-8 h-8 rounded-full shrink-0"></div>
+            </div>
+            <div class="flex items-center gap-4 p-4 bg-white rounded-3xl border border-neutral-100 shadow-sm">
+                <div class="skeleton w-16 h-16 rounded-2xl shrink-0"></div>
+                <div class="flex-1 space-y-2"><div class="skeleton h-3 w-4/5"></div><div class="skeleton h-2.5 w-2/5"></div><div class="skeleton h-3 w-24 mt-1"></div></div>
+                <div class="skeleton w-8 h-8 rounded-full shrink-0"></div>
             </div>
         </div>
 
@@ -33,11 +45,10 @@
         // Fetch Wishlist
         async function fetchWishlist() {
             container.innerHTML = `
-                <div class="flex flex-col items-center justify-center py-20 text-neutral-400 col-span-full">
-                    <div class="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin"></div>
-                    <p class="text-xs mt-3 font-semibold">Memuat wishlist Anda...</p>
-                </div>`;
-            
+                <div class="flex items-center gap-4 p-4 bg-white rounded-3xl border border-neutral-100 shadow-sm"><div class="skeleton w-16 h-16 rounded-2xl shrink-0"></div><div class="flex-1 space-y-2"><div class="skeleton h-3 w-3/4"></div><div class="skeleton h-2.5 w-1/2"></div><div class="skeleton h-3 w-20 mt-1"></div></div><div class="skeleton w-8 h-8 rounded-full shrink-0"></div></div>
+                <div class="flex items-center gap-4 p-4 bg-white rounded-3xl border border-neutral-100 shadow-sm"><div class="skeleton w-16 h-16 rounded-2xl shrink-0"></div><div class="flex-1 space-y-2"><div class="skeleton h-3 w-2/3"></div><div class="skeleton h-2.5 w-1/3"></div><div class="skeleton h-3 w-16 mt-1"></div></div><div class="skeleton w-8 h-8 rounded-full shrink-0"></div></div>
+                <div class="flex items-center gap-4 p-4 bg-white rounded-3xl border border-neutral-100 shadow-sm"><div class="skeleton w-16 h-16 rounded-2xl shrink-0"></div><div class="flex-1 space-y-2"><div class="skeleton h-3 w-4/5"></div><div class="skeleton h-2.5 w-2/5"></div><div class="skeleton h-3 w-24 mt-1"></div></div><div class="skeleton w-8 h-8 rounded-full shrink-0"></div></div>
+            `;
             try {
                 const res = await fetch('/api/wishlist', {
                     headers: { 'Accept': 'application/json' }

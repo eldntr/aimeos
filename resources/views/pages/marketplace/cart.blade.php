@@ -52,13 +52,14 @@
                 <!-- Loading Skeleton -->
                 <div id="cart-loading" class="space-y-4">
                     @for ($i = 0; $i < 2; $i++)
-                    <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/20 shadow-sm animate-pulse">
+                    <div class="bg-white rounded-3xl p-5 border border-neutral-100 shadow-sm">
                         <div class="flex gap-4">
-                            <div class="w-24 h-24 rounded-xl bg-surface-container-high shrink-0"></div>
-                            <div class="flex-1 space-y-2">
-                                <div class="h-4 w-2/3 bg-surface-container-high rounded-full"></div>
-                                <div class="h-3 w-1/3 bg-surface-container-high rounded-full"></div>
-                                <div class="h-5 w-1/4 bg-surface-container-high rounded-full"></div>
+                            <div class="skeleton w-24 h-24 rounded-2xl shrink-0"></div>
+                            <div class="flex-1 space-y-2.5 pt-1">
+                                <div class="skeleton h-3.5 w-2/3"></div>
+                                <div class="skeleton h-2.5 w-1/3"></div>
+                                <div class="skeleton h-4 w-1/4 mt-1"></div>
+                                <div class="flex gap-2 mt-3"><div class="skeleton h-8 w-24 rounded-xl"></div><div class="skeleton h-8 w-16 rounded-xl ml-auto"></div></div>
                             </div>
                         </div>
                     </div>

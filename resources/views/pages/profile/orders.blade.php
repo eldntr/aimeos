@@ -22,10 +22,31 @@
         </div>
 
         <!-- Orders Container -->
-        <div id="orders-items-container" class="space-y-6">
-            <div class="flex flex-col items-center justify-center py-20 text-neutral-400">
-                <div class="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                <p class="text-xs mt-3 font-semibold">Memuat riwayat transaksi...</p>
+        <div id="orders-items-container" class="space-y-4">
+            <!-- Skeleton Loading Cards -->
+            <div class="bg-white rounded-3xl border border-neutral-100 overflow-hidden p-5 space-y-4">
+                <div class="flex items-center justify-between">
+                    <div class="space-y-2"><div class="skeleton h-3 w-28"></div><div class="skeleton h-2.5 w-40"></div></div>
+                    <div class="skeleton h-6 w-20 rounded-full"></div>
+                </div>
+                <div class="flex gap-3"><div class="skeleton w-16 h-16 rounded-2xl shrink-0"></div><div class="flex-1 space-y-2 pt-1"><div class="skeleton h-3 w-3/4"></div><div class="skeleton h-2.5 w-1/2"></div><div class="skeleton h-3 w-24 mt-2"></div></div></div>
+                <div class="flex gap-2 pt-2 border-t border-neutral-50"><div class="skeleton h-9 flex-1 rounded-2xl"></div><div class="skeleton h-9 flex-1 rounded-2xl"></div></div>
+            </div>
+            <div class="bg-white rounded-3xl border border-neutral-100 overflow-hidden p-5 space-y-4">
+                <div class="flex items-center justify-between">
+                    <div class="space-y-2"><div class="skeleton h-3 w-24"></div><div class="skeleton h-2.5 w-36"></div></div>
+                    <div class="skeleton h-6 w-16 rounded-full"></div>
+                </div>
+                <div class="flex gap-3"><div class="skeleton w-16 h-16 rounded-2xl shrink-0"></div><div class="flex-1 space-y-2 pt-1"><div class="skeleton h-3 w-2/3"></div><div class="skeleton h-2.5 w-1/3"></div><div class="skeleton h-3 w-20 mt-2"></div></div></div>
+                <div class="flex gap-2 pt-2 border-t border-neutral-50"><div class="skeleton h-9 flex-1 rounded-2xl"></div><div class="skeleton h-9 flex-1 rounded-2xl"></div></div>
+            </div>
+            <div class="bg-white rounded-3xl border border-neutral-100 overflow-hidden p-5 space-y-4">
+                <div class="flex items-center justify-between">
+                    <div class="space-y-2"><div class="skeleton h-3 w-32"></div><div class="skeleton h-2.5 w-44"></div></div>
+                    <div class="skeleton h-6 w-24 rounded-full"></div>
+                </div>
+                <div class="flex gap-3"><div class="skeleton w-16 h-16 rounded-2xl shrink-0"></div><div class="flex-1 space-y-2 pt-1"><div class="skeleton h-3 w-4/5"></div><div class="skeleton h-2.5 w-2/5"></div><div class="skeleton h-3 w-28 mt-2"></div></div></div>
+                <div class="flex gap-2 pt-2 border-t border-neutral-50"><div class="skeleton h-9 flex-1 rounded-2xl"></div><div class="skeleton h-9 flex-1 rounded-2xl"></div></div>
             </div>
         </div>
 
@@ -73,10 +94,10 @@
         // Fetch Orders
         async function fetchOrders() {
             container.innerHTML = `
-                <div class="flex flex-col items-center justify-center py-20 text-neutral-400">
-                    <div class="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin"></div>
-                    <p class="text-xs mt-3 font-semibold">Memuat riwayat transaksi...</p>
-                </div>`;
+                <div class="bg-white rounded-3xl border border-neutral-100 p-5 space-y-4"><div class="flex items-center justify-between"><div class="space-y-2"><div class="skeleton h-3 w-28"></div><div class="skeleton h-2.5 w-40"></div></div><div class="skeleton h-6 w-20 rounded-full"></div></div><div class="flex gap-3"><div class="skeleton w-16 h-16 rounded-2xl shrink-0"></div><div class="flex-1 space-y-2 pt-1"><div class="skeleton h-3 w-3/4"></div><div class="skeleton h-2.5 w-1/2"></div><div class="skeleton h-3 w-24 mt-2"></div></div></div><div class="flex gap-2 pt-2 border-t border-neutral-50"><div class="skeleton h-9 flex-1 rounded-2xl"></div><div class="skeleton h-9 flex-1 rounded-2xl"></div></div></div>
+                <div class="bg-white rounded-3xl border border-neutral-100 p-5 space-y-4"><div class="flex items-center justify-between"><div class="space-y-2"><div class="skeleton h-3 w-24"></div><div class="skeleton h-2.5 w-36"></div></div><div class="skeleton h-6 w-16 rounded-full"></div></div><div class="flex gap-3"><div class="skeleton w-16 h-16 rounded-2xl shrink-0"></div><div class="flex-1 space-y-2 pt-1"><div class="skeleton h-3 w-2/3"></div><div class="skeleton h-2.5 w-1/3"></div><div class="skeleton h-3 w-20 mt-2"></div></div></div><div class="flex gap-2 pt-2 border-t border-neutral-50"><div class="skeleton h-9 flex-1 rounded-2xl"></div><div class="skeleton h-9 flex-1 rounded-2xl"></div></div></div>
+                <div class="bg-white rounded-3xl border border-neutral-100 p-5 space-y-4"><div class="flex items-center justify-between"><div class="space-y-2"><div class="skeleton h-3 w-32"></div><div class="skeleton h-2.5 w-44"></div></div><div class="skeleton h-6 w-24 rounded-full"></div></div><div class="flex gap-3"><div class="skeleton w-16 h-16 rounded-2xl shrink-0"></div><div class="flex-1 space-y-2 pt-1"><div class="skeleton h-3 w-4/5"></div><div class="skeleton h-2.5 w-2/5"></div><div class="skeleton h-3 w-28 mt-2"></div></div></div><div class="flex gap-2 pt-2 border-t border-neutral-50"><div class="skeleton h-9 flex-1 rounded-2xl"></div><div class="skeleton h-9 flex-1 rounded-2xl"></div></div></div>
+            `;
             
             try {
                 const res = await fetch('/api/user/orders', {

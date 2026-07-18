@@ -101,6 +101,24 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+
+        /* ── Skeleton Loading ── */
+        @keyframes skeleton-shimmer {
+            0%   { background-position: -400px 0; }
+            100% { background-position: 400px 0; }
+        }
+        .skeleton {
+            background: linear-gradient(90deg, #f0eeee 25%, #e8e6e6 50%, #f0eeee 75%);
+            background-size: 800px 100%;
+            animation: skeleton-shimmer 1.4s ease-in-out infinite;
+            border-radius: 0.75rem;
+        }
+        .skeleton-dark {
+            background: linear-gradient(90deg, #2a2a2a 25%, #333333 50%, #2a2a2a 75%);
+            background-size: 800px 100%;
+            animation: skeleton-shimmer 1.4s ease-in-out infinite;
+            border-radius: 0.75rem;
+        }
     </style>
 
     <script>
