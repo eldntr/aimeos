@@ -9,13 +9,11 @@ class RajaOngkirService
 {
     protected $apiKey;
     protected $baseUrl;
-    protected $originCityId;
 
     public function __construct()
     {
-        $this->apiKey = env('RAJAONGKIR_API_KEY');
-        $this->baseUrl = env('RAJAONGKIR_BASE_URL', 'https://api.rajaongkir.com/starter');
-        $this->originCityId = env('RAJAONGKIR_ORIGIN_CITY_ID', '152'); // Default: Jakarta Pusat
+        $this->apiKey = config('services.rajaongkir.key');
+        $this->baseUrl = rtrim(config('services.rajaongkir.base_url', 'https://rajaongkir.komerce.id/api/v1'), '/');
     }
 
     /**
@@ -56,9 +54,13 @@ class RajaOngkirService
     /**
      * Calculate Shipping Cost
      */
-    public function calculateCost($destinationCityId, $weightGrams, $courier = 'jne')
+    public function calculateCost($destinationId, $weightGrams, $courier = 'jne', ?string $originId = null, string $price = 'lowest')
     {
         $weightKg = max(1, ceil($weightGrams / 1000));
+        if (!$originId) {
+            Log::warning('RajaOngkir calculateCost skipped: origin city is empty.');
+            return [];
+        }
 
         // Fallback realistic simulation if API Key is not set
         if (empty($this->apiKey)) {
@@ -74,7 +76,7 @@ class RajaOngkirService
                 '55'  => ['jne' => 12000, 'jnt' => 11000, 'sicepat' => 10500],  // Bekasi
             ];
 
-            $rates = $baseRates[$destinationCityId] ?? ['jne' => 35000, 'jnt' => 33000, 'sicepat' => 32000];
+            $rates = $baseRates[$destinationId] ?? ['jne' => 35000, 'jnt' => 33000, 'sicepat' => 32000];
             $cost = ($rates[strtolower($courier)] ?? 25000) * $weightKg;
 
             $courierNames = ['jne' => 'Jalur Nugraha Ekakurir (JNE)', 'jnt' => 'J&T Express', 'sicepat' => 'SiCepat Ekspres'];
@@ -100,21 +102,56 @@ class RajaOngkirService
 
         try {
             $response = Http::withHeaders([
-                'key' => $this->apiKey
-            ])->post($this->baseUrl . '/cost', [
-                'origin' => $this->originCityId,
-                'destination' => $destinationCityId,
+                'key' => $this->apiKey,
+                'Content-Type' => 'application/x-www-form-urlencoded',
+            ])->asForm()->post($this->baseUrl . '/calculate/domestic-cost', [
+                'origin' => $originId,
+                'destination' => $destinationId,
                 'weight' => $weightGrams,
-                'courier' => strtolower($courier)
+                'courier' => strtolower($courier),
+                'price' => $price,
             ]);
 
             if ($response->ok()) {
-                return $response->json()['rajaongkir']['results'][0] ?? [];
+                return $this->normalizeKomerceCostResponse($response->json(), $courier);
             }
         } catch (\Exception $e) {
             Log::error('RajaOngkir calculateCost error: ' . $e->getMessage());
         }
 
         return [];
+    }
+
+    public function calculateDomesticCost(string $originId, string $destinationId, int $weightGrams, string $courier = 'jne', string $price = 'lowest'): array
+    {
+        return $this->calculateCost($destinationId, $weightGrams, $courier, $originId, $price);
+    }
+
+    private function normalizeKomerceCostResponse(array $payload, string $courier): array
+    {
+        $services = $payload['data'] ?? [];
+        if (!is_array($services) || $services === []) {
+            return [];
+        }
+
+        $first = $services[0];
+
+        return [
+            'code' => $first['code'] ?? $courier,
+            'name' => $first['name'] ?? strtoupper($courier),
+            'costs' => array_map(function ($item) {
+                return [
+                    'service' => $item['service'] ?? 'REG',
+                    'description' => $item['description'] ?? '',
+                    'cost' => [
+                        [
+                            'value' => (float) ($item['cost'] ?? 0),
+                            'etd' => $item['etd'] ?? '',
+                            'note' => '',
+                        ],
+                    ],
+                ];
+            }, $services),
+        ];
     }
 }

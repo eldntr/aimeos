@@ -578,7 +578,8 @@
                     throw new Error(errMsg);
                 }
                 
-                window.location.href = '{{ route('marketplace.checkout', $routeParams) }}';
+                sessionStorage.setItem('reborns.checkout.buy_now_product_id', String(productId));
+                window.location.href = '{{ route('marketplace.cart', $routeParams) }}';
             } catch (err) {
                 showToast(err.message || 'Terjadi kesalahan.', 'error');
                 btnBuyNow.disabled = false;
@@ -621,6 +622,7 @@
                     }
                     
                     showToast('Produk berhasil ditambahkan ke keranjang!');
+                    window.refreshCartCount?.();
                 } catch (err) {
                     showToast(err.message || 'Terjadi kesalahan.', 'error');
                 } finally {

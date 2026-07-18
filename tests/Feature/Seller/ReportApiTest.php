@@ -42,13 +42,16 @@ class ReportApiTest extends TestCase
         // Fetch report again
         $response2 = $this->actingAs($seller, 'sanctum')->get('/api/seller/reports/sales');
         $response2->assertStatus(200)
-                  ->assertJsonPath('data.summary.total_revenue', 150000)
+                  ->assertJsonPath('data.summary.total_revenue', 142500)
+                  ->assertJsonPath('data.summary.gross_revenue', 150000)
+                  ->assertJsonPath('data.summary.platform_commission_fee', 7500)
+                  ->assertJsonPath('data.summary.commission_rate', 5)
                   ->assertJsonPath('data.summary.total_orders', 1)
                   ->assertJsonStructure([
                       'data' => [
-                          'summary' => ['total_revenue', 'total_orders'],
+                          'summary' => ['total_revenue', 'gross_revenue', 'platform_commission_fee', 'commission_rate', 'total_orders'],
                           'daily_sales' => [
-                              '*' => ['date', 'revenue', 'orders_count']
+                              '*' => ['date', 'revenue', 'gross_revenue', 'platform_commission_fee', 'orders_count']
                           ]
                       ]
                   ]);

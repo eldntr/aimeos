@@ -234,7 +234,7 @@
             <div class="bg-surface-container-lowest rounded-3xl border border-outline-variant/10 shadow-[0_12px_36px_rgba(47,47,46,0.04)] overflow-hidden">
                 <div class="p-6 border-b border-outline-variant/20">
                     <h2 class="text-xl font-extrabold text-on-surface">Audit Transaksi & Pesanan Global</h2>
-                    <p class="text-xs text-on-surface-variant/80">Laporan pembagian hasil (*split payment*) pesanan: Potongan Komisi Platform vs Keuntungan Bersih Merchant</p>
+                    <p class="text-xs text-on-surface-variant/80">Laporan pembagian hasil pesanan: total bayar pembeli, biaya layanan, komisi platform, dan keuntungan bersih merchant</p>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
@@ -244,7 +244,7 @@
                                 <th class="px-6 py-4 text-left">Pihak (Pembeli & Toko Merchant)</th>
                                 <th class="px-6 py-4 text-left">Waktu Beli</th>
                                 <th class="px-6 py-4 text-left">Total Pembayaran</th>
-                                <th class="px-6 py-4 text-left">Bagi Hasil Platform</th>
+                                <th class="px-6 py-4 text-left">Pendapatan Platform</th>
                                 <th class="px-6 py-4 text-left">Keuntungan Penjual</th>
                                 <th class="px-6 py-4 text-center">Status Bayar</th>
                                 <th class="px-6 py-4 text-center">Status Logistik</th>
@@ -1347,8 +1347,10 @@
                         if (item.status === 1) {
                             actionBtns = `
                                 <div class="flex gap-2 justify-end items-center">
-                                    ${item.proof_url ? `<button onclick="openDisputeEvidenceModal('${item.proof_url}')" class="px-3 py-1.5 rounded-full border border-primary text-primary text-[10px] font-bold shadow-sm hover:bg-primary/5">Lihat Bukti</button>` : ''}
-                                    <button onclick="resolveDispute(${item.id}, 'refund')" class="px-3 py-1.5 rounded-full bg-primary hover:bg-primary-dim text-white text-[10px] font-bold shadow-sm">Refund</button>
+                                    ${item.unboxing_video_url ? `<a href="${item.unboxing_video_url}" target="_blank" class="px-3 py-1.5 rounded-full border border-primary text-primary text-[10px] font-bold shadow-sm hover:bg-primary/5">Video</a>` : ''}
+                                    ${item.proof_url ? `<button onclick="openDisputeEvidenceModal('${item.proof_url}')" class="px-3 py-1.5 rounded-full border border-primary text-primary text-[10px] font-bold shadow-sm hover:bg-primary/5">Foto</button>` : ''}
+                                    <button onclick="resolveDispute(${item.id}, 'refund')" class="px-3 py-1.5 rounded-full bg-primary hover:bg-primary-dim text-white text-[10px] font-bold shadow-sm">Refund Penuh</button>
+                                    <button onclick="resolveDispute(${item.id}, 'partial_refund_50')" class="px-3 py-1.5 rounded-full bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold shadow-sm">Refund 50%</button>
                                     <button onclick="resolveDispute(${item.id}, 'release')" class="px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold shadow-sm">Lepas ke Seller</button>
                                 </div>
                             `;
@@ -1365,7 +1367,10 @@
                                     <span>${item.merchant_name} <span class="text-[10px] font-normal text-on-surface-variant/75">(Penjual)</span></span>
                                 </div>
                             </td>
-                            <td class="px-6 py-4 text-on-surface-variant font-medium">${item.complaint}</td>
+                            <td class="px-6 py-4 text-on-surface-variant font-medium">
+                                <div>${item.complaint}</div>
+                                <div class="mt-1 text-[10px] font-bold text-primary">Request: ${item.requested_resolution_label || '-'}</div>
+                            </td>
                             <td class="px-6 py-4 text-on-surface-variant font-medium max-w-[200px] truncate">${item.seller_response}</td>
                             <td class="px-6 py-4 text-center">${statusBadge}</td>
                             <td class="px-6 py-4 text-right">${actionBtns}</td>
@@ -1397,8 +1402,8 @@
 
         async function resolveDispute(disputeId, decision) {
             const decisionMsg = decision === 'refund' 
-                ? 'Kembalikan dana escrow platform ke Pembeli?' 
-                : 'Lepaskan dana escrow platform ke rekening Penjual?';
+                ? 'Kembalikan dana penuh ke Pembeli?'
+                : (decision === 'partial_refund_50' ? 'Refund 50% ke Pembeli dan lepas sisa escrow ke Seller?' : 'Lepaskan dana escrow ke Penjual?');
 
             if (!confirm(`Apakah Anda yakin ingin menyelesaikan sengketa ini: ${decisionMsg}`)) return;
 
@@ -1466,8 +1471,14 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4 text-on-surface-variant">${date}</td>
-                            <td class="px-6 py-4 font-bold text-emerald-600">Rp ${Number(order.price).toLocaleString('id-ID')}</td>
-                            <td class="px-6 py-4 font-semibold text-primary">Rp ${Number(order.platform_commission_fee).toLocaleString('id-ID')} <span class="text-[9px] font-black opacity-80">(${order.commission_rate}%)</span></td>
+                            <td class="px-6 py-4 font-bold text-emerald-600">
+                                Rp ${Number(order.price_total || order.price).toLocaleString('id-ID')}
+                                <div class="text-[9px] font-semibold text-on-surface-variant mt-0.5">Barang: Rp ${Number(order.price).toLocaleString('id-ID')}</div>
+                            </td>
+                            <td class="px-6 py-4 font-semibold text-primary">
+                                Rp ${Number(order.platform_revenue || order.platform_commission_fee).toLocaleString('id-ID')}
+                                <div class="text-[9px] font-semibold opacity-80 mt-0.5">Komisi ${order.commission_rate}% + layanan Rp ${Number(order.service_costs || 0).toLocaleString('id-ID')}</div>
+                            </td>
                             <td class="px-6 py-4 font-semibold text-emerald-700">Rp ${Number(order.seller_share).toLocaleString('id-ID')}</td>
                             <td class="px-6 py-4 text-center">
                                 <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${order.payment_status === 'Pembayaran Berhasil' || order.payment_status === 'Pembayaran Diterima (Escrow)' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-primary/10 text-primary'}">${order.payment_status}</span>

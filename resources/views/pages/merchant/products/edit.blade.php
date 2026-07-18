@@ -44,7 +44,7 @@
             </div>
 
             {{-- Price, Category, Stock & Status --}}
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <div>
                     <label for="product-price" class="block text-sm font-bold text-on-surface mb-2">Harga (Rp) <span class="text-error">*</span></label>
                     <div class="relative">
@@ -70,6 +70,13 @@
                     <input type="number" id="product-stock" name="stock" value="{{ old('stock', $product['stock'] ?? 1) }}" required min="0"
                            placeholder="1"
                            class="w-full rounded-xl bg-surface-container-high border-none px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/30 transition-all" />
+                </div>
+                <div>
+                    <label for="product-weight" class="block text-sm font-bold text-on-surface mb-2">Berat (gram) <span class="text-error">*</span></label>
+                    <input type="number" id="product-weight" name="weight_grams" value="{{ old('weight_grams', $product['weight_grams'] ?? 1000) }}" required min="1"
+                           placeholder="1000"
+                           class="w-full rounded-xl bg-surface-container-high border-none px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/30 transition-all" />
+                    <p class="text-[10px] text-on-surface-variant mt-1">Dipakai untuk hitung ongkir RajaOngkir.</p>
                 </div>
                 <div>
                     <label for="product-status" class="block text-sm font-bold text-on-surface mb-2">Status Produk</label>

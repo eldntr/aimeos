@@ -41,6 +41,14 @@
                 </div>
             </div>
 
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-bold text-on-surface mb-2">Biaya Layanan Aplikasi (Rp)</label>
+                    <input type="number" id="app_service_fee" name="app_service_fee" required min="0" class="w-full rounded-full bg-surface-container-low border border-outline-variant/20 px-5 py-3.5 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Contoh: 2000" />
+                    <span class="text-[10px] text-on-surface-variant/60 mt-1 block">Biaya tetap layanan aplikasi yang dibebankan ke pembeli saat checkout</span>
+                </div>
+            </div>
+
             <!-- ================= STATIC CONTENT PAGES (CMS) ================= -->
             <div class="border-t border-outline-variant/15 pt-6">
                 <h3 class="text-base font-bold text-on-surface flex items-center gap-2 mb-1">
@@ -132,6 +140,7 @@
                     document.getElementById('max_product_videos').value = data.max_product_videos;
                     document.getElementById('max_cart_items').value = data.max_cart_items;
                     document.getElementById('platform_commission').value = data.platform_commission;
+                    document.getElementById('app_service_fee').value = data.app_service_fee;
                     
                     document.getElementById('page_about').value = data.page_about || '';
                     document.getElementById('page_how_it_works').value = data.page_how_it_works || '';
@@ -154,6 +163,7 @@
             const max_product_videos = parseInt(document.getElementById('max_product_videos').value);
             const max_cart_items = parseInt(document.getElementById('max_cart_items').value);
             const platform_commission = parseFloat(document.getElementById('platform_commission').value);
+            const app_service_fee = parseInt(document.getElementById('app_service_fee').value);
             
             const page_about = document.getElementById('page_about').value;
             const page_how_it_works = document.getElementById('page_how_it_works').value;
@@ -174,6 +184,7 @@
                         max_product_videos,
                         max_cart_items,
                         platform_commission,
+                        app_service_fee,
                         page_about,
                         page_how_it_works,
                         page_career,

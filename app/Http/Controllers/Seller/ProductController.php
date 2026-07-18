@@ -59,6 +59,7 @@ class ProductController extends Controller
             'type'   => ['sometimes', 'string', 'in:default,bundle,select,voucher'],
             'status' => ['sometimes', 'integer', 'in:0,1'],
             'price'  => ['sometimes', 'numeric', 'min:0'],
+            'weight_grams' => ['required', 'integer', 'min:1', 'max:1000000'],
             'description' => ['sometimes', 'string'],
             'images' => ['required', 'array', 'min:1', 'max:5'],
             'images.*' => ['file', 'mimes:jpeg,png,jpg,webp', 'max:5120'], // Max 5MB
@@ -146,6 +147,10 @@ class ProductController extends Controller
             }
             
             $saved = $manager->save($product);
+
+            \Illuminate\Support\Facades\DB::table('mshop_product')
+                ->where('id', $saved->getId())
+                ->update(['weight_grams' => (int) $request->weight_grams]);
             
             // Create stock entry for product
             $this->saveStockItem($context, $saved->getId());
@@ -210,6 +215,7 @@ class ProductController extends Controller
             'label'  => ['sometimes', 'string', 'max:255'],
             'status' => ['sometimes', 'integer', 'in:0,1'],
             'price'  => ['sometimes', 'numeric', 'min:0'],
+            'weight_grams' => ['sometimes', 'integer', 'min:1', 'max:1000000'],
             'description' => ['sometimes', 'string'],
             'images' => ['sometimes', 'array', 'max:5'],
             'images.*' => ['file', 'mimes:jpeg,png,jpg,webp', 'max:5120'], // Max 5MB
@@ -330,6 +336,12 @@ class ProductController extends Controller
         }
 
         $saved = $manager->save($product);
+
+        if ($request->has('weight_grams')) {
+            \Illuminate\Support\Facades\DB::table('mshop_product')
+                ->where('id', $saved->getId())
+                ->update(['weight_grams' => (int) $request->weight_grams]);
+        }
         
         // Ensure stock entry exists for product
         $this->saveStockItem($context, $saved->getId(), $request->input('stock'));
@@ -487,6 +499,9 @@ class ProductController extends Controller
             'categories'  => $categoryIds,
             'description' => $description,
             'stock'       => $stockLevel,
+            'weight_grams' => \Illuminate\Support\Facades\Schema::hasColumn('mshop_product', 'weight_grams')
+                ? (int) (\Illuminate\Support\Facades\DB::table('mshop_product')->where('id', $product->getId())->value('weight_grams') ?: 1000)
+                : 1000,
             'rating'      => '-',
         ];
     }

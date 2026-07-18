@@ -60,8 +60,8 @@
             class="hidden md:inline-flex relative h-9 w-9 items-center justify-center group hover:bg-white/10 rounded-full transition-colors duration-200"
             aria-label="Keranjang">
             <span class="material-symbols-outlined leading-none">shopping_cart</span>
-            <span class="absolute -top-1 -right-1 bg-[#F8FAFC] text-[#FF5722] text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                {{ auth()->user()->cart_count ?? 0 }}
+            <span id="navbar-cart-count" class="absolute -top-1 -right-1 bg-[#F8FAFC] text-[#FF5722] text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                0
             </span>
         </a>
         @else
@@ -763,6 +763,32 @@
                 closeMenu();
             }
         });
+    })();
+
+    // ── Cart Count Badge ─────────────────────────────────────────────────
+    (() => {
+        const badge = document.getElementById('navbar-cart-count');
+        if (!badge) return;
+
+        async function refreshCartCount() {
+            try {
+                const res = await fetch('/api/cart', {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!res.ok) return;
+                const body = await res.json();
+                const products = body.data?.product || {};
+                const count = Object.values(products).reduce((sum, p) => sum + (parseInt(p['order.product.quantity'] || p['quantity']) || 1), 0);
+                badge.textContent = count;
+                badge.style.display = count > 0 ? 'flex' : 'none';
+            } catch(e) {
+                // silently ignore
+            }
+        }
+
+        refreshCartCount();
+        // Expose globally so cart operations can trigger re-count
+        window.refreshCartCount = refreshCartCount;
     })();
 </script>
 @endpush

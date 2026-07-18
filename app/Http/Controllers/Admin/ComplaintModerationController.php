@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Aimeos\MShop;
+use Aimeos\MShop\Order\Item\Base as OrderBase;
 
 class ComplaintModerationController extends Controller
 {
@@ -62,10 +63,10 @@ class ComplaintModerationController extends Controller
             $orderIds[] = $item->getRefId();
         }
 
-        // Fetch orders siteid mappings
-        $orderSiteMap = DB::table('mshop_order')
-            ->whereIn('id', $orderIds)
-            ->pluck('siteid', 'id')
+        $orderSiteMap = DB::table('mshop_order_product')
+            ->join('mshop_product', 'mshop_order_product.prodid', '=', 'mshop_product.id')
+            ->whereIn('mshop_order_product.parentid', $orderIds)
+            ->pluck('mshop_product.siteid', 'mshop_order_product.parentid')
             ->toArray();
 
         $merchantMap = \App\Models\User::whereNotNull('siteid')
@@ -77,10 +78,32 @@ class ComplaintModerationController extends Controller
         foreach ($complaints as $item) {
             $commentText = $item->getComment();
             $proofUrl = null;
+            $unboxingVideoUrl = null;
+            $requestedResolution = null;
+            $requestedRefundPercent = null;
+
+            if (preg_match('/\[Requested Resolution:\s*([^\]]+)\]/', $commentText, $matches)) {
+                $requestedResolution = trim($matches[1]);
+                $commentText = trim(preg_replace('/\[Requested Resolution:\s*[^\]]+\]/', '', $commentText));
+            }
+
+            if (preg_match('/\[Requested Refund Percent:\s*([^\]]+)\]/', $commentText, $matches)) {
+                $requestedRefundPercent = (int) trim($matches[1]);
+                $commentText = trim(preg_replace('/\[Requested Refund Percent:\s*[^\]]+\]/', '', $commentText));
+            }
             
-            // Extract proof URL if it exists
-            if (preg_match('/\[Proof of Complaint:\s*([^\]]+)\]/', $commentText, $matches)) {
+            if (preg_match('/\[Proof Photo:\s*([^\]]+)\]/', $commentText, $matches)) {
                 $proofUrl = trim($matches[1]);
+                $commentText = trim(preg_replace('/\[Proof Photo:\s*[^\]]+\]/', '', $commentText));
+            }
+
+            if (preg_match('/\[Unboxing Video:\s*([^\]]+)\]/', $commentText, $matches)) {
+                $unboxingVideoUrl = trim($matches[1]);
+                $commentText = trim(preg_replace('/\[Unboxing Video:\s*[^\]]+\]/', '', $commentText));
+            }
+
+            if (preg_match('/\[Proof of Complaint:\s*([^\]]+)\]/', $commentText, $matches)) {
+                $proofUrl = $proofUrl ?: trim($matches[1]);
                 $commentText = trim(preg_replace('/\[Proof of Complaint:\s*[^\]]+\]/', '', $commentText));
             }
 
@@ -96,6 +119,11 @@ class ComplaintModerationController extends Controller
                 'merchant_name' => $merchantName,
                 'complaint' => $commentText,
                 'proof_url' => $proofUrl,
+                'proof_photo_url' => $proofUrl,
+                'unboxing_video_url' => $unboxingVideoUrl,
+                'requested_resolution' => $requestedResolution,
+                'requested_resolution_label' => $this->getResolutionLabel($requestedResolution, $requestedRefundPercent),
+                'requested_refund_percent' => $requestedRefundPercent,
                 'seller_response' => $item->getResponse() ?: 'Belum ada tanggapan dari merchant.',
                 'status' => $item->getStatus(),
                 'created_at' => $item->getTimeCreated()
@@ -114,7 +142,7 @@ class ComplaintModerationController extends Controller
     public function resolveDispute(Request $request, $id)
     {
         $request->validate([
-            'decision' => 'required|in:refund,release'
+            'decision' => 'required|in:refund,partial_refund_50,release'
         ]);
 
         $context = $this->getContextWithLocale();
@@ -124,14 +152,29 @@ class ComplaintModerationController extends Controller
             $complaintItem = $reviewManager->get($id);
             
             // Perform logic
-            $decisionText = $request->decision === 'refund' 
-                ? 'Dana berhasil di-refund ke Saldo Pembeli (Escrow refunded).' 
-                : 'Dana berhasil diteruskan ke Rekening Dompet Penjual (Escrow released).';
+            $decisionCode = strtoupper($request->decision);
+            $decisionText = match ($request->decision) {
+                'refund' => 'Dana berhasil di-refund penuh ke pembeli.',
+                'partial_refund_50' => 'Refund 50% disetujui. Sisa escrow dapat dicairkan ke seller.',
+                'release' => 'Komplain ditolak. Dana escrow dilepas ke seller.',
+            };
 
             // Mark complaint as resolved (status = 0 or special tag)
             $complaintItem->setStatus(0); // Deactivate/Resolve
-            $complaintItem->setResponse($complaintItem->getResponse() . "\n\n[ADMIN RESOLUTION: " . strtoupper($request->decision) . " - " . $decisionText . "]");
+            $resolutionTag = $request->decision === 'partial_refund_50'
+                ? 'PARTIAL_REFUND 50%'
+                : $decisionCode;
+            $complaintItem->setResponse($complaintItem->getResponse() . "\n\n[ADMIN RESOLUTION: " . $resolutionTag . " - " . $decisionText . "]");
             $reviewManager->save($complaintItem);
+
+            if ($request->decision === 'refund') {
+                DB::table('mshop_order')
+                    ->where('id', $complaintItem->getRefId())
+                    ->update([
+                        'statuspayment' => OrderBase::PAY_REFUND,
+                        'mtime' => now(),
+                    ]);
+            }
 
             return response()->json([
                 'message' => 'Sengketa berhasil diselesaikan. ' . $decisionText,
@@ -146,6 +189,16 @@ class ComplaintModerationController extends Controller
         }
     }
 
+    private function getResolutionLabel(?string $resolution, ?int $refundPercent = null): string
+    {
+        return match ($resolution) {
+            'return_refund' => 'Return + Refund',
+            'full_refund' => 'Refund Penuh',
+            'partial_refund' => 'Refund Sebagian' . ($refundPercent ? ' ' . $refundPercent . '%' : ''),
+            default => '-',
+        };
+    }
+
     /**
      * Get all orders in e-commerce marketplace for tracking
      */
@@ -154,7 +207,7 @@ class ComplaintModerationController extends Controller
         // Fetch directly from mshop_order table for lightning fast query and reliability
         $orders = DB::table('mshop_order')
             ->orderBy('ctime', 'desc')
-            ->get(['id', 'customerid', 'price', 'statuspayment', 'statusdelivery', 'ctime', 'comment', 'siteid']);
+            ->get(['id', 'customerid', 'price', 'costs', 'statuspayment', 'statusdelivery', 'ctime', 'comment', 'siteid']);
 
         $globalCommissionRate = (float) \App\Models\SystemSetting::getVal('platform_commission', 5.0);
 
@@ -172,6 +225,8 @@ class ComplaintModerationController extends Controller
             // Dynamically calculate platform commission and seller revenue share
             $platformFee = ($order->price * $globalCommissionRate) / 100;
             $sellerShare = $order->price - $platformFee;
+            $buyerServiceCosts = (float) $order->costs;
+            $buyerTotal = (float) $order->price + $buyerServiceCosts;
 
             $customerName = isset($userMap[$order->customerid]) ? $userMap[$order->customerid] : 'Guest / Pelanggan';
             $merchantName = isset($merchantMap[$order->siteid]) ? $merchantMap[$order->siteid] : 'Platform Utama';
@@ -182,8 +237,11 @@ class ComplaintModerationController extends Controller
                 'customer_name' => $customerName,
                 'merchant_name' => $merchantName,
                 'price' => (float)$order->price,
+                'price_total' => $buyerTotal,
+                'service_costs' => $buyerServiceCosts,
                 'commission_rate' => $globalCommissionRate,
                 'platform_commission_fee' => $platformFee,
+                'platform_revenue' => $platformFee + $buyerServiceCosts,
                 'seller_share' => $sellerShare,
                 'payment_status' => $paymentStatusText,
                 'delivery_status' => $deliveryStatusText,

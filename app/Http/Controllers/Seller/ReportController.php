@@ -41,12 +41,19 @@ class ReportController extends Controller
             
             $orders = $query->get(['price', 'ctime']);
             
+            $commissionRate = (float) \App\Models\SystemSetting::getVal('platform_commission', 5.0);
             $totalRevenue = 0;
+            $grossRevenue = 0;
+            $platformCommissionFee = 0;
             $totalOrders = count($orders);
             $dailySales = [];
             
             foreach ($orders as $order) {
-                $revenue = (float) $order->price;
+                $gross = (float) $order->price;
+                $commission = ($gross * $commissionRate) / 100;
+                $revenue = $gross - $commission;
+                $grossRevenue += $gross;
+                $platformCommissionFee += $commission;
                 $totalRevenue += $revenue;
                 
                 // Group by date
@@ -56,11 +63,15 @@ class ReportController extends Controller
                     $dailySales[$date] = [
                         'date' => $date,
                         'revenue' => 0,
+                        'gross_revenue' => 0,
+                        'platform_commission_fee' => 0,
                         'orders_count' => 0
                     ];
                 }
                 
                 $dailySales[$date]['revenue'] += $revenue;
+                $dailySales[$date]['gross_revenue'] += $gross;
+                $dailySales[$date]['platform_commission_fee'] += $commission;
                 $dailySales[$date]['orders_count'] += 1;
             }
             
@@ -72,6 +83,9 @@ class ReportController extends Controller
                 'data' => [
                     'summary' => [
                         'total_revenue' => $totalRevenue,
+                        'gross_revenue' => $grossRevenue,
+                        'platform_commission_fee' => $platformCommissionFee,
+                        'commission_rate' => $commissionRate,
                         'total_orders' => $totalOrders,
                     ],
                     'daily_sales' => array_values($dailySales)
@@ -110,14 +124,16 @@ class ReportController extends Controller
                 'Expires' => '0'
             ];
 
-            $callback = function() use ($orders) {
+            $commissionRate = (float) \App\Models\SystemSetting::getVal('platform_commission', 5.0);
+
+            $callback = function() use ($orders, $commissionRate) {
                 $file = fopen('php://output', 'w');
                 // CSV headers
                 fputcsv($file, [
                     'ID Pesanan', 
                     'Tanggal Transaksi', 
                     'Total Pembayaran (Gross)', 
-                    'Komisi Platform (5%)', 
+                    'Komisi Platform (' . $commissionRate . '%)', 
                     'Pendapatan Bersih Penjual', 
                     'Status Pembayaran', 
                     'Status Pengiriman'
@@ -125,7 +141,7 @@ class ReportController extends Controller
 
                 foreach ($orders as $order) {
                     $gross = (float) $order->price;
-                    $commission = ($gross * 5) / 100;
+                    $commission = ($gross * $commissionRate) / 100;
                     $net = $gross - $commission;
 
                     fputcsv($file, [

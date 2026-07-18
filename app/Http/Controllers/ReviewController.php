@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class ReviewController extends Controller
@@ -54,6 +55,23 @@ class ReviewController extends Controller
     }
 
     /**
+     * Old order history payloads used to send the mshop_order_product row ID
+     * instead of the real product ID. Resolve that safely for the current user.
+     */
+    private function resolveProductReviewId(string $productId, ?int $userId): string
+    {
+        $orderedProductId = DB::table('mshop_order_product')
+            ->join('mshop_order', 'mshop_order_product.parentid', '=', 'mshop_order.id')
+            ->where('mshop_order_product.id', $productId)
+            ->when($userId, function ($query) use ($userId) {
+                $query->where('mshop_order.customerid', (string) $userId);
+            })
+            ->value('mshop_order_product.prodid');
+
+        return $orderedProductId ? (string) $orderedProductId : $productId;
+    }
+
+    /**
      * Display a listing of reviews for a product.
      */
     public function index($productId)
@@ -93,6 +111,7 @@ class ReviewController extends Controller
 
         $context = $this->getContextWithLocale();
         $user = Auth::user();
+        $productId = $this->resolveProductReviewId((string) $productId, $user?->id);
 
         // 1. Check if user actually ordered this product
         $orderManager = \Aimeos\MShop::create($context, 'order');

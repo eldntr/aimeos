@@ -14,6 +14,62 @@ class WalletController extends Controller
 {
     use HasSellerContext;
 
+    private function getCommissionRate(): float
+    {
+        return (float) \App\Models\SystemSetting::getVal('platform_commission', 5.0);
+    }
+
+    private function getSellerShare(float $grossAmount): float
+    {
+        return $grossAmount - (($grossAmount * $this->getCommissionRate()) / 100);
+    }
+
+    private function getCompletedSellerOrderRows(string $siteid)
+    {
+        return \DB::table('mshop_order')
+            ->join('mshop_order_product', 'mshop_order.id', '=', 'mshop_order_product.parentid')
+            ->join('mshop_product', 'mshop_order_product.prodid', '=', 'mshop_product.id')
+            ->where('mshop_product.siteid', $siteid)
+            ->where('mshop_order.statusdelivery', Base::STAT_DELIVERED)
+            ->whereNotIn('mshop_order.statuspayment', [Base::PAY_REFUSED, Base::PAY_REFUND, Base::PAY_CANCELED])
+            ->whereNotExists(function ($query) {
+                $query->selectRaw('1')
+                    ->from('mshop_review')
+                    ->whereColumn('mshop_review.refid', 'mshop_order.id')
+                    ->where('mshop_review.domain', 'order')
+                    ->where('mshop_review.status', '>', 0);
+            })
+            ->groupBy('mshop_order.id', 'mshop_order.ctime', 'mshop_order.statuspayment')
+            ->selectRaw('mshop_order.id, mshop_order.ctime, mshop_order.statuspayment, SUM(mshop_order_product.price * mshop_order_product.quantity) as seller_product_total')
+            ->get();
+    }
+
+    private function getCompletedSellerRevenue(string $siteid): float
+    {
+        return $this->getCompletedSellerOrderRows($siteid)
+            ->sum(function ($order) {
+                $netGross = (float) $order->seller_product_total * (1 - ($this->getAdminRefundPercent((string) $order->id) / 100));
+                return $this->getSellerShare($netGross);
+            });
+    }
+
+    private function getAdminRefundPercent(string $orderId): float
+    {
+        $responses = \DB::table('mshop_review')
+            ->where('domain', 'order')
+            ->where('refid', $orderId)
+            ->where('status', 0)
+            ->pluck('response');
+
+        foreach ($responses as $response) {
+            if (preg_match('/\[ADMIN RESOLUTION:\s*PARTIAL_REFUND\s+(\d+)%/i', (string) $response, $matches)) {
+                return min(99, max(1, (float) $matches[1]));
+            }
+        }
+
+        return 0.0;
+    }
+
     /**
      * Calculate wallet balance for the seller.
      */
@@ -26,11 +82,7 @@ class WalletController extends Controller
             MShop::cache(false); 
             MShop::cache(true);
             
-            // Calculate total revenue from Aimeos orders
-            $totalRevenue = \DB::table('mshop_order')
-                ->where('siteid', $user->siteid)
-                ->where('statuspayment', '>=', Base::PAY_AUTHORIZED)
-                ->sum('price');
+            $totalRevenue = $this->getCompletedSellerRevenue($user->siteid);
             
             // Calculate withdrawn and pending
             $withdrawals = SellerWithdrawal::where('siteid', $user->siteid)->get();
@@ -74,11 +126,7 @@ class WalletController extends Controller
             MShop::cache(false); 
             MShop::cache(true);
             
-            // Calculate total revenue from Aimeos orders
-            $totalRevenue = \DB::table('mshop_order')
-                ->where('siteid', $user->siteid)
-                ->where('statuspayment', '>=', Base::PAY_AUTHORIZED)
-                ->sum('price');
+            $totalRevenue = $this->getCompletedSellerRevenue($user->siteid);
             
             // Calculate withdrawn and pending
             $withdrawals = SellerWithdrawal::where('siteid', $user->siteid)->get();
@@ -126,12 +174,8 @@ class WalletController extends Controller
         try {
             $user = auth()->user();
             
-            // 1. Fetch credits: completed/paid orders
-            $orders = \DB::table('mshop_order')
-                ->where('siteid', $user->siteid)
-                ->where('statuspayment', '>=', Base::PAY_AUTHORIZED)
-                ->select('id', 'price', 'ctime', 'statuspayment')
-                ->get();
+            // 1. Fetch credits: completed orders containing this seller's products
+            $orders = $this->getCompletedSellerOrderRows($user->siteid);
             
             // 2. Fetch debits: withdrawals
             $withdrawals = \DB::table('seller_withdrawals')
@@ -141,17 +185,24 @@ class WalletController extends Controller
                 
             $mutations = [];
             
+            $globalCommissionRate = $this->getCommissionRate();
+            
             // Map orders to credit mutations
             foreach ($orders as $order) {
+                $refundPercent = $this->getAdminRefundPercent((string) $order->id);
+                $netGross = $order->seller_product_total * (1 - ($refundPercent / 100));
+                $platformFee = ($netGross * $globalCommissionRate) / 100;
+                $sellerShare = $netGross - $platformFee;
+                
                 $mutations[] = [
                     'id' => 'TX-ORD-' . $order->id,
                     'reference' => 'Pesanan #' . $order->id,
                     'type' => 'credit',
-                    'amount' => (float) $order->price,
+                    'amount' => (float) $sellerShare,
                     'timestamp' => strtotime($order->ctime),
                     'date_string' => $order->ctime,
-                    'description' => 'Pembayaran pesanan dari pembeli',
-                    'status' => $order->statuspayment === Base::PAY_SETTLED ? 'Saldo Cair' : 'Pending Escrow'
+                    'description' => 'Pembayaran pesanan dari pembeli (Dipotong komisi platform ' . $globalCommissionRate . '%' . ($refundPercent > 0 ? ', refund pembeli ' . $refundPercent . '%' : '') . ')',
+                    'status' => 'Saldo Cair'
                 ];
             }
             

@@ -20,6 +20,7 @@ class SettingController extends Controller
                 'max_product_videos' => (int) SystemSetting::getVal('max_product_videos', 2),
                 'max_cart_items' => (int) SystemSetting::getVal('max_cart_items', 20),
                 'platform_commission' => (float) SystemSetting::getVal('platform_commission', 5.0),
+                'app_service_fee' => (int) SystemSetting::getVal('app_service_fee', 2000),
                 'page_about' => SystemSetting::getVal('page_about', 'Reborns bergerak untuk memudahkan gaya hidup berkelanjutan melalui marketplace prelove yang aman, terpercaya, dan penuh pilihan. Misi kami adalah membantu pengguna menemukan produk berkualitas sambil mendukung ekonomi sirkular.'),
                 'page_how_it_works' => SystemSetting::getVal('page_how_it_works', 'Di Reborns, kamu bisa mencari, membeli, dan menjual barang preloved dengan mudah. Kami menyediakan fitur pencarian, kategori, dan checkout yang nyaman, serta dukungan keamanan untuk transaksi yang aman.'),
                 'page_career' => SystemSetting::getVal('page_career', 'Sedang mencari peluang baru? Reborns sedang berkembang dan kami membuka kesempatan bagi talenta yang ingin berkontribusi pada ekonomi berkelanjutan.'),
@@ -40,6 +41,7 @@ class SettingController extends Controller
             'max_product_videos' => 'required|integer|min:0|max:10',
             'max_cart_items' => 'required|integer|min:1|max:100',
             'platform_commission' => 'required|numeric|min:0|max:100',
+            'app_service_fee' => 'required|integer|min:0',
             'page_about' => 'nullable|string',
             'page_how_it_works' => 'nullable|string',
             'page_career' => 'nullable|string',
@@ -52,6 +54,7 @@ class SettingController extends Controller
         SystemSetting::setVal('max_product_videos', $request->max_product_videos);
         SystemSetting::setVal('max_cart_items', $request->max_cart_items);
         SystemSetting::setVal('platform_commission', $request->platform_commission);
+        SystemSetting::setVal('app_service_fee', $request->app_service_fee);
         
         SystemSetting::setVal('page_about', $request->page_about ?? '');
         SystemSetting::setVal('page_how_it_works', $request->page_how_it_works ?? '');
@@ -67,6 +70,7 @@ class SettingController extends Controller
                 'max_product_videos' => (int) SystemSetting::getVal('max_product_videos'),
                 'max_cart_items' => (int) SystemSetting::getVal('max_cart_items'),
                 'platform_commission' => (float) SystemSetting::getVal('platform_commission'),
+                'app_service_fee' => (int) SystemSetting::getVal('app_service_fee'),
                 'page_about' => SystemSetting::getVal('page_about'),
                 'page_how_it_works' => SystemSetting::getVal('page_how_it_works'),
                 'page_career' => SystemSetting::getVal('page_career'),

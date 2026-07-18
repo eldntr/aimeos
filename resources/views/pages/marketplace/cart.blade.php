@@ -44,8 +44,7 @@
             <p class="text-on-surface-variant" id="cart-item-count-header">Memuat...</p>
         </div>
 
-    <div class="max-w-6xl mx-auto px-5 md:px-8 py-8 md:py-12">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
 
             <!-- Left: Cart Items -->
             <div class="lg:col-span-2 space-y-4" id="cart-items-wrapper">
@@ -118,7 +117,7 @@
                     </div>
                     <div class="px-5 py-4 space-y-3 text-sm">
                         <div class="flex justify-between text-on-surface-variant">
-                            <span>Subtotal (<span id="summary-item-count">0</span> item)</span>
+                            <span>Subtotal dipilih (<span id="summary-item-count">0</span> item)</span>
                             <span id="summary-subtotal" class="font-semibold text-on-surface">Rp 0</span>
                         </div>
                         <div id="summary-discount-row" class="hidden flex justify-between text-emerald-600">
@@ -138,6 +137,7 @@
                         <a
                             href="{{ route('marketplace.checkout', $routeParams) }}"
                             id="checkout-btn"
+                            onclick="return proceedToCheckout(event)"
                             class="w-full bg-gradient-to-r from-primary to-primary-fixed-dim text-white py-3.5 rounded-2xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.01] active:scale-95 transition-all flex items-center justify-center gap-2"
                         >
                             <span class="material-symbols-outlined text-lg">payments</span>
@@ -170,6 +170,9 @@
 @push('scripts')
 <script>
     const CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const CHECKOUT_SELECTION_KEY = 'reborns.checkout.selected_positions';
+    const BUY_NOW_PRODUCT_KEY = 'reborns.checkout.buy_now_product_id';
+    let selectedCheckoutPositions = new Set();
 
     function showToast(message, type = 'success') {
         const container = document.getElementById('cart-toast-container');
@@ -193,6 +196,57 @@
 
     function formatRupiah(value) {
         return 'Rp ' + Number(value || 0).toLocaleString('id-ID');
+    }
+
+    function loadSavedSelection() {
+        try {
+            return new Set(JSON.parse(sessionStorage.getItem(CHECKOUT_SELECTION_KEY) || '[]').map(String));
+        } catch (e) {
+            return new Set();
+        }
+    }
+
+    function saveSelection() {
+        sessionStorage.setItem(CHECKOUT_SELECTION_KEY, JSON.stringify([...selectedCheckoutPositions]));
+    }
+
+    function toggleCheckoutItem(position, checked) {
+        if (checked) {
+            selectedCheckoutPositions.add(String(position));
+        } else {
+            selectedCheckoutPositions.delete(String(position));
+        }
+        saveSelection();
+        updateSelectedSummary();
+    }
+
+    function updateSelectedSummary() {
+        let subtotal = 0;
+        let qtyTotal = 0;
+        document.querySelectorAll('[data-cart-position]').forEach(row => {
+            const pos = row.getAttribute('data-cart-position');
+            const checked = selectedCheckoutPositions.has(String(pos));
+            row.classList.toggle('ring-2', checked);
+            row.classList.toggle('ring-primary/25', checked);
+            if (!checked) return;
+            subtotal += parseFloat(row.getAttribute('data-line-total') || 0);
+            qtyTotal += parseInt(row.getAttribute('data-quantity') || 0);
+        });
+
+        document.getElementById('summary-item-count').textContent = qtyTotal;
+        document.getElementById('summary-subtotal').textContent = formatRupiah(subtotal);
+        document.getElementById('summary-total').textContent = formatRupiah(subtotal);
+    }
+
+    function proceedToCheckout(event) {
+        event.preventDefault();
+        if (selectedCheckoutPositions.size === 0) {
+            showToast('Pilih minimal satu produk untuk checkout', 'error');
+            return false;
+        }
+        saveSelection();
+        window.location.href = event.currentTarget.href;
+        return false;
     }
 
     function renderCart(data) {
@@ -228,6 +282,25 @@
         let totalRaw = 0;
         let totalQty = 0;
         let html = '';
+        const buyNowProductId = sessionStorage.getItem(BUY_NOW_PRODUCT_KEY);
+        const savedSelection = loadSavedSelection();
+        const validPositions = new Set(productList.map(([pos]) => String(pos)));
+
+        if (buyNowProductId) {
+            selectedCheckoutPositions = new Set(
+                productList
+                    .filter(([, item]) => String(item['order.product.productid'] || '') === String(buyNowProductId))
+                    .map(([pos]) => String(pos))
+            );
+            sessionStorage.removeItem(BUY_NOW_PRODUCT_KEY);
+        } else {
+            selectedCheckoutPositions = new Set([...savedSelection].filter(pos => validPositions.has(pos)));
+        }
+
+        if (selectedCheckoutPositions.size === 0) {
+            selectedCheckoutPositions = new Set(productList.map(([pos]) => String(pos)));
+        }
+        saveSelection();
 
         productList.forEach(([pos, item]) => {
             const name = item['order.product.name'] || item['order.product.code'] || 'Produk';
@@ -236,9 +309,13 @@
             const image = item['order.product.mediaurl'] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=200&q=80';
             totalRaw += priceVal * qty;
             totalQty += qty;
+            const isSelected = selectedCheckoutPositions.has(String(pos));
 
             html += `
-            <div id="cart-item-${pos}" class="bg-surface-container-lowest rounded-2xl p-4 md:p-5 border border-outline-variant/20 shadow-sm flex gap-4 items-start group transition-all hover:shadow-md">
+            <div id="cart-item-${pos}" data-cart-position="${pos}" data-line-total="${priceVal * qty}" data-quantity="${qty}" class="bg-surface-container-lowest rounded-2xl p-4 md:p-5 border border-outline-variant/20 shadow-sm flex gap-4 items-start group transition-all hover:shadow-md">
+                <label class="shrink-0 pt-7 cursor-pointer" title="Pilih untuk checkout">
+                    <input type="checkbox" class="w-5 h-5 accent-primary rounded border-outline-variant" onchange="toggleCheckoutItem(${pos}, this.checked)" ${isSelected ? 'checked' : ''} />
+                </label>
                 <a href="/products/${item['order.product.productid'] || ''}" class="shrink-0">
                     <img src="${image}" alt="${name}" class="w-20 h-20 md:w-24 md:h-24 rounded-xl object-cover border border-outline-variant/10" />
                 </a>
@@ -284,11 +361,7 @@
 
         itemsList.innerHTML = html;
         document.getElementById('cart-item-count-header').textContent = `${totalQty} item`;
-
-        // Summary
-        document.getElementById('summary-item-count').textContent = totalQty;
-        document.getElementById('summary-subtotal').textContent = formatRupiah(totalRaw);
-        document.getElementById('summary-total').textContent = formatRupiah(totalRaw);
+        updateSelectedSummary();
 
         // Applied Vouchers
         const voucherList = document.getElementById('voucher-applied-list');
@@ -303,6 +376,9 @@
         } else {
             voucherList.classList.add('hidden');
         }
+
+        // Sync navbar badge
+        window.refreshCartCount?.();
     }
 
     async function loadCart() {
@@ -333,6 +409,7 @@
             if (!res.ok) throw new Error('Gagal menghapus item');
             const body = await res.json();
             renderCart(body.data || {});
+            saveSelection();
             showToast('Item berhasil dihapus dari keranjang');
         } catch (e) {
             if (itemEl) { itemEl.style.opacity = ''; itemEl.style.pointerEvents = ''; }
@@ -427,6 +504,7 @@
             });
             const body = await res.json();
             if (!res.ok) throw new Error('Gagal mengosongkan keranjang');
+            sessionStorage.removeItem(CHECKOUT_SELECTION_KEY);
             renderCart(body.data || {});
             showToast('Keranjang berhasil dikosongkan');
         } catch (e) {

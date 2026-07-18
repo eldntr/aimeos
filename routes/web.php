@@ -93,6 +93,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/merchant/orders', [MerchantController::class, 'ordersIndex'])->name('merchant.orders.index');
     Route::get('/merchant/orders/{id}', [MerchantController::class, 'ordersShow'])->name('merchant.orders.show');
     Route::post('/merchant/orders/{id}/status', [MerchantController::class, 'ordersUpdateStatus'])->name('merchant.orders.update-status');
+    Route::post('/merchant/orders/{id}/complaint-response', [MerchantController::class, 'ordersComplaintResponse'])->name('merchant.orders.complaint-response');
     Route::post('/merchant/orders/{id}/pickup', [MerchantController::class, 'ordersRequestPickup'])->name('merchant.orders.request-pickup');
 
     // Merchant Wallet / Earnings

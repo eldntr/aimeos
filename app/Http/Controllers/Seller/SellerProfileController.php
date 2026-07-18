@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class SellerProfileController extends Controller
 {
@@ -69,6 +70,7 @@ class SellerProfileController extends Controller
                 'name' => $site->getLabel(),
                 'logo' => $site->getLogo(),
                 'config' => $site->getConfig(),
+                'shipping_couriers' => $this->enabledCourierCodes($user->siteid),
             ]
         ]);
     }
@@ -80,6 +82,12 @@ class SellerProfileController extends Controller
             'logo' => 'nullable|image|max:5120',
             'banner' => 'nullable|image|max:5120',
             'address' => 'nullable|string',
+            'shipping_city_id' => 'required_with:address|nullable|integer|exists:tb_ro_cities,city_id',
+            'shipping_subdistrict_id' => 'nullable|integer|exists:tb_ro_subdistricts,subdistrict_id',
+            'shipping_komerce_destination_id' => 'nullable|integer|exists:komerce_destinations,id',
+            'shipping_postal' => 'nullable|string|max:20',
+            'shipping_couriers' => 'nullable|array',
+            'shipping_couriers.*' => 'string|exists:shipping_couriers,code',
         ]);
 
         $user = $request->user();
@@ -116,9 +124,22 @@ class SellerProfileController extends Controller
             }
 
             if ($request->has('address')) {
+                $shippingLocation = $this->resolveShippingLocation($request);
                 $config = $site->getConfig();
                 $config['address'] = $request->address;
+                $config['shipping.origin_id'] = $shippingLocation['komerce_destination_id'] ? (string) $shippingLocation['komerce_destination_id'] : '';
+                $config['shipping.komerce_destination_id'] = $shippingLocation['komerce_destination_id'] ? (string) $shippingLocation['komerce_destination_id'] : '';
+                $config['shipping.city_id'] = (string) $shippingLocation['city_id'];
+                $config['shipping.subdistrict_id'] = $shippingLocation['subdistrict_id'] ? (string) $shippingLocation['subdistrict_id'] : '';
+                $config['shipping.city'] = $shippingLocation['city_name'];
+                $config['shipping.province'] = $shippingLocation['province_name'];
+                $config['shipping.subdistrict'] = $shippingLocation['subdistrict_name'] ?? '';
+                $config['shipping.postal'] = $request->shipping_postal ?: ($shippingLocation['postal_code'] ?? '');
                 $site->setConfig($config);
+            }
+
+            if ($request->has('shipping_couriers')) {
+                $this->syncSellerCouriers($user->siteid, $request->shipping_couriers ?? []);
             }
             
             $siteManager->save($site);
@@ -130,6 +151,7 @@ class SellerProfileController extends Controller
                     'name' => $site->getLabel(),
                     'logo' => $site->getLogo(),
                     'config' => $site->getConfig(),
+                    'shipping_couriers' => $this->enabledCourierCodes($user->siteid),
                 ]
             ]);
         } catch (\Exception $e) {
@@ -178,5 +200,92 @@ class SellerProfileController extends Controller
             $siteManager->rollback();
             return response()->json(['message' => $e->getMessage()], 422);
         }
+    }
+
+    private function resolveShippingLocation(Request $request): array
+    {
+        $komerce = $this->resolveKomerceDestination($request);
+
+        $city = DB::table('tb_ro_cities')
+            ->join('tb_ro_provinces', 'tb_ro_cities.province_id', '=', 'tb_ro_provinces.province_id')
+            ->where('tb_ro_cities.city_id', (int) $request->shipping_city_id)
+            ->first([
+                'tb_ro_cities.city_id',
+                'tb_ro_cities.city_name',
+                'tb_ro_cities.postal_code',
+                'tb_ro_provinces.province_name',
+            ]);
+
+        $subdistrict = null;
+        if ($request->filled('shipping_subdistrict_id')) {
+            $subdistrict = DB::table('tb_ro_subdistricts')
+                ->where('city_id', $city->city_id)
+                ->where('subdistrict_id', (int) $request->shipping_subdistrict_id)
+                ->first(['subdistrict_id', 'subdistrict_name', 'komerce_destination_id']);
+        }
+
+        return [
+            'city_id' => (int) $city->city_id,
+            'city_name' => $komerce['city_name'] ?? $city->city_name,
+            'province_name' => $komerce['province_name'] ?? $city->province_name,
+            'postal_code' => $komerce['zip_code'] ?? $city->postal_code,
+            'subdistrict_id' => $subdistrict?->subdistrict_id,
+            'subdistrict_name' => $komerce['subdistrict_name'] ?? $subdistrict?->subdistrict_name,
+            'komerce_destination_id' => $komerce['id'] ?? $subdistrict?->komerce_destination_id ?? null,
+        ];
+    }
+
+    private function resolveKomerceDestination(Request $request): ?array
+    {
+        if (!$request->filled('shipping_komerce_destination_id') || !\Illuminate\Support\Facades\Schema::hasTable('komerce_destinations')) {
+            return null;
+        }
+
+        $destination = DB::table('komerce_destinations')
+            ->where('id', (int) $request->shipping_komerce_destination_id)
+            ->first(['id', 'province_name', 'city_name', 'district_name', 'subdistrict_name', 'zip_code']);
+
+        return $destination ? (array) $destination : null;
+    }
+
+    private function enabledCourierCodes(string $siteid): array
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasTable('seller_shipping_couriers')) {
+            return [];
+        }
+
+        return DB::table('seller_shipping_couriers')
+            ->where('siteid', $siteid)
+            ->pluck('courier_code')
+            ->map(fn ($code) => (string) $code)
+            ->all();
+    }
+
+    private function syncSellerCouriers(string $siteid, array $codes): void
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasTable('seller_shipping_couriers')) {
+            return;
+        }
+
+        $codes = DB::table('shipping_couriers')
+            ->whereIn('code', array_values(array_unique($codes)))
+            ->where('active', true)
+            ->where('supports_domestic_cost', true)
+            ->pluck('code')
+            ->all();
+
+        DB::table('seller_shipping_couriers')->where('siteid', $siteid)->delete();
+
+        if ($codes === []) {
+            return;
+        }
+
+        $now = now();
+        DB::table('seller_shipping_couriers')->insert(array_map(fn ($code) => [
+            'siteid' => $siteid,
+            'courier_code' => $code,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ], $codes));
     }
 }

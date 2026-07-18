@@ -17,6 +17,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\CategoryController as PublicCategoryController;
 use App\Http\Controllers\ShopController;
+use App\Http\Controllers\RajaOngkirLocationController;
 use App\Http\Controllers\Seller\VoucherController;
 use App\Http\Controllers\Seller\OrderController as SellerOrderController;
 use App\Http\Controllers\Seller\WalletController;
@@ -65,6 +66,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/password', [PasswordController::class, 'update']);
     Route::delete('/profile', [ProfileController::class, 'destroy']);
 
+    Route::prefix('rajaongkir/locations')->group(function () {
+        Route::get('/provinces', [RajaOngkirLocationController::class, 'provinces']);
+        Route::get('/cities', [RajaOngkirLocationController::class, 'cities']);
+        Route::get('/subdistricts', [RajaOngkirLocationController::class, 'subdistricts']);
+        Route::get('/komerce-destinations', [RajaOngkirLocationController::class, 'komerceDestinations']);
+        Route::get('/couriers', [RajaOngkirLocationController::class, 'couriers']);
+    });
+
     // Notification routes
     Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
     Route::patch('/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead']);
@@ -95,6 +104,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Order History routes
     Route::get('/user/orders', [\App\Http\Controllers\OrderController::class, 'index']);
     Route::get('/user/orders/{id}', [\App\Http\Controllers\OrderController::class, 'show']);
+    Route::patch('/user/orders/{id}/received', [\App\Http\Controllers\OrderController::class, 'markReceived']);
 
     // Order Complaint & Resolution
     Route::post('/orders/{id}/complaint', [ComplaintController::class, 'store']);
@@ -119,6 +129,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/orders', [SellerOrderController::class, 'index']);
             Route::get('/orders/{id}', [SellerOrderController::class, 'show']);
             Route::patch('/orders/{id}/status', [SellerOrderController::class, 'updateStatus']);
+            Route::post('/orders/{id}/complaint-response', [SellerOrderController::class, 'respondComplaint']);
             Route::post('/orders/{id}/pickup', [SellerOrderController::class, 'requestPickup']);
 
             Route::get('/shop', [SellerProfileController::class, 'getShop']);

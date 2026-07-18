@@ -48,14 +48,14 @@ class CheckoutTest extends TestCase
         ];
     }
 
-    private function setupProduct()
+    private function setupProduct($label = 'Test Product Checkout')
     {
         $context = app('aimeos.context')->get(false);
         $manager = \Aimeos\MShop::create($context, 'product');
         
         $item = $manager->create()
             ->setCode('test-checkout-' . uniqid())
-            ->setLabel('Test Product Checkout')
+            ->setLabel($label)
             ->setType('default')
             ->setStatus(1);
             
@@ -88,7 +88,7 @@ class CheckoutTest extends TestCase
      */
     public function test_full_checkout_flow()
     {
-        $customer = $this->createCustomerAndGetToken('customer.checkout@example.com');
+        $customer = $this->createCustomerAndGetToken('customer.checkout.' . uniqid() . '@example.com');
         $product = $this->setupProduct();
 
         \Laravel\Sanctum\Sanctum::actingAs($customer['user']);
@@ -123,6 +123,28 @@ class CheckoutTest extends TestCase
         $this->assertNotNull($addressId);
 
         // 3. Select Address for Checkout
+        $this->postJson('/api/checkout/address', [
+            'address_id' => $addressId
+        ])->assertStatus(200);
+
+        // Changing cart after selecting address should clear stale checkout data
+        // instead of re-saving duplicate order address/service rows.
+        $this->postJson('/api/cart', [
+            'product_id' => $product->getId(),
+            'quantity' => 2
+        ])->assertStatus(201);
+
+        $draftOrderId = \DB::table('mshop_order')
+            ->where('customerid', $customer['user']->id)
+            ->where('statuspayment', \Aimeos\MShop\Order\Item\Base::PAY_UNFINISHED)
+            ->where('statusdelivery', \Aimeos\MShop\Order\Item\Base::STAT_UNFINISHED)
+            ->value('id');
+
+        $this->assertDatabaseMissing('mshop_order_address', [
+            'parentid' => $draftOrderId,
+            'type' => 'delivery',
+        ]);
+
         $this->postJson('/api/checkout/address', [
             'address_id' => $addressId
         ])->assertStatus(200);
@@ -163,6 +185,22 @@ class CheckoutTest extends TestCase
         
         $this->assertEquals('pending', $processResponse->json('data.status'));
         $this->assertStringContainsString('midtrans', $processResponse->json('data.payment_url'));
+
+        $orderId = $processResponse->json('data.order_id');
+        $this->assertDatabaseHas('mshop_order_service', [
+            'parentid' => $orderId,
+            'type' => 'service',
+            'code' => 'app_service_fee',
+        ]);
+
+        $this->assertEquals(
+            2000,
+            (float) \DB::table('mshop_order_service')
+                ->where('parentid', $orderId)
+                ->where('type', 'service')
+                ->where('code', 'app_service_fee')
+                ->value('price')
+        );
 
     }
 }

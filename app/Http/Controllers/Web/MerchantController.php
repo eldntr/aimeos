@@ -161,10 +161,12 @@ class MerchantController extends Controller
 
             // 2. Fetch Escrow Pending Balance (statuspayment = 2)
             try {
-                $pendingEscrow = (float) \DB::table('mshop_order')
+                $rawPending = (float) \DB::table('mshop_order')
                     ->where('siteid', $user->siteid)
                     ->where('statuspayment', 2) // PAY_RECEIVED (Escrow)
                     ->sum('price');
+                $globalCommissionRate = (float) \App\Models\SystemSetting::getVal('platform_commission', 5.0);
+                $pendingEscrow = $rawPending - ($rawPending * $globalCommissionRate) / 100;
             } catch (\Exception $e) {}
 
             // 3. Fetch Low Stock Items (stocklevel <= 5)
@@ -302,6 +304,18 @@ class MerchantController extends Controller
         }
 
         return redirect()->route('merchant.orders.show', $id)->with('success', 'Status pesanan berhasil diperbarui.');
+    }
+
+    public function ordersComplaintResponse(Request $request, $id)
+    {
+        $response = app(SellerOrderController::class)->respondComplaint($request, $id);
+        $data = $response->getData(true);
+
+        if ($response->getStatusCode() >= 400) {
+            return redirect()->back()->withErrors(['error' => $data['message'] ?? 'Gagal mengirim tanggapan komplain.']);
+        }
+
+        return redirect()->route('merchant.orders.show', $id)->with('success', 'Tanggapan komplain berhasil dikirim.');
     }
 
     public function ordersRequestPickup(Request $request, $id)

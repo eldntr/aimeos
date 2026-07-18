@@ -97,48 +97,134 @@
                                 </form>
                             </div>
                         @elseif ($delStatus == 2)
-                            {{-- Action: Request Pickup or Input Waybill --}}
-                            <div class="space-y-4">
-                                <div class="p-4 bg-primary/5 border border-primary/10 rounded-xl space-y-2">
-                                    <p class="text-xs font-bold text-primary flex items-center gap-1.5">
-                                        <span class="material-symbols-outlined text-base">local_shipping</span>
-                                        Layanan Penjemputan Paket (Pickup)
-                                    </p>
-                                    <p class="text-xs text-on-surface-variant">Kamu bisa meminta kurir logistik menjemput paket secara gratis tanpa perlu mengantarnya ke gerai.</p>
-                                    <form action="{{ route('merchant.orders.request-pickup', array_merge(['id' => $order['id']], $routeParams)) }}" method="POST">
-                                        @csrf
-                                        <button type="submit" class="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-xs font-bold rounded-full hover:opacity-90 transition-opacity">
-                                            Request Pickup Sekarang
-                                        </button>
-                                    </form>
+                            <form action="{{ route('merchant.orders.update-status', array_merge(['id' => $order['id']], $routeParams)) }}" method="POST" class="space-y-3">
+                                @csrf
+                                <input type="hidden" name="status" value="accept">
+                                <div>
+                                    <label for="tracking-number" class="block text-xs font-bold text-on-surface mb-2">Nomor Resi / Waybill</label>
+                                    <input type="text" id="tracking-number" name="tracking_number" required placeholder="Contoh: JP123456789 (J&T)"
+                                           class="w-full rounded-xl bg-surface-container-high border-none px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/30 transition-all" />
+                                    <p class="text-[11px] text-on-surface-variant mt-2">Masukkan nomor resi setelah paket benar-benar diserahkan ke ekspedisi.</p>
                                 </div>
-
-                                <div class="relative flex py-2 items-center">
-                                    <div class="flex-grow border-t border-outline-variant/10"></div>
-                                    <span class="flex-shrink mx-4 text-[11px] text-outline uppercase font-bold tracking-wider">Atau masukkan resi manual</span>
-                                    <div class="flex-grow border-t border-outline-variant/10"></div>
-                                </div>
-
-                                <form action="{{ route('merchant.orders.update-status', array_merge(['id' => $order['id']], $routeParams)) }}" method="POST" class="space-y-3">
-                                    @csrf
-                                    <input type="hidden" name="status" value="accept">
-                                    <div>
-                                        <label for="tracking-number" class="block text-xs font-bold text-on-surface mb-2">Nomor Resi / Waybill</label>
-                                        <input type="text" id="tracking-number" name="tracking_number" required placeholder="Contoh: JP123456789 (J&T)"
-                                               class="w-full rounded-xl bg-surface-container-high border-none px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/30 transition-all" />
-                                    </div>
-                                    <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-bold rounded-full transition-colors">
-                                        <span class="material-symbols-outlined text-sm">send</span>
-                                        Kirim dengan Resi Ini
-                                    </button>
-                                </form>
-                            </div>
+                                <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-xs font-bold rounded-full hover:opacity-90 transition-opacity">
+                                    <span class="material-symbols-outlined text-sm">send</span>
+                                    Tandai Dikirim
+                                </button>
+                            </form>
                         @else
-                            <div class="flex items-center gap-2 text-xs text-outline font-semibold">
-                                <span class="material-symbols-outlined text-base">check_circle</span>
-                                Alur pengisian/pemenuhan pesanan ini telah selesai dikelola.
+                            <div class="rounded-xl bg-surface-container-high p-4 space-y-3">
+                                <div class="flex items-center gap-2 text-xs text-on-surface font-bold">
+                                    <span class="material-symbols-outlined text-base text-primary">local_shipping</span>
+                                    Paket sudah ditandai dikirim.
+                                </div>
+                                <div>
+                                    <p class="text-[11px] uppercase font-bold text-outline">Nomor Resi / Waybill</p>
+                                    <p class="mt-1 font-mono text-sm font-black text-on-surface">{{ $order['tracking_number'] ?: '-' }}</p>
+                                </div>
+                                @if(empty($order['tracking_number']))
+                                    <p class="text-[11px] text-error">Nomor resi belum tersimpan atau format resi tidak valid.</p>
+                                @endif
                             </div>
                         @endif
+                    </div>
+                @endif
+
+                @if(!empty($order['complaints']))
+                    <div class="bg-red-50 border border-red-100 rounded-2xl p-6 shadow-[0_4px_16px_rgba(47,47,46,0.02)] space-y-4">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <h2 class="text-base font-bold text-on-surface flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-error">report</span>
+                                    Komplain Pembeli
+                                </h2>
+                                <p class="text-xs text-on-surface-variant mt-1">Bukti komplain dari pembeli untuk pesanan ini.</p>
+                            </div>
+                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-800">
+                                {{ count($order['complaints']) }} komplain
+                            </span>
+                        </div>
+
+                        <div class="space-y-3">
+                            @foreach($order['complaints'] as $complaint)
+                                @php
+                                    $isOpenComplaint = (int) ($complaint['status'] ?? 0) > 0;
+                                    $proofPhoto = $complaint['proof_photo_url'] ?? ($complaint['proof_url'] ?? null);
+                                    $unboxingVideo = $complaint['unboxing_video_url'] ?? null;
+                                @endphp
+                                <div class="rounded-xl bg-white border border-red-100 p-4 space-y-3">
+                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                        <div>
+                                            <p class="text-xs font-bold text-on-surface">{{ $complaint['customer_name'] ?? 'Pembeli' }}</p>
+                                            <p class="text-[11px] text-on-surface-variant">{{ !empty($complaint['created_at']) ? date('d M Y, H:i', strtotime($complaint['created_at'])) : '-' }}</p>
+                                        </div>
+                                        <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold {{ $isOpenComplaint ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800' }}">
+                                            {{ $complaint['status_label'] ?? ($isOpenComplaint ? 'Menunggu Diproses' : 'Selesai') }}
+                                        </span>
+                                    </div>
+
+                                    <div>
+                                        <p class="text-[11px] uppercase font-bold text-outline">Alasan Komplain</p>
+                                        <p class="text-sm text-on-surface-variant leading-relaxed mt-1">{{ $complaint['complaint'] ?? '-' }}</p>
+                                    </div>
+
+                                    <div>
+                                        <p class="text-[11px] uppercase font-bold text-outline">Solusi Diminta Pembeli</p>
+                                        <p class="text-sm font-bold text-on-surface mt-1">{{ $complaint['requested_resolution_label'] ?? '-' }}</p>
+                                    </div>
+
+                                    <div class="flex flex-wrap gap-2">
+                                        @if($unboxingVideo)
+                                            <a href="{{ $unboxingVideo }}" target="_blank" class="inline-flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary text-xs font-bold rounded-full hover:bg-primary/15 transition-colors">
+                                                <span class="material-symbols-outlined text-sm">smart_display</span>
+                                                Lihat Video Unboxing
+                                            </a>
+                                        @endif
+                                        @if($proofPhoto)
+                                            <a href="{{ $proofPhoto }}" target="_blank" class="inline-flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary text-xs font-bold rounded-full hover:bg-primary/15 transition-colors">
+                                                <span class="material-symbols-outlined text-sm">image</span>
+                                                Lihat Foto Bukti
+                                            </a>
+                                        @endif
+                                    </div>
+
+                                    <div class="rounded-lg bg-surface-container-low p-3">
+                                        <p class="text-[11px] uppercase font-bold text-outline">Hasil / Respon</p>
+                                        <p class="text-xs text-on-surface-variant leading-relaxed mt-1">
+                                            {{ $complaint['response'] ?: 'Belum ada respon. Komplain masih menunggu diproses.' }}
+                                        </p>
+                                    </div>
+
+                                    @if($isOpenComplaint)
+                                        <form action="{{ route('merchant.orders.complaint-response', array_merge(['id' => $order['id']], $routeParams)) }}" method="POST" class="rounded-xl bg-surface-container-low p-4 space-y-3">
+                                            @csrf
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <div>
+                                                    <label class="block text-[11px] uppercase font-bold text-outline mb-2">Tanggapan Seller</label>
+                                                    <select name="response_type" class="w-full rounded-xl bg-white border border-outline-variant/20 px-3 py-2 text-xs text-on-surface">
+                                                        <option value="accept">Setuju solusi pembeli</option>
+                                                        <option value="reject">Tolak komplain</option>
+                                                        <option value="partial_refund">Tawarkan refund sebagian</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label class="block text-[11px] uppercase font-bold text-outline mb-2">Refund sebagian (%)</label>
+                                                    <input type="number" name="refund_percent" min="1" max="99" value="50" class="w-full rounded-xl bg-white border border-outline-variant/20 px-3 py-2 text-xs text-on-surface" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label class="block text-[11px] uppercase font-bold text-outline mb-2">Catatan</label>
+                                                <textarea name="message" required rows="3" class="w-full rounded-xl bg-white border border-outline-variant/20 px-3 py-2 text-xs text-on-surface" placeholder="Jelaskan posisi seller atau penawaran solusi..."></textarea>
+                                            </div>
+                                            <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-xs font-bold rounded-full hover:opacity-90 transition-opacity">
+                                                <span class="material-symbols-outlined text-sm">send</span>
+                                                Kirim Tanggapan
+                                            </button>
+                                            <p class="text-[11px] text-on-surface-variant">Admin tetap menjadi penentu akhir sengketa.</p>
+                                        </form>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
                     </div>
                 @endif
             </div>
@@ -182,6 +268,11 @@
                         @php
                             $subtotal = collect($order['products'])->sum(fn($p) => $p['price'] * $p['quantity']);
                             $deliveryPrice = $order['services']['delivery']['price'] ?? 0;
+                            $appServiceFee = $order['services']['service']['price'] ?? 0;
+                            $buyerTotal = $order['price_total'] ?? ($subtotal + $deliveryPrice + $appServiceFee);
+                            $commissionRate = $order['commission_rate'] ?? 0;
+                            $platformFee = $order['platform_commission_fee'] ?? 0;
+                            $sellerShare = $order['seller_share'] ?? ($subtotal - $platformFee);
                         @endphp
                         <div class="flex justify-between text-on-surface-variant">
                             <span>Subtotal Barang</span>
@@ -191,9 +282,23 @@
                             <span>Ongkos Kirim</span>
                             <span>Rp {{ number_format($deliveryPrice, 0, ',', '.') }}</span>
                         </div>
+                        <div class="flex justify-between text-on-surface-variant">
+                            <span>Biaya Layanan Aplikasi</span>
+                            <span>Rp {{ number_format($appServiceFee, 0, ',', '.') }}</span>
+                        </div>
                         <div class="flex justify-between text-sm font-bold text-on-surface pt-2 border-t border-outline-variant/10">
-                            <span>Total Pembayaran</span>
-                            <span class="text-primary">Rp {{ number_format($order['price'], 0, ',', '.') }}</span>
+                            <span>Total Dibayar Pembeli</span>
+                            <span class="text-primary">Rp {{ number_format($buyerTotal, 0, ',', '.') }}</span>
+                        </div>
+                        <div class="space-y-2 pt-3 mt-2 border-t border-outline-variant/10">
+                            <div class="flex justify-between text-on-surface-variant">
+                                <span>Komisi Platform ({{ rtrim(rtrim(number_format($commissionRate, 2, ',', '.'), '0'), ',') }}%)</span>
+                                <span>- Rp {{ number_format($platformFee, 0, ',', '.') }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm font-bold text-on-surface">
+                                <span>Escrow untuk Seller</span>
+                                <span class="text-emerald-600">Rp {{ number_format($sellerShare, 0, ',', '.') }}</span>
+                            </div>
                         </div>
                     </div>
                 </div>

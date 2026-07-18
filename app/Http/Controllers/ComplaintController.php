@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Services\FileServerService;
+use Aimeos\MShop\Order\Item\Base as OrderBase;
 
 class ComplaintController extends Controller
 {
@@ -60,7 +61,10 @@ class ComplaintController extends Controller
     {
         $request->validate([
             'complaint' => 'required|string',
-            'proof' => 'required|image|max:5120', // max 5MB
+            'requested_resolution' => 'required|in:return_refund,full_refund,partial_refund',
+            'requested_refund_percent' => 'nullable|required_if:requested_resolution,partial_refund|integer|min:1|max:99',
+            'proof_photo' => 'required|image|max:5120', // max 5MB
+            'unboxing_video' => 'required|file|mimetypes:video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,video/webm|max:51200', // max 50MB
         ]);
 
         $context = $this->getContextWithLocale();
@@ -73,18 +77,25 @@ class ComplaintController extends Controller
             if ($order->getCustomerId() !== (string)$user->id) {
                 return response()->json(['message' => 'Unauthorized order access.'], 403);
             }
+            if ($order->getStatusDelivery() !== OrderBase::STAT_DISPATCHED) {
+                return response()->json(['message' => 'Komplain hanya bisa diajukan saat pesanan dalam pengiriman.'], 422);
+            }
         } catch (\Exception $e) {
             return response()->json(['message' => 'Order not found.'], 404);
         }
 
-        // 2. Handle Proof Photo Upload via FileServerService
-        $proofUrl = null;
+        // 2. Handle required evidence uploads via FileServerService
+        $proofPhotoUrl = null;
+        $unboxingVideoUrl = null;
         try {
-            if ($request->hasFile('proof')) {
-                $proofUrl = $fileServerService->uploadFile($request->file('proof'));
+            if ($request->hasFile('proof_photo')) {
+                $proofPhotoUrl = $fileServerService->uploadFile($request->file('proof_photo'));
+            }
+            if ($request->hasFile('unboxing_video')) {
+                $unboxingVideoUrl = $fileServerService->uploadFile($request->file('unboxing_video'));
             }
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Failed to upload proof: ' . $e->getMessage()], 422);
+            return response()->json(['message' => 'Gagal mengunggah bukti komplain: ' . $e->getMessage()], 422);
         }
 
         // 3. Save complaint using Aimeos Review manager (domain: order)
@@ -99,8 +110,15 @@ class ComplaintController extends Controller
             $item->setRating(1); // Default rating for complaint
             
             $comment = $request->input('complaint');
-            if ($proofUrl) {
-                $comment .= "\n\n[Proof of Complaint: " . $proofUrl . "]";
+            $comment .= "\n\n[Requested Resolution: " . $request->input('requested_resolution') . "]";
+            if ($request->input('requested_resolution') === 'partial_refund') {
+                $comment .= "\n[Requested Refund Percent: " . (int) $request->input('requested_refund_percent') . "]";
+            }
+            if ($proofPhotoUrl) {
+                $comment .= "\n\n[Proof Photo: " . $proofPhotoUrl . "]";
+            }
+            if ($unboxingVideoUrl) {
+                $comment .= "\n\n[Unboxing Video: " . $unboxingVideoUrl . "]";
             }
             $item->setComment($comment);
             $item->setStatus(1); // Active

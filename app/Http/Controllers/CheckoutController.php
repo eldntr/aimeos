@@ -60,15 +60,14 @@ class CheckoutController extends Controller
         \Aimeos\MShop::cache(false);
         \Aimeos\MShop::cache(true);
         
-        $orderManager = \Aimeos\MShop::create($context, 'order');
-        $filter = $orderManager->filter();
-        $filter->add($filter->and([
-            $filter->compare('==', 'order.customerid', $user->id),
-            $filter->compare('==', 'order.statuspayment', OrderBase::PAY_UNFINISHED),
-            $filter->compare('==', 'order.statusdelivery', OrderBase::STAT_UNFINISHED),
-        ]));
-        
-        return $orderManager->search($filter, ['order/product', 'order/address', 'order/service'])->first();
+        $orderId = \Illuminate\Support\Facades\DB::table('mshop_order')
+            ->where('customerid', $user->id)
+            ->where('statuspayment', OrderBase::PAY_UNFINISHED)
+            ->where('statusdelivery', OrderBase::STAT_UNFINISHED)
+            ->orderByDesc('id')
+            ->value('id');
+
+        return $orderId ? \Aimeos\MShop::create($context, 'order')->get($orderId, ['order/product']) : null;
     }
 
     private function getBasketController()
@@ -81,14 +80,14 @@ class CheckoutController extends Controller
         
         $context = $this->getContextWithLocale();
         $orderManager = \Aimeos\MShop::create($context, 'order');
-        $filter = $orderManager->filter();
-        $filter->add($filter->and([
-            $filter->compare('==', 'order.customerid', $user->id),
-            $filter->compare('==', 'order.statuspayment', OrderBase::PAY_UNFINISHED),
-            $filter->compare('==', 'order.statusdelivery', OrderBase::STAT_UNFINISHED),
-        ]));
-        
-        $order = $orderManager->search($filter, ['order/product', 'order/address', 'order/service'])->first();
+        $orderId = \Illuminate\Support\Facades\DB::table('mshop_order')
+            ->where('customerid', $user->id)
+            ->where('statuspayment', OrderBase::PAY_UNFINISHED)
+            ->where('statusdelivery', OrderBase::STAT_UNFINISHED)
+            ->orderByDesc('id')
+            ->value('id');
+
+        $order = $orderId ? $orderManager->get($orderId, ['order/product']) : null;
 
         if (!$order) {
             $order = $orderManager->create();
@@ -150,6 +149,233 @@ class CheckoutController extends Controller
         }
     }
 
+    private function selectedPositions(Request $request): array
+    {
+        $positions = $request->input('selected_positions', []);
+
+        if (is_string($positions)) {
+            $positions = array_filter(explode(',', $positions), fn ($value) => $value !== '');
+        }
+
+        if (!is_array($positions)) {
+            return [];
+        }
+
+        return array_values(array_unique(array_map('strval', $positions)));
+    }
+
+    private function getSelectedProducts($order, Request $request): array
+    {
+        $selected = $this->selectedPositions($request);
+        $products = [];
+
+        foreach ($order->getProducts() as $pos => $product) {
+            if (empty($selected) || in_array((string) $pos, $selected, true)) {
+                $products[] = $product;
+            }
+        }
+
+        return $products;
+    }
+
+    private function destinationIdFromAddress($deliveryAddress): string
+    {
+        if (!$deliveryAddress) {
+            throw new \RuntimeException('Alamat tujuan belum dipilih.');
+        }
+
+        if (!\Illuminate\Support\Facades\Schema::hasTable('tb_ro_cities')) {
+            $cityName = strtolower($deliveryAddress->getCity());
+            if (str_contains($cityName, 'barat')) return '151';
+            if (str_contains($cityName, 'bandung')) return '23';
+            if (str_contains($cityName, 'surabaya')) return '444';
+            if (str_contains($cityName, 'yogyakarta') || str_contains($cityName, 'jogja')) return '501';
+            if (str_contains($cityName, 'medan')) return '256';
+            if (str_contains($cityName, 'semarang')) return '399';
+            if (str_contains($cityName, 'depok')) return '115';
+            if (str_contains($cityName, 'bekasi')) return '55';
+            return '152';
+        }
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('mshop_order_address', 'komerce_destination_id')) {
+            $destinationId = \Illuminate\Support\Facades\DB::table('mshop_order_address')
+                ->where('id', $deliveryAddress->getId())
+                ->value('komerce_destination_id');
+
+            if ($destinationId) {
+                return (string) $destinationId;
+            }
+        }
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('mshop_order_address', 'ro_city_id')) {
+            $cityId = \Illuminate\Support\Facades\DB::table('mshop_order_address')
+                ->where('id', $deliveryAddress->getId())
+                ->value('ro_city_id');
+
+            if ($cityId) {
+                return (string) $cityId;
+            }
+        }
+
+        $cityName = trim((string) $deliveryAddress->getCity());
+        $postal = trim((string) $deliveryAddress->getPostal());
+        $city = \Illuminate\Support\Facades\DB::table('tb_ro_cities')
+            ->when($postal !== '', fn ($query) => $query->orderByRaw('postal_code = ? desc', [$postal]))
+            ->where('city_name', 'like', '%' . $cityName . '%')
+            ->orWhereRaw('? like concat("%", city_name, "%")', [$cityName])
+            ->orderBy('city_id')
+            ->first(['city_id']);
+
+        if (!$city && $cityName !== '') {
+            $normalized = preg_replace('/^(kota|kabupaten)\s+/i', '', $cityName);
+            $city = \Illuminate\Support\Facades\DB::table('tb_ro_cities')
+                ->where('city_name', 'like', '%' . $normalized . '%')
+                ->orderBy('city_id')
+                ->first(['city_id']);
+        }
+
+        if (!$city) {
+            throw new \RuntimeException('Alamat tujuan belum punya kota RajaOngkir. Pilih ulang alamat pengiriman dari daftar lokasi.');
+        }
+
+        return (string) $city->city_id;
+    }
+
+    private function getSellerShippingConfigByProductId(?string $productId): array
+    {
+        $site = \Illuminate\Support\Facades\DB::table('mshop_product')
+            ->join('mshop_locale_site', 'mshop_product.siteid', '=', 'mshop_locale_site.siteid')
+            ->where('mshop_product.id', $productId)
+            ->first(['mshop_locale_site.siteid', 'mshop_locale_site.label', 'mshop_locale_site.config']);
+
+        $config = [];
+        if ($site && $site->config) {
+            $decoded = json_decode($site->config, true);
+            $config = is_array($decoded) ? $decoded : [];
+        }
+
+        return [
+            'shop_name' => $site->label ?? 'Seller',
+            'origin_id' => $config['shipping.komerce_destination_id'] ?? $config['shipping.origin_id'] ?? (
+                \Illuminate\Support\Facades\Schema::hasTable('tb_ro_cities') ? null : '152'
+            ),
+            'couriers' => $this->sellerCourierCodes($site->siteid ?? null),
+        ];
+    }
+
+    private function sellerCourierCodes(?string $siteid): array
+    {
+        if (!$siteid || !\Illuminate\Support\Facades\Schema::hasTable('seller_shipping_couriers')) {
+            return $this->defaultCourierCodes();
+        }
+
+        $codes = \Illuminate\Support\Facades\DB::table('seller_shipping_couriers')
+            ->join('shipping_couriers', 'seller_shipping_couriers.courier_code', '=', 'shipping_couriers.code')
+            ->where('seller_shipping_couriers.siteid', $siteid)
+            ->where('shipping_couriers.active', true)
+            ->where('shipping_couriers.supports_domestic_cost', true)
+            ->pluck('seller_shipping_couriers.courier_code')
+            ->map(fn ($code) => (string) $code)
+            ->all();
+
+        return $codes ?: $this->defaultCourierCodes();
+    }
+
+    private function defaultCourierCodes(): array
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasTable('shipping_couriers')) {
+            return ['jne', 'jnt', 'sicepat'];
+        }
+
+        return \Illuminate\Support\Facades\DB::table('shipping_couriers')
+            ->where('active', true)
+            ->where('supports_domestic_cost', true)
+            ->orderBy('name')
+            ->pluck('code')
+            ->map(fn ($code) => (string) $code)
+            ->all();
+    }
+
+    private function productWeightGrams(?string $productId): int
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('mshop_product', 'weight_grams')) {
+            return 1000;
+        }
+
+        return max(1, (int) (\Illuminate\Support\Facades\DB::table('mshop_product')->where('id', $productId)->value('weight_grams') ?: 1000));
+    }
+
+    private function groupedShipmentWeights(array $products): array
+    {
+        $groups = [];
+
+        foreach ($products as $product) {
+            $shipping = $this->getSellerShippingConfigByProductId($product->getProductId());
+            if (empty($shipping['origin_id'])) {
+                throw new \RuntimeException('Alamat asal pengiriman toko ' . $shipping['shop_name'] . ' belum lengkap. Seller perlu memilih kota asal di Profil Toko.');
+            }
+
+            $originId = (string) $shipping['origin_id'];
+            $groups[$originId] ??= [
+                'origin_id' => $originId,
+                'shop_name' => $shipping['shop_name'],
+                'couriers' => $shipping['couriers'],
+                'weight_grams' => 0,
+            ];
+            $groups[$originId]['weight_grams'] += (int) $product->getQuantity() * $this->productWeightGrams($product->getProductId());
+        }
+
+        return array_values($groups);
+    }
+
+    private function calculateShippingOptions($order, Request $request, $deliveryAddress): array
+    {
+        $destinationId = $this->destinationIdFromAddress($deliveryAddress);
+        $shipmentGroups = $this->groupedShipmentWeights($this->getSelectedProducts($order, $request));
+        if ($shipmentGroups === []) {
+            return [];
+        }
+
+        $rajaOngkir = new \App\Services\RajaOngkirService();
+        $couriers = array_values(array_unique(array_merge(...array_map(fn ($group) => $group['couriers'] ?? [], $shipmentGroups))));
+        $optionsByCode = [];
+        $shipmentCount = count($shipmentGroups);
+
+        foreach ($couriers as $courier) {
+            foreach ($shipmentGroups as $group) {
+                if (!in_array($courier, $group['couriers'] ?? [], true)) {
+                    continue;
+                }
+
+                $res = $rajaOngkir->calculateDomesticCost($group['origin_id'], $destinationId, max(1, $group['weight_grams']), $courier);
+                foreach (($res['costs'] ?? []) as $costItem) {
+                    $service = strtolower($costItem['service'] ?? 'reg');
+                    $code = $courier . '_' . $service;
+                    $costVal = (float) ($costItem['cost'][0]['value'] ?? 0);
+                    if ($costVal <= 0) {
+                        continue;
+                    }
+
+                    if (!isset($optionsByCode[$code])) {
+                        $optionsByCode[$code] = [
+                            'code' => $code,
+                            'name' => ($res['name'] ?? strtoupper($courier)) . ' (' . strtoupper($service) . ')',
+                            'price' => 0.0,
+                            'shipments' => 0,
+                        ];
+                    }
+                    $optionsByCode[$code]['price'] += $costVal;
+                    $optionsByCode[$code]['shipments'] += 1;
+                }
+            }
+        }
+
+        return array_values(array_map(function ($option) {
+            unset($option['shipments']);
+            return $option;
+        }, array_filter($optionsByCode, fn ($option) => ($option['shipments'] ?? 0) === $shipmentCount)));
+    }
+
     /**
      * Set delivery address for checkout using Address ID from user's address book.
      */
@@ -183,6 +409,14 @@ class CheckoutController extends Controller
         $this->upsertOrderAddress($context, $order->getId(), 'delivery', $customerAddress);
         $this->upsertOrderAddress($context, $order->getId(), 'payment', $customerAddress);
 
+        \Illuminate\Support\Facades\DB::table('mshop_order_service')
+            ->where('parentid', $order->getId())
+            ->delete();
+
+        \Illuminate\Support\Facades\DB::table('mshop_order')
+            ->where('id', $order->getId())
+            ->update(['costs' => 0]);
+
         return response()->json([
             'message' => 'Alamat pengiriman berhasil dipilih.',
             'data'    => ['address_id' => $request->address_id]
@@ -196,21 +430,17 @@ class CheckoutController extends Controller
     {
         $addressManager = \Aimeos\MShop::create($context, 'order/address');
 
-        // find existing address of same type
-        $filter = $addressManager->filter(true)->add([
-            'order.address.parentid' => $orderId,
-            'order.address.type'     => $type,
-        ]);
-        $existing = $addressManager->search($filter)->first();
+        // Aimeos enforces a unique key on parent/type/position. Replacing the
+        // previous address first makes selecting an address idempotent.
+        \Illuminate\Support\Facades\DB::table('mshop_order_address')
+            ->where('parentid', $orderId)
+            ->where('type', $type)
+            ->delete();
 
-        if ($existing) {
-            $addrItem = $existing;
-        } else {
-            $addrItem = $addressManager->create();
-            $addrItem->setParentId($orderId);
-            $addrItem->setType($type);
-            $addrItem->setPosition(0);
-        }
+        $addrItem = $addressManager->create();
+        $addrItem->setParentId($orderId);
+        $addrItem->setType($type);
+        $addrItem->setPosition(0);
 
         $addrItem->setFirstname($customerAddress->getFirstname());
         $addrItem->setLastname($customerAddress->getLastname());
@@ -224,12 +454,39 @@ class CheckoutController extends Controller
         $addrItem->setLanguageId($customerAddress->getLanguageId() ?: 'id');
 
         $addressManager->save($addrItem);
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('mshop_customer_address', 'ro_city_id') && \Illuminate\Support\Facades\Schema::hasColumn('mshop_order_address', 'ro_city_id')) {
+            $columns = ['ro_city_id', 'ro_subdistrict_id'];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('mshop_customer_address', 'komerce_destination_id')) {
+                $columns[] = 'komerce_destination_id';
+            }
+
+            $location = \Illuminate\Support\Facades\DB::table('mshop_customer_address')
+                ->where('id', $customerAddress->getId())
+                ->first($columns);
+
+            if ($location) {
+                $update = [
+                    'ro_city_id' => $location->ro_city_id,
+                    'ro_subdistrict_id' => $location->ro_subdistrict_id,
+                ];
+                if (\Illuminate\Support\Facades\Schema::hasColumn('mshop_order_address', 'komerce_destination_id')) {
+                    $update['komerce_destination_id'] = $location->komerce_destination_id ?? null;
+                }
+
+                \Illuminate\Support\Facades\DB::table('mshop_order_address')
+                    ->where('parentid', $orderId)
+                    ->where('type', $type)
+                    ->where('pos', 0)
+                    ->update($update);
+            }
+        }
     }
 
     /**
      * Get shipping options using RajaOngkir calculator
      */
-    public function getShippingOptions()
+    public function getShippingOptions(Request $request)
     {
         $order = $this->getOrderForUser();
         if (!$order) {
@@ -244,45 +501,11 @@ class CheckoutController extends Controller
         ]);
         $deliveryAddress = $addressManager->search($filter)->first();
 
-        // Map Indonesian cities to simulated RajaOngkir city IDs
-        $cityId = '152'; // Default: Jakarta Pusat
-        if ($deliveryAddress) {
-            $cityName = strtolower($deliveryAddress->getCity());
-            if (str_contains($cityName, 'barat')) $cityId = '151';
-            elseif (str_contains($cityName, 'bandung')) $cityId = '23';
-            elseif (str_contains($cityName, 'surabaya')) $cityId = '444';
-            elseif (str_contains($cityName, 'yogyakarta') || str_contains($cityName, 'jogja')) $cityId = '501';
-            elseif (str_contains($cityName, 'medan')) $cityId = '256';
-            elseif (str_contains($cityName, 'semarang')) $cityId = '399';
-            elseif (str_contains($cityName, 'depok')) $cityId = '115';
-            elseif (str_contains($cityName, 'bekasi')) $cityId = '55';
-        }
-
-        // Calculate total weight (default 1kg per product)
-        $weightGrams = 0;
-        foreach ($order->getProducts() as $product) {
-            $weightGrams += ($product->getQuantity() * 1000);
-        }
-        $weightGrams = max(1000, $weightGrams);
-
-        $rajaOngkir = new \App\Services\RajaOngkirService();
-        
-        $couriers = ['jne', 'jnt', 'sicepat'];
-        $options = [];
-
-        foreach ($couriers as $courier) {
-            $res = $rajaOngkir->calculateCost($cityId, $weightGrams, $courier);
-            if (!empty($res) && isset($res['costs'][0]['cost'][0]['value'])) {
-                $costVal = $res['costs'][0]['cost'][0]['value'];
-                $serviceName = $res['name'] . ' (' . ($res['costs'][0]['service'] ?? 'REG') . ')';
-                $code = $courier . '_' . strtolower($res['costs'][0]['service'] ?? 'reg');
-                
-                $options[] = [
-                    'code' => $code,
-                    'name' => $serviceName,
-                    'price' => (float) $costVal
-                ];
-            }
+        try {
+            $options = $this->calculateShippingOptions($order, $request, $deliveryAddress);
+        } catch (\RuntimeException $e) {
+            \Illuminate\Support\Facades\Log::warning('Checkout shipping options unavailable: ' . $e->getMessage());
+            return response()->json(['message' => $e->getMessage()], 422);
         }
 
         // If no options are calculated, return fallback
@@ -313,10 +536,6 @@ class CheckoutController extends Controller
             return response()->json(['message' => 'Keranjang kosong.'], 400);
         }
 
-        // Extract courier and service from code (e.g. jne_reg)
-        $parts = explode('_', $request->shipping_code);
-        $courier = $parts[0] ?? 'jne';
-        
         $context = $this->getContextWithLocale();
         $addressManager = \Aimeos\MShop::create($context, 'order/address');
         $filter = $addressManager->filter(true)->add([
@@ -325,33 +544,18 @@ class CheckoutController extends Controller
         ]);
         $deliveryAddress = $addressManager->search($filter)->first();
 
-        $cityId = '152'; // Default
-        if ($deliveryAddress) {
-            $cityName = strtolower($deliveryAddress->getCity());
-            if (str_contains($cityName, 'barat')) $cityId = '151';
-            elseif (str_contains($cityName, 'bandung')) $cityId = '23';
-            elseif (str_contains($cityName, 'surabaya')) $cityId = '444';
-            elseif (str_contains($cityName, 'yogyakarta') || str_contains($cityName, 'jogja')) $cityId = '501';
-            elseif (str_contains($cityName, 'medan')) $cityId = '256';
-            elseif (str_contains($cityName, 'semarang')) $cityId = '399';
-            elseif (str_contains($cityName, 'depok')) $cityId = '115';
-            elseif (str_contains($cityName, 'bekasi')) $cityId = '55';
+        try {
+            $options = $this->calculateShippingOptions($order, $request, $deliveryAddress);
+        } catch (\RuntimeException $e) {
+            \Illuminate\Support\Facades\Log::warning('Checkout shipping selection unavailable: ' . $e->getMessage());
+            return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        $weightGrams = 0;
-        foreach ($order->getProducts() as $product) {
-            $weightGrams += ($product->getQuantity() * 1000);
-        }
-        $weightGrams = max(1000, $weightGrams);
-
-        $rajaOngkir = new \App\Services\RajaOngkirService();
-        $res = $rajaOngkir->calculateCost($cityId, $weightGrams, $courier);
-
-        if (!empty($res) && isset($res['costs'][0]['cost'][0]['value'])) {
-            $price = (float) $res['costs'][0]['cost'][0]['value'];
-            $name = $res['name'] . ' (' . ($res['costs'][0]['service'] ?? 'REG') . ')';
+        $selectedOption = collect($options)->firstWhere('code', $request->shipping_code);
+        if ($selectedOption) {
+            $price = (float) $selectedOption['price'];
+            $name = $selectedOption['name'];
         } else {
-            // Fallback
             $price = 15000;
             $name = 'JNE Reguler (REG)';
         }
@@ -421,21 +625,17 @@ class CheckoutController extends Controller
     {
         $serviceManager = \Aimeos\MShop::create($context, 'order/service');
 
-        // Check existing service of same type for this order
-        $filter = $serviceManager->filter(true)->add([
-            'order.service.parentid' => $orderId,
-            'order.service.type'     => $type,
-        ]);
-        $existing = $serviceManager->search($filter)->first();
+        // Aimeos enforces a unique key on parent/type/position. Replacing the
+        // previous service first makes selecting shipping/payment idempotent.
+        \Illuminate\Support\Facades\DB::table('mshop_order_service')
+            ->where('parentid', $orderId)
+            ->where('type', $type)
+            ->delete();
 
-        if ($existing) {
-            $serviceItem = $existing;
-        } else {
-            $serviceItem = $serviceManager->create();
-            $serviceItem->setParentId($orderId);
-            $serviceItem->setType($type);
-            $serviceItem->setPosition(1);
-        }
+        $serviceItem = $serviceManager->create();
+        $serviceItem->setParentId($orderId);
+        $serviceItem->setType($type);
+        $serviceItem->setPosition(0);
 
         // Create & save new service item
         $priceItem = \Aimeos\MShop::create($context, 'price')->create()
@@ -457,6 +657,21 @@ class CheckoutController extends Controller
         $order = $this->getOrderForUser();
         if (!$order || count($order->getProducts()) === 0) {
             return response()->json(['message' => 'Keranjang kosong.'], 400);
+        }
+
+        $selectedPositions = $this->selectedPositions($request);
+        if (!empty($selectedPositions)) {
+            $selectedProducts = $this->getSelectedProducts($order, $request);
+            if (count($selectedProducts) === 0) {
+                return response()->json(['message' => 'Pilih minimal satu produk untuk checkout.'], 400);
+            }
+
+            \Illuminate\Support\Facades\DB::table('mshop_order_product')
+                ->where('parentid', $order->getId())
+                ->whereNotIn('pos', $selectedPositions)
+                ->delete();
+
+            $order = $this->getOrderForUser();
         }
 
         // Resolve context first (needed for all DB checks below)
@@ -495,10 +710,28 @@ class CheckoutController extends Controller
             return response()->json(['message' => 'Metode pembayaran belum dipilih.'], 400);
         }
 
-        $orderManager = \Aimeos\MShop::create($context, 'order');
-        $order->setStatusPayment(OrderBase::PAY_PENDING);
-        $order->setStatusDelivery(OrderBase::STAT_PENDING);
-        $orderManager->save($order);
+        // Save app_service_fee service item
+        $appServiceFee = (float) \App\Models\SystemSetting::getVal('app_service_fee', 2000);
+        $this->upsertOrderService($context, $order->getId(), 'service', 'app_service_fee', 'Biaya Layanan Aplikasi', $appServiceFee);
+
+        // Fetch shipping cost to compute total costs (shipping + app service fee)
+        $shippingPrice = 0.0;
+        $services = \DB::table('mshop_order_service')->where('parentid', $order->getId())->get();
+        foreach ($services as $srv) {
+            if ($srv->type === 'delivery') {
+                $shippingPrice = (float) $srv->price;
+            }
+        }
+        $totalCosts = $shippingPrice + $appServiceFee;
+
+        // Update costs column of mshop_order in database
+        \DB::table('mshop_order')
+            ->where('id', $order->getId())
+            ->update([
+                'statuspayment' => OrderBase::PAY_PENDING,
+                'statusdelivery' => OrderBase::STAT_PENDING,
+                'costs' => $totalCosts,
+            ]);
 
         // Mock Midtrans payment URL
         $mockPaymentUrl = 'https://app.sandbox.midtrans.com/snap/v2/vtweb/mock-token-' . uniqid();

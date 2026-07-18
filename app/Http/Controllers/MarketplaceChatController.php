@@ -55,14 +55,16 @@ class MarketplaceChatController extends Controller
             ->update(['seen' => 1]);
 
         $formattedMessages = $messages->map(function ($msg) {
+            $createdAt = $msg->created_at->timezone(config('app.timezone'));
+
             return [
                 'id'        => $msg->id,
                 'from_id'   => $msg->from_id,
                 'to_id'     => $msg->to_id,
                 'body'      => $msg->body,
                 'seen'      => $msg->seen,
-                'time'      => $msg->created_at->format('H:i'),
-                'date'      => $msg->created_at->format('d M Y'),
+                'time'      => $createdAt->format('H:i'),
+                'date'      => $createdAt->format('d M Y'),
                 'is_sender' => $msg->from_id == Auth::id(),
             ];
         });
@@ -125,7 +127,7 @@ class MarketplaceChatController extends Controller
                 'from_id'   => $msg->from_id,
                 'to_id'     => $msg->to_id,
                 'body'      => $msg->body,
-                'time'      => $msg->created_at->format('H:i'),
+                'time'      => $msg->created_at->timezone(config('app.timezone'))->format('H:i'),
                 'is_sender' => true,
             ]
         ]);
@@ -179,7 +181,7 @@ class MarketplaceChatController extends Controller
                 ],
                 'last_message' => [
                     'body' => html_entity_decode($lastMessage->body),
-                    'time' => $lastMessage->created_at->diffForHumans(null, true, true), // Short diff
+                    'time' => $lastMessage->created_at->timezone(config('app.timezone'))->diffForHumans(null, true, true), // Short diff
                     'timestamp' => $lastMessage->created_at->timestamp,
                     'is_sender' => $lastMessage->from_id == $authId,
                 ],

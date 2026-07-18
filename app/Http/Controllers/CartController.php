@@ -67,14 +67,14 @@ class CartController extends Controller
         
         $context = $this->getContextWithLocale();
         $orderManager = \Aimeos\MShop::create($context, 'order');
-        $filter = $orderManager->filter();
-        $filter->add($filter->and([
-            $filter->compare('==', 'order.customerid', $user->id),
-            $filter->compare('==', 'order.statuspayment', OrderBase::PAY_UNFINISHED),
-            $filter->compare('==', 'order.statusdelivery', OrderBase::STAT_UNFINISHED),
-        ]));
-        
-        $order = $orderManager->search($filter, ['order/product', 'order/address', 'order/service'])->first();
+        $orderId = \Illuminate\Support\Facades\DB::table('mshop_order')
+            ->where('customerid', $user->id)
+            ->where('statuspayment', OrderBase::PAY_UNFINISHED)
+            ->where('statusdelivery', OrderBase::STAT_UNFINISHED)
+            ->orderByDesc('id')
+            ->value('id');
+
+        $order = $orderId ? $orderManager->get($orderId, ['order/product']) : null;
         
         if (!$order) {
             $order = $orderManager->create();
@@ -118,20 +118,62 @@ class CartController extends Controller
         
         // Save to database
         $orderManager->begin();
+        $savedOrderId = null;
+        $savedOrderPrice = 0;
         try {
-            $orderManager->save($order);
-            
-            $orderProductManager = \Aimeos\MShop::create($context, 'order/product');
-            
-            foreach ($order->getProducts() as $productItem) {
-                $productItem->setParentId($order->getId());
-                $orderProductManager->save($productItem);
+            $existingOrderId = $order->getId();
+
+            if ($existingOrderId) {
+                \Illuminate\Support\Facades\DB::table('mshop_order_product')
+                    ->where('parentid', $existingOrderId)
+                    ->delete();
+
+                \Illuminate\Support\Facades\DB::table('mshop_order_address')
+                    ->where('parentid', $existingOrderId)
+                    ->delete();
+
+                \Illuminate\Support\Facades\DB::table('mshop_order_service')
+                    ->where('parentid', $existingOrderId)
+                    ->delete();
             }
+
+            if ($existingOrderId) {
+                $orderProductManager = \Aimeos\MShop::create($context, 'order/product');
+
+                foreach ($order->getProducts() as $pos => $productItem) {
+                    $productItem->setParentId($existingOrderId);
+                    $productItem->setPosition((int) $pos);
+                    $productItem->setId(null);
+                    $orderProductManager->save($productItem);
+                }
+            } else {
+                $orderManager->save($order);
+            }
+
+            $savedOrderId = $order->getId();
+            $savedOrderPrice = (float) $order->getPrice()->getValue();
             
             $orderManager->commit();
         } catch (\Exception $e) {
             $orderManager->rollback();
             throw $e;
+        }
+
+        if ($savedOrderId) {
+            \Illuminate\Support\Facades\DB::table('mshop_order_address')
+                ->where('parentid', $savedOrderId)
+                ->delete();
+
+            \Illuminate\Support\Facades\DB::table('mshop_order_service')
+                ->where('parentid', $savedOrderId)
+                ->delete();
+
+            \Illuminate\Support\Facades\DB::table('mshop_order')
+                ->where('id', $savedOrderId)
+                ->update([
+                    'price' => $savedOrderPrice,
+                    'costs' => 0,
+                ]);
         }
     }
 
@@ -174,6 +216,8 @@ class CartController extends Controller
                 'name' => $couponItem->getName(),
             ];
         }
+
+        $data['app_service_fee'] = (float) \App\Models\SystemSetting::getVal('app_service_fee', 2000);
         
         return $data;
     }
@@ -347,6 +391,7 @@ class CartController extends Controller
             $filter->compare('==', 'order.statuspayment', OrderBase::PAY_UNFINISHED),
             $filter->compare('==', 'order.statusdelivery', OrderBase::STAT_UNFINISHED),
         ]));
+        $filter->order('-order.id')->slice(0, 1);
         
         $order = $orderManager->search($filter)->first();
         

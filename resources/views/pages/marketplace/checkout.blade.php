@@ -197,6 +197,10 @@
                             <span>Ongkir</span>
                             <span id="co-shipping-price" class="font-semibold text-on-surface">Rp 0</span>
                         </div>
+                        <div id="co-service-fee-row" class="flex justify-between text-on-surface-variant">
+                            <span>Biaya Layanan Aplikasi</span>
+                            <span id="co-service-fee-price" class="font-semibold text-on-surface">Rp 0</span>
+                        </div>
                     </div>
                     <div class="px-5 pb-5 border-t border-outline-variant/10">
                         <div class="flex justify-between font-black text-on-surface text-base pt-3">
@@ -254,16 +258,42 @@
             </label>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <label class="space-y-1.5 block">
-                    <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Kota *</span>
-                    <input name="city" type="text" required placeholder="Jakarta"
-                        class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow" />
+                    <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Provinsi *</span>
+                    <select id="address-province-input" required
+                        class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow">
+                        <option value="">Pilih provinsi</option>
+                    </select>
                 </label>
                 <label class="space-y-1.5 block">
-                    <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Kode Pos *</span>
-                    <input name="postal" type="text" required placeholder="10110"
+                    <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Kota/Kabupaten *</span>
+                    <select name="ro_city_id" id="address-city-input" required
+                        class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow">
+                        <option value="">Pilih kota/kabupaten</option>
+                    </select>
+                </label>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <label class="space-y-1.5 block">
+                    <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Kecamatan</span>
+                    <select name="ro_subdistrict_id" id="address-subdistrict-input"
+                        class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow">
+                        <option value="">Pilih kecamatan</option>
+                    </select>
+                </label>
+                <label class="space-y-1.5 block">
+                    <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Kode Pos</span>
+                    <input name="postal" id="address-postal-input" type="text" placeholder="Terisi otomatis"
                         class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow" />
                 </label>
             </div>
+            <label class="space-y-1.5 block">
+                <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Kelurahan/Desa RajaOngkir Komerce</span>
+                <input id="address-komerce-search-input" type="search" placeholder="Cari kelurahan, kecamatan, kota, atau kode pos..."
+                    class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow" autocomplete="off" />
+                <input type="hidden" name="komerce_destination_id" id="address-komerce-destination-id-input" />
+                <div id="address-komerce-results" class="hidden rounded-2xl border border-outline-variant/20 bg-surface-container-lowest shadow-lg overflow-hidden"></div>
+                <p id="address-komerce-selected-label" class="text-[11px] text-primary font-semibold"></p>
+            </label>
             <div id="add-address-error" class="hidden text-xs text-error font-semibold bg-error-container/20 px-4 py-2 rounded-full"></div>
         </form>
         <div class="px-6 pb-6 flex gap-3">
@@ -304,6 +334,9 @@
     let selectedPaymentCode = null;
     let selectedPaymentName = null;
     let cartSubtotal = 0;
+    let appServiceFee = 2000;
+    const CHECKOUT_SELECTION_KEY = 'reborns.checkout.selected_positions';
+    let checkoutSelectedPositions = [];
 
     function showToast(message, type = 'success') {
         const container = document.getElementById('checkout-toast-container');
@@ -324,6 +357,104 @@
 
     function formatRupiah(value) {
         return 'Rp ' + Number(value || 0).toLocaleString('id-ID');
+    }
+
+    function locationOption(value, label) {
+        return `<option value="${value}">${label}</option>`;
+    }
+
+    async function loadAddressProvinces() {
+        const select = document.getElementById('address-province-input');
+        if (!select || select.dataset.loaded === '1') return;
+
+        const res = await fetch('/api/rajaongkir/locations/provinces', { headers: { 'Accept': 'application/json' } });
+        const body = await res.json();
+        select.innerHTML = '<option value="">Pilih provinsi</option>' + (body.data || [])
+            .map(item => locationOption(item.province_id, item.province_name))
+            .join('');
+        select.dataset.loaded = '1';
+    }
+
+    async function loadAddressCities(provinceId) {
+        const citySelect = document.getElementById('address-city-input');
+        const subdistrictSelect = document.getElementById('address-subdistrict-input');
+        citySelect.innerHTML = '<option value="">Pilih kota/kabupaten</option>';
+        subdistrictSelect.innerHTML = '<option value="">Pilih kecamatan</option>';
+        document.getElementById('address-postal-input').value = '';
+        if (!provinceId) return;
+
+        const res = await fetch(`/api/rajaongkir/locations/cities?province_id=${encodeURIComponent(provinceId)}`, { headers: { 'Accept': 'application/json' } });
+        const body = await res.json();
+        citySelect.innerHTML = '<option value="">Pilih kota/kabupaten</option>' + (body.data || [])
+            .map(item => `<option value="${item.city_id}" data-postal="${item.postal_code || ''}">${item.city_name}</option>`)
+            .join('');
+    }
+
+    async function loadAddressSubdistricts(cityId) {
+        const select = document.getElementById('address-subdistrict-input');
+        select.innerHTML = '<option value="">Pilih kecamatan</option>';
+        if (!cityId) return;
+
+        const res = await fetch(`/api/rajaongkir/locations/subdistricts?city_id=${encodeURIComponent(cityId)}`, { headers: { 'Accept': 'application/json' } });
+        const body = await res.json();
+        select.innerHTML = '<option value="">Pilih kecamatan</option>' + (body.data || [])
+            .map(item => locationOption(item.subdistrict_id, item.subdistrict_name))
+            .join('');
+    }
+
+    let addressKomerceSearchTimer = null;
+    document.getElementById('address-komerce-search-input')?.addEventListener('input', (event) => {
+        clearTimeout(addressKomerceSearchTimer);
+        const keyword = event.target.value.trim();
+        document.getElementById('address-komerce-destination-id-input').value = '';
+
+        if (keyword.length < 2) {
+            document.getElementById('address-komerce-results').classList.add('hidden');
+            return;
+        }
+
+        addressKomerceSearchTimer = setTimeout(() => searchAddressKomerceDestinations(keyword), 250);
+    });
+
+    async function searchAddressKomerceDestinations(keyword) {
+        const results = document.getElementById('address-komerce-results');
+        const res = await fetch(`/api/rajaongkir/locations/komerce-destinations?search=${encodeURIComponent(keyword)}`, { headers: { 'Accept': 'application/json' } });
+        const body = await res.json();
+        const rows = body.data || [];
+
+        if (rows.length === 0) {
+            results.innerHTML = '<div class="px-4 py-3 text-xs text-on-surface-variant">Belum ada data Komerce. Jalankan sync lokasi dulu.</div>';
+            results.classList.remove('hidden');
+            return;
+        }
+
+        results.innerHTML = rows.map(row => `
+            <button type="button" class="w-full text-left px-4 py-3 hover:bg-primary/5 border-b border-outline-variant/10 last:border-0" data-id="${row.id}" data-label="${row.label}" data-postal="${row.zip_code || ''}">
+                <span class="block text-xs font-bold text-on-surface">${row.label}</span>
+            </button>
+        `).join('');
+        results.classList.remove('hidden');
+    }
+
+    document.getElementById('address-komerce-results')?.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-id]');
+        if (!button) return;
+
+        document.getElementById('address-komerce-destination-id-input').value = button.dataset.id;
+        document.getElementById('address-komerce-search-input').value = button.dataset.label;
+        document.getElementById('address-komerce-selected-label').textContent = `Dipakai untuk ongkir: ID Komerce ${button.dataset.id}`;
+        if (button.dataset.postal) {
+            document.getElementById('address-postal-input').value = button.dataset.postal;
+        }
+        document.getElementById('address-komerce-results').classList.add('hidden');
+    });
+
+    function loadCheckoutSelection() {
+        try {
+            return JSON.parse(sessionStorage.getItem(CHECKOUT_SELECTION_KEY) || '[]').map(String);
+        } catch (e) {
+            return [];
+        }
     }
 
     function activateStep(stepNum) {
@@ -369,12 +500,18 @@
             const body = await res.json();
             const data = body.data || {};
             const products = data.product || {};
-            const productList = Object.values(products);
+            const entries = Object.entries(products);
+            const selectedSet = new Set(loadCheckoutSelection());
+            const selectedEntries = selectedSet.size > 0
+                ? entries.filter(([pos]) => selectedSet.has(String(pos)))
+                : entries;
+            const productList = selectedEntries.map(([, item]) => item);
+            checkoutSelectedPositions = selectedEntries.map(([pos]) => String(pos));
 
             // Preview items
             const preview = document.getElementById('checkout-items-preview');
             if (productList.length === 0) {
-                preview.innerHTML = '<p class="text-xs text-center text-on-surface-variant py-6">Keranjang kosong</p>';
+                preview.innerHTML = '<p class="text-xs text-center text-on-surface-variant py-6">Belum ada produk yang dipilih</p>';
                 return;
             }
             let subtotal = 0;
@@ -394,9 +531,11 @@
                 </div>`;
             }).join('');
 
+            appServiceFee = parseFloat(data.app_service_fee || 2000);
             cartSubtotal = subtotal;
             document.getElementById('co-subtotal').textContent = formatRupiah(subtotal);
-            document.getElementById('co-total').textContent = formatRupiah(subtotal);
+            document.getElementById('co-service-fee-price').textContent = formatRupiah(appServiceFee);
+            document.getElementById('co-total').textContent = formatRupiah(subtotal + appServiceFee + selectedShippingPrice);
         } catch (e) {}
     }
 
@@ -481,13 +620,28 @@
     function openAddressModal() {
         document.getElementById('add-address-modal').classList.remove('hidden');
         document.getElementById('add-address-modal').classList.add('flex');
+        loadAddressProvinces();
     }
     function closeAddressModal() {
         document.getElementById('add-address-modal').classList.add('hidden');
         document.getElementById('add-address-modal').classList.remove('flex');
         document.getElementById('add-address-form').reset();
+        document.getElementById('address-city-input').innerHTML = '<option value="">Pilih kota/kabupaten</option>';
+        document.getElementById('address-subdistrict-input').innerHTML = '<option value="">Pilih kecamatan</option>';
+        document.getElementById('address-komerce-results').classList.add('hidden');
+        document.getElementById('address-komerce-selected-label').textContent = '';
         document.getElementById('add-address-error').classList.add('hidden');
     }
+
+    document.getElementById('address-province-input')?.addEventListener('change', (event) => {
+        loadAddressCities(event.target.value);
+    });
+
+    document.getElementById('address-city-input')?.addEventListener('change', (event) => {
+        const selected = event.target.options[event.target.selectedIndex];
+        document.getElementById('address-postal-input').value = selected?.dataset?.postal || '';
+        loadAddressSubdistricts(event.target.value);
+    });
 
     async function saveNewAddress() {
         const form = document.getElementById('add-address-form');
@@ -545,7 +699,8 @@
         const container = document.getElementById('shipping-options-container');
         container.innerHTML = '<p class="text-sm text-on-surface-variant text-center py-4 animate-pulse">Memuat opsi pengiriman...</p>';
         try {
-            const res = await fetch('/api/checkout/shipping', { headers: { 'Accept': 'application/json' } });
+            const qs = checkoutSelectedPositions.length ? `?selected_positions=${encodeURIComponent(checkoutSelectedPositions.join(','))}` : '';
+            const res = await fetch(`/api/checkout/shipping${qs}`, { headers: { 'Accept': 'application/json' } });
             const body = await res.json();
             const options = body.data || [];
             container.innerHTML = options.map(opt => `
@@ -579,14 +734,14 @@
             const res = await fetch('/api/checkout/shipping', {
                 method: 'POST',
                 headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
-                body: JSON.stringify({ shipping_code: selectedShippingCode })
+                body: JSON.stringify({ shipping_code: selectedShippingCode, selected_positions: checkoutSelectedPositions })
             });
             const body = await res.json();
             if (!res.ok) throw new Error(body.message || 'Gagal memilih pengiriman');
             // Update summary
             document.getElementById('co-shipping-row').classList.remove('hidden');
             document.getElementById('co-shipping-price').textContent = formatRupiah(selectedShippingPrice);
-            document.getElementById('co-total').textContent = formatRupiah(cartSubtotal + selectedShippingPrice);
+            document.getElementById('co-total').textContent = formatRupiah(cartSubtotal + selectedShippingPrice + appServiceFee);
             document.getElementById('co-ship-summary').classList.remove('hidden');
             document.getElementById('co-ship-text').textContent = `${selectedShippingName} (${formatRupiah(selectedShippingPrice)})`;
             showToast('Layanan pengiriman dipilih!');
@@ -665,7 +820,7 @@
                     </div>
                     <div class="flex justify-between font-black text-base border-t border-outline-variant/20 pt-3">
                         <span>Total Bayar</span>
-                        <span class="text-primary">${formatRupiah(cartSubtotal + selectedShippingPrice)}</span>
+                        <span class="text-primary">${formatRupiah(cartSubtotal + selectedShippingPrice + appServiceFee)}</span>
                     </div>
                 </div>
             `;
@@ -688,10 +843,11 @@
             const res = await fetch('/api/checkout/process', {
                 method: 'POST',
                 headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
-                body: JSON.stringify({})
+                body: JSON.stringify({ selected_positions: checkoutSelectedPositions })
             });
             const body = await res.json();
             if (!res.ok) throw new Error(body.message || 'Gagal membuat pesanan');
+            sessionStorage.removeItem(CHECKOUT_SELECTION_KEY);
             // Show success modal
             const modal = document.getElementById('order-success-modal');
             const data = body.data || {};

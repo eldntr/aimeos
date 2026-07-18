@@ -50,8 +50,8 @@ class WalletApiTest extends TestCase
         // Check balance again
         $response2 = $this->actingAs($seller, 'sanctum')->get('/api/seller/wallet');
         $response2->assertStatus(200)
-                 ->assertJsonPath('data.total_revenue', 150000)
-                 ->assertJsonPath('data.available_balance', 150000);
+                 ->assertJsonPath('data.total_revenue', 142500)
+                 ->assertJsonPath('data.available_balance', 142500);
     }
 
     public function test_seller_can_withdraw_funds()
@@ -98,7 +98,7 @@ class WalletApiTest extends TestCase
         // Check wallet again to see if pending reduces balance
         $response3 = $this->actingAs($seller, 'sanctum')->get('/api/seller/wallet');
         $response3->assertStatus(200)
-                  ->assertJsonPath('data.available_balance', 100000)
+                  ->assertJsonPath('data.available_balance', 92500)
                   ->assertJsonPath('data.pending_withdrawal', 50000);
     }
 }

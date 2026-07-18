@@ -84,16 +84,23 @@
                                 <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold {{ $statusClass }}">
                                     {{ $statusLabel }}
                                 </span>
+                                @if(!empty($order['has_complaint']))
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-800">
+                                        <span class="material-symbols-outlined text-xs">report</span>
+                                        Ada Komplain
+                                    </span>
+                                @endif
                             </div>
                             <div class="flex items-center gap-4">
                                 <div class="text-xs text-on-surface-variant">
                                     Total Pesanan: <span class="font-bold text-sm text-primary">Rp {{ number_format($order['price'], 0, ',', '.') }}</span>
                                 </div>
-                                @if(!empty($order['tracking_number']))
-                                    <div class="text-xs text-outline">
-                                        Resi: <span class="font-semibold text-on-surface">{{ $order['tracking_number'] }}</span>
-                                    </div>
-                                @endif
+                                <div class="text-xs text-on-surface-variant">
+                                    Estimasi Diterima: <span class="font-bold text-sm text-emerald-600">Rp {{ number_format($order['seller_share'] ?? $order['price'], 0, ',', '.') }}</span>
+                                </div>
+                                <div class="text-xs text-outline">
+                                    Resi: <span class="font-semibold text-on-surface">{{ $order['tracking_number'] ?: '-' }}</span>
+                                </div>
                             </div>
                         </div>
 
