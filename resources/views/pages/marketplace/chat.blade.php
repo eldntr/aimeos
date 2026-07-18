@@ -362,54 +362,32 @@
             }
         }
 
-        // Select and Load Conversation
-        window.selectConversation = function(userId) {
-            activeChatUserId = userId;
 
-            // Show Chat Components
+        // Select and Load Conversation — accepts shop_code (string) or user_id (numeric string)
+        window.selectConversation = async function(userIdOrShopCode) {
+            // Clear existing message poll
+            if (messagesPollInterval) clearInterval(messagesPollInterval);
+
+            // Show room panels
             roomHeader.classList.remove('hidden');
             messagesBody.classList.remove('hidden');
             chatForm.classList.remove('hidden');
             roomPlaceholder.classList.add('hidden');
 
-            // Show Loader
-            messagesBody.innerHTML = `
-                <div class="flex items-center justify-center h-full">
-                    <span class="material-symbols-outlined text-3xl text-neutral-300 animate-spin">sync</span>
-                </div>
-            `;
-
-            fetchMessages(userId, true);
-
-            // Set polling for active messages
-            clearInterval(messagesPollInterval);
-            messagesPollInterval = setInterval(() => {
-                if (activeChatUserId) fetchMessages(activeChatUserId);
-            }, 3000);
-
-            // Select Conversation by userId or shopCode
-        window.selectConversation = async function(userIdOrShopCode) {
-            // Clear poll
-            if (messagesPollInterval) clearInterval(messagesPollInterval);
-
-            const isNumeric = /^\d+$/.test(String(userIdOrShopCode));
-
-            // Show room panels
-            document.getElementById('page-messages-body').classList.remove('hidden');
-            document.getElementById('page-chat-form').classList.remove('hidden');
-            document.getElementById('chat-room-header').classList.remove('hidden');
-            document.getElementById('chat-placeholder').classList.add('hidden');
+            // Show skeleton while loading
+            document.getElementById('messages-skeleton')?.classList.remove('hidden');
 
             await fetchMessages(userIdOrShopCode, true);
 
-            // Poll messages every 3 seconds using the resolved user_id (internal)
+            // Poll messages every 3 seconds using the resolved internal user_id
             messagesPollInterval = setInterval(() => {
                 if (activeChatUserId) fetchMessages(activeChatUserId);
             }, 3000);
 
-            // Re-render conversation list items to update active status class
+            // Re-render conversation list to update active highlight
             fetchConversations();
         };
+
 
         // Send Message Form Submit
         chatForm.addEventListener('submit', async (e) => {
