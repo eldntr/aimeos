@@ -49,7 +49,7 @@
             'showNav' => false,
             'layout' => 'grid',
             'cardVariant' => 'catalog',
-            'products' => $products ?? [],
+            'products' => $trendingProducts ?? [],
             'limit' => 8
         ])
 
@@ -58,7 +58,7 @@
             'showNav' => false,
             'layout' => 'grid',
             'cardVariant' => 'catalog',
-            'products' => $products ?? [],
+            'products' => $priceDroppedProducts ?? [],
             'limit' => 8
         ])
     </section>

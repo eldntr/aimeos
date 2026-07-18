@@ -28,6 +28,7 @@
                     alt="{{ $slide['title'] ?? 'Banner Reborns' }}"
                     class="w-full h-full object-cover"
                     src="{{ $slide['image'] ?? $fallbackSlide['image'] }}"
+                    onerror="handleProductImageError(this)"
                 />
                 @unless($imageOnly)
                     <div class="absolute inset-0 z-20 flex flex-col justify-center px-6 md:px-12 max-w-2xl space-y-4 md:space-y-5">

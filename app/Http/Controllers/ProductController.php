@@ -60,6 +60,14 @@ class ProductController extends Controller
         $manager = \Aimeos\MShop::create($context, 'product');
         $filter  = $manager->filter(true); // status=1 (active only)
 
+        $ids = $request->query('ids', []);
+        if (!empty($ids)) {
+            if (is_string($ids)) {
+                $ids = explode(',', $ids);
+            }
+            $filter->add($filter->compare('in', 'product.id', $ids));
+        }
+
         if ($search) {
             $conditions = [];
             $conditions[] = $filter->compare('~=', 'product.label', $search);

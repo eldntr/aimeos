@@ -68,5 +68,6 @@ class Kernel extends HttpKernel
         'seller' => \App\Http\Middleware\EnsureIsSeller::class,
         'seller.approved' => \App\Http\Middleware\EnsureSellerIsApproved::class,
         'admin' => \App\Http\Middleware\EnsureIsAdmin::class,
+        'block.contact.info' => \App\Http\Middleware\BlockContactInfo::class,
     ];
 }

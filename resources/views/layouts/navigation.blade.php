@@ -26,7 +26,7 @@
 
     {{-- Desktop autocomplete search bar --}}
     <div class="flex-1 max-w-2xl px-8 hidden lg:block" data-search-widget="desktop">
-        <form id="navbar-search-form-desktop" action="{{ route('landing') }}" method="GET" class="relative" role="search" autocomplete="off">
+        <form id="navbar-search-form-desktop" action="/marketplace/search" method="GET" class="relative" role="search" autocomplete="off">
             <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none z-10">search</span>
             <input
                 id="navbar-search-desktop"
@@ -55,12 +55,6 @@
 
     <div class="flex items-center gap-3 md:gap-6 shrink-0">
         @auth
-        <a
-            href="{{ route('profile.edit', $routeParams) }}#wishlist"
-            class="hidden md:inline-flex relative h-9 w-9 items-center justify-center group hover:bg-white/10 rounded-full transition-colors duration-200"
-            aria-label="Wishlist Saya">
-            <span class="material-symbols-outlined leading-none">favorite</span>
-        </a>
         <a
             href="{{ route('marketplace.cart', $routeParams) }}"
             class="hidden md:inline-flex relative h-9 w-9 items-center justify-center group hover:bg-white/10 rounded-full transition-colors duration-200"
@@ -107,13 +101,6 @@
         @endauth
 
         @auth
-        <!-- Chatify Quick Chat Shortcut -->
-        <a
-            href="/chatify"
-            class="hidden md:inline-flex relative h-9 w-9 items-center justify-center group hover:bg-white/10 rounded-full transition-colors duration-200 mr-1"
-            aria-label="Obrolan Chat">
-            <span class="material-symbols-outlined leading-none">chat</span>
-        </a>
         <div class="relative hidden md:block" data-notification-root>
             <button
                 type="button"
@@ -187,19 +174,66 @@
                 </a>
             @endif
 
-            @if($isAdmin && Route::has('admin.dashboard'))
-                <a href="{{ route('admin.dashboard', $routeParams) }}" class="hidden md:inline-flex h-9 w-9 items-center justify-center hover:bg-white/10 rounded-full transition-colors" aria-label="Admin Panel">
-                    <span class="material-symbols-outlined leading-none">admin_panel_settings</span>
-                </a>
-            @endif
-
-            <a href="{{ route('profile.edit', $routeParams) }}" class="hidden md:block">
-                <img 
-                    alt="User profile photo" 
-                    class="w-9 h-9 rounded-full border-2 border-white/20 hover:scale-105 transition-transform cursor-pointer" 
-                    src="{{ auth()->user()->profile_photo_url ?? 'https://api.dicebear.com/7.x/avataaars/svg?seed=' . auth()->user()->id }}"
-                />
-            </a>
+            <div class="relative hidden md:block" data-profile-dropdown-root>
+                <button type="button" class="relative inline-flex h-9 w-9 items-center justify-center hover:scale-105 transition-transform cursor-pointer focus:outline-none rounded-full overflow-hidden" data-profile-dropdown-trigger>
+                    <img 
+                        alt="User profile photo" 
+                        class="w-9 h-9 rounded-full border-2 border-white/20" 
+                        src="{{ auth()->user()->profile_photo_url ?? 'https://api.dicebear.com/7.x/avataaars/svg?seed=' . auth()->user()->id }}"
+                        onerror="handleAvatarError(this, '{{ auth()->user()->name }}')"
+                    />
+                </button>
+                <div class="hidden absolute right-0 top-[calc(100%+10px)] w-64 bg-[#F8FAFC] text-on-surface rounded-2xl shadow-[0_24px_48px_rgba(47,47,46,0.18)] border border-outline-variant/20 overflow-hidden z-50 py-2" data-profile-dropdown-menu>
+                    <div class="px-4 py-3 border-b border-outline-variant/10">
+                        <p class="text-xs font-bold text-neutral-400 uppercase tracking-wider">Akun Anda</p>
+                        <p class="text-sm font-extrabold text-on-surface truncate mt-1">{{ auth()->user()->name }}</p>
+                        <p class="text-xs text-neutral-500 truncate mt-0.5">{{ auth()->user()->email }}</p>
+                    </div>
+                    <div class="p-1 space-y-0.5">
+                        <a href="{{ route('profile.edit', $routeParams) }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-surface-container-low text-xs font-extrabold text-on-surface transition-colors">
+                            <span class="material-symbols-outlined text-lg text-neutral-500">person</span>
+                            Profil Saya
+                        </a>
+                        <a href="/profile/orders" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-surface-container-low text-xs font-extrabold text-on-surface transition-colors">
+                            <span class="material-symbols-outlined text-lg text-neutral-500">shopping_bag</span>
+                            Riwayat Pesanan
+                        </a>
+                        <a href="/profile/wishlist" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-surface-container-low text-xs font-extrabold text-on-surface transition-colors">
+                            <span class="material-symbols-outlined text-lg text-neutral-500">favorite</span>
+                            Wishlist Saya
+                        </a>
+                        <a href="/profile/vouchers" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-surface-container-low text-xs font-extrabold text-on-surface transition-colors">
+                            <span class="material-symbols-outlined text-lg text-neutral-500">confirmation_number</span>
+                            Voucher Saya
+                        </a>
+                        <a href="/marketplace/chat" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-surface-container-low text-xs font-extrabold text-on-surface transition-colors">
+                            <span class="material-symbols-outlined text-lg text-neutral-500">chat</span>
+                            Chat Saya
+                        </a>
+                        @if($isMerchant && Route::has('merchant.dashboard'))
+                        <a href="{{ route('merchant.dashboard', $routeParams) }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-surface-container-low text-xs font-extrabold text-on-surface transition-colors">
+                            <span class="material-symbols-outlined text-lg text-neutral-500">store</span>
+                            Merchant Panel
+                        </a>
+                        @endif
+                        @if($isAdmin && Route::has('admin.dashboard'))
+                        <a href="{{ route('admin.dashboard', $routeParams) }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-surface-container-low text-xs font-extrabold text-on-surface transition-colors">
+                            <span class="material-symbols-outlined text-lg text-neutral-500">admin_panel_settings</span>
+                            Admin Panel
+                        </a>
+                        @endif
+                    </div>
+                    <div class="border-t border-outline-variant/10 mt-1 pt-1 p-1">
+                        <form method="POST" action="{{ route('logout', $routeParams) }}" class="w-full m-0">
+                            @csrf
+                            <button type="submit" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-rose-50 text-xs font-extrabold text-rose-600 transition-colors">
+                                <span class="material-symbols-outlined text-lg">logout</span>
+                                Keluar / Logout
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
         @else
         <a href="{{ route('login', $routeParams) }}" class="hidden md:inline-flex h-7 items-center justify-center bg-[#F8FAFC] text-[#FF5722] font-bold px-4 rounded-full text-xs leading-none shadow-[0_8px_20px_rgba(47,47,46,0.18)] hover:bg-[#EEF2F6] transition-colors duration-200">
             Masuk
@@ -219,7 +253,7 @@
     <div class="hidden md:hidden absolute top-full right-5 left-5 mt-3 bg-[#F8FAFC] text-on-surface rounded-2xl border border-outline-variant/20 shadow-[0_24px_48px_rgba(47,47,46,0.18)] p-3 z-50" data-mobile-menu>
         {{-- Mobile search bar --}}
         <div data-search-widget="mobile" class="relative mb-2">
-            <form id="navbar-search-form-mobile" action="{{ route('landing') }}" method="GET" role="search" autocomplete="off">
+            <form id="navbar-search-form-mobile" action="/marketplace/search" method="GET" role="search" autocomplete="off">
                 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] pointer-events-none z-10">search</span>
                 <input
                     id="navbar-search-mobile"
@@ -246,7 +280,7 @@
                 <a href="{{ route('marketplace.cart', $routeParams) }}" class="px-3 py-2 rounded-lg hover:bg-surface-container-low transition-colors">Keranjang</a>
             @endif
             @if($isCustomer)
-                <a href="{{ route('profile.edit', $routeParams) }}#wishlist" class="px-3 py-2 rounded-lg hover:bg-surface-container-low transition-colors">Wishlist Saya</a>
+                <a href="/profile/wishlist" class="px-3 py-2 rounded-lg hover:bg-surface-container-low transition-colors">Wishlist Saya</a>
                 @if(Route::has('marketplace.checkout'))
                     <a href="{{ route('marketplace.checkout', $routeParams) }}" class="px-3 py-2 rounded-lg hover:bg-surface-container-low transition-colors">Checkout</a>
                 @endif
@@ -690,6 +724,43 @@
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
                 closeModal();
+            }
+        });
+    })();
+
+    // Profile Dropdown logic
+    (() => {
+        const root = document.querySelector('[data-profile-dropdown-root]');
+        if (!root) return;
+        const trigger = root.querySelector('[data-profile-dropdown-trigger]');
+        const menu = root.querySelector('[data-profile-dropdown-menu]');
+        if (!trigger || !menu) return;
+
+        function openMenu() {
+            menu.classList.remove('hidden');
+            trigger.setAttribute('aria-expanded', 'true');
+        }
+
+        function closeMenu() {
+            menu.classList.add('hidden');
+            trigger.setAttribute('aria-expanded', 'false');
+        }
+
+        trigger.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const isOpen = !menu.classList.contains('hidden');
+            if (isOpen) {
+                closeMenu();
+            } else {
+                // Close other open modals
+                document.querySelectorAll('[data-notification-modal], [data-cart-popup-modal], [data-mobile-menu]').forEach(el => el.classList.add('hidden'));
+                openMenu();
+            }
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!menu.contains(event.target) && !trigger.contains(event.target)) {
+                closeMenu();
             }
         });
     })();

@@ -489,10 +489,11 @@ function sendMessage() {
         messageInput.focus();
       },
       success: (data) => {
-        if (data.error > 0) {
+        if (data.error > 0 || (data.error && data.error.status > 0)) {
           // message card error status
           errorMessageCard(tempID);
-          console.error(data.error_msg);
+          alert(data.error_msg || data.error.message || "Gagal mengirim pesan!");
+          console.error(data.error_msg || data.error.message);
         } else {
           // update contact item
           updateContactItem(getMessengerId());

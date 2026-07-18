@@ -28,6 +28,7 @@ Route::get('/categories', [MarketplaceController::class, 'categories'])->name('c
 Route::get('/categories/{selected_category}', [MarketplaceController::class, 'showCategory'])->name('categories.show');
 Route::get('/products/{id}', [MarketplaceController::class, 'productDetail'])->name('products.show');
 Route::get('/shops/{shop_code}', [MarketplaceController::class, 'shopDetail'])->name('shops.show');
+Route::get('/marketplace/search', [MarketplaceController::class, 'search'])->name('marketplace.search');
 
 Route::view('/welcome', 'pages.welcome')->name('welcome');
 Route::view('/design-system-demo', 'pages.design-system-demo')->name('design-system-demo');
@@ -93,6 +94,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Merchant Product Variants (AJAX)
     Route::post('/merchant/products/{product}/variants', [MerchantController::class, 'addVariantAJAX'])->name('merchant.products.variants.store');
     Route::delete('/merchant/products/{product}/variants/{variant_id}', [MerchantController::class, 'deleteVariantAJAX'])->name('merchant.products.variants.destroy');
+
+    // Custom Marketplace Chat
+    Route::get('/marketplace/chat/messages', [\App\Http\Controllers\MarketplaceChatController::class, 'getMessages']);
+    Route::post('/marketplace/chat/messages', [\App\Http\Controllers\MarketplaceChatController::class, 'sendMessage'])->middleware('block.contact.info');
+    Route::get('/marketplace/chat/conversations', [\App\Http\Controllers\MarketplaceChatController::class, 'getConversations']);
+    Route::post('/marketplace/chat/read', [\App\Http\Controllers\MarketplaceChatController::class, 'markAsRead']);
+    Route::get('/marketplace/chat', function () {
+        return view('pages.marketplace.chat');
+    })->name('marketplace.chat');
+
+    // Custom Profile Pages
+    Route::get('/profile/orders', function () {
+        return view('pages.profile.orders');
+    })->name('profile.orders');
+    Route::get('/profile/wishlist', function () {
+        return view('pages.profile.wishlist');
+    })->name('profile.wishlist');
+    Route::get('/profile/vouchers', function () {
+        return view('pages.profile.vouchers');
+    })->name('profile.vouchers');
 });
 
 $params = [];
@@ -135,3 +156,100 @@ if( env( 'SHOP_MULTIROUTE' ) )
         ) )->where( ['locale' => '[a-z]{2}(\_[A-Z]{2})?', 'site' => '^(?!profile|login|register|logout|dashboard|forgot-password|reset-password|verify-email|confirm-password|ready)[A-Za-z0-9\.\-]+'], 'path', '.*' );
     });
 }Route::get('/log-error', function (\Illuminate\Http\Request $request) { \Illuminate\Support\Facades\Log::error('JS ERROR: ' . $request->get('msg')); return response()->json(['status' => 'ok']); });
+
+Route::get('/dev/otp', function (\Illuminate\Http\Request $request) {
+    if (config('app.env') !== 'local' && config('app.env') !== 'testing') {
+        abort(403, 'This endpoint is only available in local development mode.');
+    }
+
+    $email = $request->query('email');
+    $num = $request->query('num');
+
+    if (!$email && !$num) {
+        return response('Silakan masukkan parameter ?email=... atau ?num=... (nomor telepon).', 400);
+    }
+
+    $user = null;
+    if ($email) {
+        $user = \App\Models\User::where('email', $email)->first();
+    } elseif ($num) {
+        $user = \App\Models\User::where('telephone', $num)->first();
+    }
+
+    if (!$user) {
+        return response('User tidak ditemukan dengan email atau nomor telepon tersebut.', 404);
+    }
+
+    // 1. Generate standard temporary signed verification URL on the fly
+    $time = \Illuminate\Support\Carbon::now()->addMinutes(config('auth.verification.expire', 60));
+    $params = [
+        'id' => $user->getKey(),
+        'hash' => sha1($user->getEmailForVerification()),
+    ];
+    if (config('app.shop_multilocale')) {
+        $params['locale'] = app()->getLocale();
+    }
+    if (config('app.shop_multishop') || config('app.shop_registration')) {
+        $params['site'] = $user->siteid ?: 'default';
+    }
+    $generatedUrl = URL::temporarySignedRoute('verification.verify', $time, $params);
+
+    // 2. Fetch latest emails from Mailhog
+    $mailhogEmails = [];
+    try {
+        $client = new \GuzzleHttp\Client();
+        $response = $client->get('http://mailhog:8025/api/v2/messages');
+        $data = json_decode($response->getBody()->getContents(), true);
+        
+        if (isset($data['items'])) {
+            foreach ($data['items'] as $item) {
+                // Check if recipient matches user's email
+                $to = $item['Content']['Headers']['To'][0] ?? '';
+                if (str_contains($to, $user->email)) {
+                    $body = $item['Content']['Body'] ?? '';
+                    
+                    // Try to extract verification URL from email body
+                    $extractedUrl = null;
+                    if (preg_match('/href="([^"]+)"/i', $body, $matches)) {
+                        $extractedUrl = $matches[1];
+                    } elseif (preg_match('/(https?:\/\/[^\s]+)/i', $body, $matches)) {
+                        $extractedUrl = $matches[1];
+                    }
+
+                    // Try to extract OTP/digits (if any)
+                    $otpCode = null;
+                    if (preg_match('/\b\d{4,6}\b/', $body, $matches)) {
+                        $otpCode = $matches[0];
+                    }
+
+                    $mailhogEmails[] = [
+                        'subject' => $item['Content']['Headers']['Subject'][0] ?? '(No Subject)',
+                        'date' => $item['Created'] ?? '',
+                        'extracted_url' => $extractedUrl,
+                        'otp_code' => $otpCode,
+                        'raw_body' => $body
+                    ];
+                }
+            }
+        }
+    } catch (\Exception $e) {
+        // Mailhog might not be running or reachable
+    }
+
+    return response()->json([
+        'user' => [
+            'name' => $user->name,
+            'email' => $user->email,
+            'telephone' => $user->telephone
+        ],
+        'verification_url' => $generatedUrl,
+        'emails_from_mailhog' => array_map(function ($emailItem) {
+            return [
+                'subject' => $emailItem['subject'],
+                'date' => $emailItem['date'],
+                'extracted_url' => $emailItem['extracted_url'],
+                'otp_code' => $emailItem['otp_code']
+            ];
+        }, $mailhogEmails)
+    ]);
+});

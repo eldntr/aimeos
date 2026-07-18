@@ -183,23 +183,23 @@
                 <section class="space-y-4">
                     <div class="flex items-end justify-between">
                         <h2 class="text-lg md:text-xl font-bold text-on-surface">Pesanan Saya</h2>
-                        <button type="button" onclick="openOrdersModal('all');" class="text-primary text-xs font-semibold hover:text-primary-container transition-colors">Lihat Riwayat</button>
+                        <button type="button" onclick="window.location.href='/profile/orders';" class="text-primary text-xs font-semibold hover:text-primary-container transition-colors">Lihat Riwayat</button>
                     </div>
                     <div class="bg-surface-container-low p-6 rounded-2xl shadow-[0_12px_36px_rgba(47,47,46,0.06)]">
                         <div class="grid grid-cols-4 gap-4">
-                            <button type="button" onclick="openOrdersModal('unpaid');" class="flex flex-col items-center gap-2 rounded-2xl bg-surface-container-high p-4 hover:bg-primary/10 transition-colors">
+                            <button type="button" onclick="window.location.href='/profile/orders?filter=unpaid';" class="flex flex-col items-center gap-2 rounded-2xl bg-surface-container-high p-4 hover:bg-primary/10 transition-colors">
                                 <span class="material-symbols-outlined text-2xl text-on-surface">account_balance_wallet</span>
                                 <span class="text-xs font-semibold text-on-surface text-center">Belum Bayar</span>
                             </button>
-                            <button type="button" onclick="openOrdersModal('packaging');" class="flex flex-col items-center gap-2 rounded-2xl bg-surface-container-high p-4 hover:bg-primary/10 transition-colors">
+                            <button type="button" onclick="window.location.href='/profile/orders?filter=packaging';" class="flex flex-col items-center gap-2 rounded-2xl bg-surface-container-high p-4 hover:bg-primary/10 transition-colors">
                                 <span class="material-symbols-outlined text-2xl text-on-surface">inventory_2</span>
                                 <span class="text-xs font-semibold text-on-surface text-center">Dikemas</span>
                             </button>
-                            <button type="button" onclick="openOrdersModal('shipping');" class="flex flex-col items-center gap-2 rounded-2xl bg-surface-container-high p-4 hover:bg-primary/10 transition-colors">
+                            <button type="button" onclick="window.location.href='/profile/orders?filter=shipping';" class="flex flex-col items-center gap-2 rounded-2xl bg-surface-container-high p-4 hover:bg-primary/10 transition-colors">
                                 <span class="material-symbols-outlined text-2xl text-on-surface">local_shipping</span>
                                 <span class="text-xs font-semibold text-on-surface text-center">Dikirim</span>
                             </button>
-                            <button type="button" onclick="openOrdersModal('delivered');" class="flex flex-col items-center gap-2 rounded-2xl bg-surface-container-high p-4 hover:bg-primary/10 transition-colors">
+                            <button type="button" onclick="window.location.href='/profile/orders?filter=delivered';" class="flex flex-col items-center gap-2 rounded-2xl bg-surface-container-high p-4 hover:bg-primary/10 transition-colors">
                                 <span class="material-symbols-outlined text-2xl text-on-surface">star_rate</span>
                                 <span class="text-xs font-semibold text-on-surface text-center">Beri Penilaian</span>
                             </button>
@@ -211,7 +211,7 @@
                 <section class="space-y-4">
                     <div class="flex items-end justify-between">
                         <h2 class="text-lg md:text-xl font-bold text-on-surface">Voucher Saya</h2>
-                        <button type="button" onclick="openVouchersModal();" class="text-primary text-xs font-semibold hover:text-primary-container transition-colors">Lihat Semua</button>
+                        <button type="button" onclick="window.location.href='/profile/vouchers';" class="text-primary text-xs font-semibold hover:text-primary-container transition-colors">Lihat Semua</button>
                     </div>
                     <div class="bg-gradient-to-br from-primary to-primary-container p-6 md:p-8 rounded-2xl text-white shadow-[0_12px_36px_rgba(47,47,46,0.06)] relative overflow-hidden">
                         <div class="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>

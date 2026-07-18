@@ -14,13 +14,28 @@ class MarketplaceController extends Controller
     public function landing(Request $request)
     {
         $categories = $this->loadCategories($request);
-        $products = $this->loadProducts($request);
+        $trendingProducts = $this->loadTrendingProducts($request);
+        $priceDroppedProducts = $this->loadPriceDroppedProducts($request);
         $banners = $this->loadBanners($request);
 
         return view('pages.marketplace.landing', [
             'categories' => array_slice($categories, 0, 6),
-            'products' => array_slice($products, 0, 8),
+            'trendingProducts' => array_slice($trendingProducts, 0, 8),
+            'priceDroppedProducts' => array_slice($priceDroppedProducts, 0, 8),
             'banners' => $banners,
+        ]);
+    }
+
+    public function search(Request $request)
+    {
+        $query = $request->query('search', '');
+        $products = $this->loadProducts($request);
+        $categories = $this->loadCategories($request);
+
+        return view('pages.marketplace.search', [
+            'products' => $products,
+            'query' => $query,
+            'categories' => $categories
         ]);
     }
 
@@ -322,5 +337,74 @@ class MarketplaceController extends Controller
         }
 
         return null;
+    }
+
+    protected function loadTrendingProducts(Request $request): array
+    {
+        try {
+            $productIds = \DB::table('mshop_product')
+                ->where('status', 1)
+                ->orderByDesc('rating')
+                ->orderByDesc('ratings')
+                ->limit(20)
+                ->pluck('id')
+                ->toArray();
+
+            if (empty($productIds)) {
+                return [];
+            }
+
+            $req = new Request(['ids' => $productIds]);
+            $response = app(ApiProductController::class)->index($req);
+            $body = $response->getData(true);
+            $products = Arr::get($body, 'data', []);
+
+            $idPositions = array_flip($productIds);
+            usort($products, function ($a, $b) use ($idPositions) {
+                return ($idPositions[$a['id']] ?? 999) <=> ($idPositions[$b['id']] ?? 999);
+            });
+
+            return array_map(function (array $product) {
+                return $this->formatProduct($product);
+            }, $products);
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    protected function loadPriceDroppedProducts(Request $request): array
+    {
+        try {
+            $productIds = \DB::table('mshop_product_list')
+                ->join('mshop_price', 'mshop_product_list.refid', '=', 'mshop_price.id')
+                ->where('mshop_product_list.domain', 'price')
+                ->where('mshop_price.rebate', '>', 0)
+                ->where('mshop_price.status', 1)
+                ->orderByDesc('mshop_price.rebate')
+                ->limit(20)
+                ->pluck('mshop_product_list.parentid')
+                ->unique()
+                ->toArray();
+
+            if (empty($productIds)) {
+                return [];
+            }
+
+            $req = new Request(['ids' => $productIds]);
+            $response = app(ApiProductController::class)->index($req);
+            $body = $response->getData(true);
+            $products = Arr::get($body, 'data', []);
+
+            $idPositions = array_flip($productIds);
+            usort($products, function ($a, $b) use ($idPositions) {
+                return ($idPositions[$a['id']] ?? 999) <=> ($idPositions[$b['id']] ?? 999);
+            });
+
+            return array_map(function (array $product) {
+                return $this->formatProduct($product);
+            }, $products);
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 }

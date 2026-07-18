@@ -38,26 +38,26 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
-            <div class="lg:col-span-7 space-y-5">
+        <div class="grid grid-cols-1 lg:grid-cols-11 gap-8 lg:gap-10">
+            <div class="lg:col-span-6 space-y-5">
                 <div class="grid grid-cols-1 md:grid-cols-[110px_1fr] gap-4 md:gap-5">
                     <div class="order-2 md:order-1 flex md:flex-col gap-3 overflow-x-auto md:overflow-visible pb-1 no-scrollbar">
                         @if (!empty($product['images']))
                             @foreach ($product['images'] as $img)
-                                <button onclick="changeMainImage('{{ $img['url'] }}')" class="shrink-0 w-20 h-20 md:w-[110px] md:h-[110px] rounded-2xl overflow-hidden ring-1 ring-outline-variant/30 hover:ring-primary transition-all bg-surface-container-low">
-                                    <img src="{{ $img['url'] }}" alt="Thumbnail" class="w-full h-full object-cover" />
+                                <button onclick="changeMainImage('{{ $img['url'] }}')" class="shrink-0 w-20 h-20 md:w-[110px] md:h-[110px] rounded-2xl overflow-hidden ring-1 ring-outline-variant/30 hover:ring-primary transition-all bg-white border border-neutral-100 p-1 flex items-center justify-center">
+                                    <img src="{{ $img['url'] }}" alt="Thumbnail" class="max-w-full max-h-full object-contain" onerror="handleProductImageError(this)" />
                                 </button>
                             @endforeach
                         @else
-                            <button class="shrink-0 w-20 h-20 md:w-[110px] md:h-[110px] rounded-2xl overflow-hidden ring-1 ring-outline-variant/30 hover:ring-primary transition-all bg-surface-container-low">
-                                <img src="{{ $product['image'] ?? 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=1200&q=80' }}" alt="Thumbnail" class="w-full h-full object-cover" />
+                            <button class="shrink-0 w-20 h-20 md:w-[110px] md:h-[110px] rounded-2xl overflow-hidden ring-1 ring-outline-variant/30 hover:ring-primary transition-all bg-white border border-neutral-100 p-1 flex items-center justify-center">
+                                <img src="{{ $product['image'] ?? 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=1200&q=80' }}" alt="Thumbnail" class="max-w-full max-h-full object-contain" onerror="handleProductImageError(this)" />
                             </button>
                         @endif
                     </div>
 
-                    <div class="order-1 md:order-2 bg-surface-container-low rounded-3xl overflow-hidden shadow-[0_24px_50px_rgba(47,47,46,0.08)]">
-                        <div class="relative aspect-[4/3] md:aspect-[16/11]">
-                            <img id="main-product-image" src="{{ $product['image'] ?? 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=1600&q=80' }}" alt="{{ $product['name'] ?? 'Produk' }}" class="w-full h-full object-cover" />
+                    <div class="order-1 md:order-2 bg-white border border-neutral-100/60 rounded-3xl overflow-hidden shadow-[0_20px_40px_rgba(47,47,46,0.06)] flex items-center justify-center">
+                        <div class="relative w-full aspect-square max-h-[380px] md:max-h-[440px] flex items-center justify-center p-4">
+                            <img id="main-product-image" src="{{ $product['image'] ?? 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=1600&q=80' }}" alt="{{ $product['name'] ?? 'Produk' }}" class="max-w-full max-h-full object-contain" onerror="handleProductImageError(this)" />
                             @if (!empty($product['badge']))
                                 @php
                                     $badgeClasses = ($product['badgeType'] ?? 'success') === 'danger'
@@ -365,12 +365,13 @@
         btnChatSeller.addEventListener('click', (e) => {
             if (!guardAuth(e)) return;
             
-            const sellerId = '{{ $product['seller_user_id'] ?? '' }}';
-            if (sellerId) {
-                window.location.href = '/chatify/' + sellerId;
-            } else {
-                window.location.href = '/chatify';
+            // Default to Seller ID 4 (Default Seller) if product is associated with default site (null seller_user_id)
+            let sellerId = '{{ $product['seller_user_id'] ?? '' }}';
+            if (!sellerId) {
+                sellerId = '4'; // Fallback to Default Seller
             }
+            
+            window.location.href = `/marketplace/chat?user_id=${sellerId}&product_id=${productId}`;
         });
 
         btnSaveWishlist.addEventListener('click', async (e) => {

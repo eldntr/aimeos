@@ -103,6 +103,24 @@
         }
     </style>
 
+    <script>
+        window.handleAvatarError = function(img, name) {
+            const initial = name ? name.charAt(0).toUpperCase() : 'U';
+            const parent = img.parentElement;
+            if (parent) {
+                parent.innerHTML = `<div class="w-full h-full bg-primary/10 text-primary flex items-center justify-center font-extrabold text-sm uppercase">${initial}</div>`;
+            }
+        };
+        window.handleProductImageError = function(img) {
+            const div = document.createElement('div');
+            div.className = 'w-full h-full bg-neutral-100 flex flex-col items-center justify-center p-3 text-center border border-neutral-200 rounded-xl text-neutral-400 text-[10px] min-h-[100px]';
+            div.innerHTML = `
+                <span class="material-symbols-outlined text-lg mb-1">broken_image</span>
+                <span>Gagal memuat gambar</span>
+            `;
+            img.replaceWith(div);
+        };
+    </script>
     @stack('styles')
 </head>
 <body class="bg-surface text-on-surface selection:bg-tertiary-container selection:text-on-tertiary-container">
@@ -123,7 +141,7 @@
         @yield('content')
     </main>
 
-    @if(!request()->routeIs('merchant.*') && !request()->routeIs('admin.*'))
+    @if(!request()->routeIs('merchant.*') && !request()->routeIs('admin.*') && !request()->routeIs('marketplace.chat'))
         @include('components.marketplace.layout.footer')
     @endif
 
