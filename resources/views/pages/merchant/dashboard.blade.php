@@ -4,7 +4,7 @@
         $storeName = $merchantProfile?->store_name ?? 'Toko Saya';
     @endphp
 
-    <section class="max-w-6xl mx-auto px-5 sm:px-8 py-8 md:py-10 space-y-8">
+    <section class="w-full px-6 py-6 space-y-6">
         {{-- Welcome & Overview --}}
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -141,7 +141,7 @@
                                     @foreach ($recentOrders as $order)
                                         <tr class="hover:bg-surface-container-low/30 transition-colors">
                                             <td class="px-6 py-4 font-bold text-on-surface">
-                                                <a href="{{ route('merchant.orders.show', ['order' => $order['id']] + $routeParams) }}" class="text-primary hover:underline">
+                                                <a href="{{ route('merchant.orders.show', ['id' => $order['id']] + $routeParams) }}" class="text-primary hover:underline">
                                                     #{{ $order['id'] }}
                                                 </a>
                                             </td>

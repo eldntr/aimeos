@@ -30,12 +30,120 @@ class MarketplaceController extends Controller
     {
         $query = $request->query('search', '');
         $products = $this->loadProducts($request);
+        
+        $filterActive = null;
+
+        // Apply Shopee shortcut menus filtering algorithms
+        if ($request->query('gratis_ongkir')) {
+            $filterActive = 'Gratis Ongkir XTRA';
+            $products = array_filter($products, function ($p) {
+                // Products with even ID are eligible for free shipping
+                return intval($p['id'] ?? 0) % 2 === 0;
+            });
+        } elseif ($request->query('diskon_90')) {
+            $filterActive = 'Diskon hingga 90%';
+            $products = array_filter($products, function ($p) {
+                // Items under Rp 150.000 (discounts usually make items cheaper)
+                return ($p['priceRaw'] ?? 0) < 150000;
+            });
+        } elseif ($request->query('koin_reborns')) {
+            $filterActive = 'Koin Cashback Reborns';
+            $products = array_filter($products, function ($p) {
+                // Odd IDs are eligible for coins cashback reward
+                return intval($p['id'] ?? 0) % 2 !== 0;
+            });
+        } elseif ($request->query('voucher_extra')) {
+            $filterActive = 'Voucher Ekstra';
+            $products = array_filter($products, function ($p) {
+                // Premium products that accept extra coupon vouchers
+                return ($p['priceRaw'] ?? 0) > 100000;
+            });
+        } elseif ($request->query('super_brand')) {
+            $filterActive = 'Super Brand Mall';
+            $products = array_filter($products, function ($p) {
+                // Highly rated verified brand products
+                return $p['rating'] === '5.0' || $p['rating'] === '4.9' || ($p['rating'] ?? 0) >= 4.8;
+            });
+        } elseif ($request->query('preloved_hijau')) {
+            $filterActive = 'Preloved Ramah Lingkungan';
+            $products = array_filter($products, function ($p) {
+                // Eco/fashion products containing apparel keywords
+                $name = strtolower($p['name'] ?? '');
+                return str_contains($name, 'baju') || str_contains($name, 'celana') || str_contains($name, 'tas') || str_contains($name, 'sepatu') || str_contains($name, 'jaket');
+            });
+        } elseif ($request->query('cuci_gudang')) {
+            $filterActive = 'Cuci Gudang Reborns';
+            $products = array_filter($products, function ($p) {
+                // Cheap bargain clearance items
+                return ($p['priceRaw'] ?? 0) < 250000;
+            });
+        } elseif ($request->query('mall_preloved')) {
+            $filterActive = 'Mall Preloved Terverifikasi';
+            $products = array_filter($products, function ($p) {
+                // Products from registered boutique/merchant sites
+                return ($p['shop_code'] ?? 'default') !== 'default';
+            });
+        } elseif ($request->query('cod_preloved')) {
+            $filterActive = 'COD (Bayar di Tempat)';
+            $products = array_filter($products, function ($p) {
+                // Simulated COD support for items with ID divisible by 3
+                return intval($p['id'] ?? 0) % 3 === 0;
+            });
+        } elseif ($request->query('live_terupdate')) {
+            $filterActive = 'Terupdate Hari Ini';
+            usort($products, function ($a, $b) {
+                return intval($b['id'] ?? 0) <=> intval($a['id'] ?? 0);
+            });
+        } elseif ($request->query('flash_sale')) {
+            $filterActive = 'Flash Sale Hari Ini';
+            $products = $this->loadPriceDroppedProducts($request);
+        }
+
+        $products = array_values($products);
         $categories = $this->loadCategories($request);
+
+        // Retrieve shops matching query
+        $shops = [];
+        if ($query) {
+            $matchingSites = \DB::table('mshop_locale_site')
+                ->where('status', 1)
+                ->where('code', '!=', 'default')
+                ->where(function($q) use ($query) {
+                    $q->where('label', 'like', '%' . $query . '%')
+                      ->orWhere('code', 'like', '%' . $query . '%');
+                })
+                ->get();
+
+            foreach ($matchingSites as $site) {
+                $firstProduct = \DB::table('mshop_product_property')
+                    ->where('siteid', $site->siteid)
+                    ->where('type', 'location')
+                    ->first();
+                
+                $location = $firstProduct ? $firstProduct->value : 'Indonesia';
+
+                $totalProducts = \DB::table('mshop_product')
+                    ->where('siteid', $site->siteid)
+                    ->where('status', 1)
+                    ->where('type', 'default')
+                    ->count();
+
+                $shops[] = [
+                    'code' => $site->code,
+                    'label' => $site->label,
+                    'logo' => $site->logo ?: null,
+                    'location' => $location,
+                    'total_products' => $totalProducts,
+                ];
+            }
+        }
 
         return view('pages.marketplace.search', [
             'products' => $products,
+            'shops' => $shops,
             'query' => $query,
-            'categories' => $categories
+            'categories' => $categories,
+            'filterActive' => $filterActive
         ]);
     }
 
@@ -104,10 +212,58 @@ class MarketplaceController extends Controller
             abort(404);
         }
 
+        // Fetch related products in the same category
+        $relatedProducts = [];
+        $catalogList = \DB::table('mshop_catalog_list')
+            ->where('refid', $id)
+            ->where('domain', 'product')
+            ->first();
+
+        $categoryId = null;
+        if ($catalogList) {
+            $categoryId = $catalogList->parentid;
+            $relatedProductIds = \DB::table('mshop_catalog_list')
+                ->where('parentid', $categoryId)
+                ->where('domain', 'product')
+                ->where('refid', '!=', $id)
+                ->pluck('refid')
+                ->toArray();
+
+            if (!empty($relatedProductIds)) {
+                $req = new Request(['ids' => $relatedProductIds]);
+                $response = app(\App\Http\Controllers\ProductController::class)->index($req);
+                if ($response->status() === 200) {
+                    $body = $response->getData(true);
+                    $products = Arr::get($body, 'data', []);
+                    $relatedProducts = array_map(function (array $product) {
+                        return $this->formatProduct($product);
+                    }, $products);
+                }
+            }
+        }
+
+        if (empty($relatedProducts)) {
+            // Fallback to random/first products excluding current product
+            $allProducts = $this->loadProducts($request);
+            $relatedProducts = array_filter($allProducts, function($p) use ($id) {
+                return strval($p['id'] ?? '') !== strval($id);
+            });
+        }
+
+        $categoryName = null;
+        if ($categoryId) {
+            $catRecord = \DB::table('mshop_catalog')->where('id', $categoryId)->first();
+            if ($catRecord) {
+                $categoryName = $catRecord->label;
+            }
+        }
+
         return view('pages.marketplace.product-detail', [
             'product' => $product,
             'reviews' => $this->loadReviews($id),
-            'relatedProducts' => array_slice($this->loadProducts($request), 0, 3),
+            'relatedProducts' => array_slice(array_values($relatedProducts), 0, 12),
+            'categoryId' => $categoryId,
+            'categoryName' => $categoryName,
         ]);
     }
 
@@ -129,10 +285,43 @@ class MarketplaceController extends Controller
             return $this->formatProduct($product);
         }, $products);
 
+        // Fetch coupons/vouchers for this shop
+        $vouchers = [];
+        if (isset($shop['id'])) {
+            $coupons = \DB::table('mshop_coupon')
+                ->where('siteid', $shop['id'])
+                ->where('status', 1)
+                ->get();
+
+            foreach ($coupons as $coupon) {
+                $code = \DB::table('mshop_coupon_code')
+                    ->where('parentid', $coupon->id)
+                    ->value('code');
+
+                if ($code) {
+                    $config = json_decode($coupon->config, true) ?: [];
+                    $discountLabel = '';
+                    if (str_contains(strtolower($coupon->provider), 'percent')) {
+                        $discountLabel = ($config['percentrebate.rebate'] ?? '0') . '%';
+                    } else {
+                        $rebateVal = floatval($config['fixedrebate.rebate'] ?? 0);
+                        $discountLabel = 'Rp ' . number_format($rebateVal, 0, ',', '.');
+                    }
+
+                    $vouchers[] = [
+                        'code' => $code,
+                        'name' => $coupon->label,
+                        'discount' => $discountLabel,
+                    ];
+                }
+            }
+        }
+
         return view('pages.marketplace.shop-detail', [
             'shop' => $shop,
             'products' => $formattedProducts,
             'total' => count($formattedProducts),
+            'vouchers' => $vouchers,
         ]);
     }
 
@@ -275,10 +464,50 @@ class MarketplaceController extends Controller
             }
         }
 
+        $soldCount = 0;
+        $stockCount = 0;
+        $soldPercent = 0;
+        $isAlmostSold = false;
+        $discountPercent = 25;
+        $originalPriceLabel = 'Rp 0';
+        
+        if (isset($product['id'])) {
+            $soldCount = \DB::table('mshop_order_product')->where('prodid', $product['id'])->sum('quantity');
+            $stockItem = \DB::table('mshop_stock')->where('prodid', $product['id'])->first();
+            $stockCount = $stockItem ? $stockItem->stocklevel : 0;
+            $totalStock = $soldCount + $stockCount;
+            $soldPercent = $totalStock > 0 ? min(99, round(($soldCount / $totalStock) * 100)) : 0;
+            $isAlmostSold = $stockCount <= 2;
+            
+            // Stable deterministic discount percentage
+            $discountPercent = 10 + (intval($product['id']) * 13) % 65;
+            $originalPriceRaw = $priceRaw / (1 - ($discountPercent / 100));
+            $originalPriceLabel = 'Rp ' . number_format($originalPriceRaw, 0, ',', '.');
+        }
+
+        $name = $product['label'] ?? ($product['code'] ?? 'Produk');
+        $words = explode(' ', trim($name));
+        $firstWord = strtoupper($words[0] ?? 'PRELOVED');
+        
+        $genericWords = ['KEYBOARD', 'KAMERA', 'CELANA', 'BAJU', 'TAS', 'JAKET', 'SEPATU', 'ACTION', 'BACKPACK', 'BLAZER', 'BOTOL', 'TUMBLER', 'KIPAS', 'KAOS', 'HIJAB', 'KACAMATA'];
+        $brand = $firstWord;
+        
+        if (in_array($firstWord, $genericWords)) {
+            $brand = 'PRELOVED';
+            foreach ($words as $w) {
+                $uw = strtoupper($w);
+                if (in_array($uw, ['KEYCHRON', 'CANON', 'GUNDAM', 'ZARA', 'RAYBAN', 'DICKIES', 'CHAMPION', 'CONVERSE', 'ADIDAS', 'NIKE', 'VANS', 'SONY', 'APPLE', 'ZILCH', 'KANKEN', 'CHARLES'])) {
+                    $brand = $uw === 'CHARLES' ? 'CHARLES & KEITH' : $uw;
+                    break;
+                }
+            }
+        }
+
         return [
             'id' => $product['id'] ?? null,
-            'name' => $product['label'] ?? ($product['code'] ?? 'Produk'),
-            'brand' => strtoupper($product['type'] ?? 'Prelove'),
+            'name' => $name,
+            'code' => $product['code'] ?? null,
+            'brand' => $brand,
             'price' => $priceLabel,
             'priceRaw' => $priceRaw,
             'image' => Arr::get($images, '0.url', 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=1200&q=80'),
@@ -291,6 +520,24 @@ class MarketplaceController extends Controller
             'badge' => Arr::get($product, 'badge'),
             'badgeType' => Arr::get($product, 'badgeType', 'success'),
             'link' => Route::has('products.show') && isset($product['id']) ? route('products.show', ['id' => $product['id']]) : null,
+            'sold_count' => $soldCount,
+            'stock' => $stockCount,
+            'sold_percent' => $soldPercent,
+            'is_almost_sold' => $isAlmostSold,
+            'discount_percent' => $discountPercent,
+            'original_price' => $originalPriceLabel,
+            'variants' => array_map(function ($v) {
+                $cleanPrice = preg_replace('/[a-zA-Z\s]+/', '', $v['price'] ?? '');
+                $priceLabel = $cleanPrice ? 'Rp ' . trim($cleanPrice) : 'Rp 0';
+                return [
+                    'id' => $v['id'],
+                    'code' => $v['code'],
+                    'label' => $v['label'],
+                    'price' => $priceLabel,
+                    'priceRaw' => $v['priceRaw'] ?? 0,
+                    'image' => $v['image'] ?? null,
+                ];
+            }, Arr::get($product, 'variants', [])),
         ];
     }
 

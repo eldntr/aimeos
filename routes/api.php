@@ -197,6 +197,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Review/Ulasan Moderation Routes
         Route::get('/reviews', [\App\Http\Controllers\Admin\ReviewModerationController::class, 'index']);
         Route::patch('/reviews/{id}/status', [\App\Http\Controllers\Admin\ReviewModerationController::class, 'updateStatus']);
+
+        // User Reports Support Tickets Moderation Routes
+        Route::get('/user-reports', [\App\Http\Controllers\Admin\UserReportModerationController::class, 'index']);
+        Route::post('/user-reports/{id}/reply', [\App\Http\Controllers\Admin\UserReportModerationController::class, 'reply']);
     });
 });
 

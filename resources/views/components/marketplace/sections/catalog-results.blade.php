@@ -11,7 +11,7 @@
         }
 
         if (!isset($product['link']) && \Illuminate\Support\Facades\Route::has('products.show')) {
-            $product['link'] = route('products.show', ['product' => $product['slug']]);
+            $product['link'] = route('products.show', ['id' => $product['id']]);
         }
 
         return $product;
@@ -62,7 +62,7 @@
                     <p class="text-sm text-outline mt-2 max-w-sm">Produk akan segera tampil setelah ditambahkan oleh penjual.</p>
                 </div>
             @else
-                <div class="grid grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-5 md:gap-6 lg:gap-8">
+                <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     @foreach ($products as $product)
                         @include('components.marketplace.cards.product-card', [
                             'product' => $product,

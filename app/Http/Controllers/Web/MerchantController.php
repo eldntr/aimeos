@@ -383,4 +383,16 @@ class MerchantController extends Controller
         $response = app(SellerProductController::class)->deleteVariant($request, $id, $variant_id);
         return $response;
     }
+
+    public function deleteImageAJAX(Request $request, $id, $image_id)
+    {
+        $response = app(SellerProductController::class)->deleteImage($request, $id, $image_id);
+        return $response;
+    }
+
+    public function reorderImagesAJAX(Request $request, $id)
+    {
+        $response = app(SellerProductController::class)->reorderImages($request, $id);
+        return $response;
+    }
 }

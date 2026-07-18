@@ -3,7 +3,7 @@
         $routeParams = request()->route('site') ? ['site' => request()->route('site')] : [];
     @endphp
 
-    <section class="max-w-6xl mx-auto px-5 sm:px-8 py-8 md:py-12 space-y-8">
+    <section class="w-full px-6 py-6 space-y-6">
         {{-- Header --}}
         <div>
             <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-on-surface">
@@ -24,6 +24,20 @@
                 </h2>
                 
                 <form id="shop-profile-form" class="space-y-6">
+                    <!-- Shop Banner Decoration -->
+                    <div class="space-y-2">
+                        <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Banner Toko</span>
+                        <div class="relative group w-full h-40 md:h-48 rounded-2xl bg-surface-container-high border border-outline-variant/10 overflow-hidden flex items-center justify-center shadow-inner">
+                            <img id="shop-banner-preview" src="https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&w=1200&q=80" alt="Shop Banner" class="w-full h-full object-cover" />
+                            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white cursor-pointer text-xs font-bold gap-1.5" onclick="triggerBannerUpload()">
+                                <span class="material-symbols-outlined text-lg">add_a_photo</span>
+                                Ubah Banner Toko
+                            </div>
+                            <input type="file" id="shop-banner-input" accept="image/*" class="hidden" />
+                        </div>
+                        <p class="text-[10px] text-on-surface-variant">Rekomendasi rasio banner: 3:1 atau 16:9. Format gambar: JPG, PNG, WEBP. Maksimal 5MB.</p>
+                    </div>
+
                     <div class="flex flex-col md:flex-row items-start md:items-center gap-6">
                         {{-- Shop Logo --}}
                         <div class="relative group">
@@ -132,12 +146,17 @@
             // Elements
             const logoInput = document.getElementById('shop-logo-input');
             const logoPreview = document.getElementById('shop-logo-preview');
+            const bannerInput = document.getElementById('shop-banner-input');
+            const bannerPreview = document.getElementById('shop-banner-preview');
             const shopProfileForm = document.getElementById('shop-profile-form');
             const shopBankForm = document.getElementById('shop-bank-form');
 
             // Trigger upload
             window.triggerLogoUpload = function() {
                 logoInput.click();
+            };
+            window.triggerBannerUpload = function() {
+                bannerInput.click();
             };
 
             // Preview local image
@@ -148,6 +167,15 @@
                         logoPreview.src = e.target.result;
                     };
                     reader.readAsDataURL(logoInput.files[0]);
+                }
+            });
+            bannerInput.addEventListener('change', () => {
+                if (bannerInput.files && bannerInput.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        bannerPreview.src = e.target.result;
+                    };
+                    reader.readAsDataURL(bannerInput.files[0]);
                 }
             });
 
@@ -201,6 +229,11 @@
                     } else if (shop.name) {
                         logoPreview.src = 'https://api.dicebear.com/7.x/initials/svg?seed=' + encodeURIComponent(shop.name);
                     }
+                    if (shop.config?.['banner']) {
+                        bannerPreview.src = shop.config['banner'];
+                    } else {
+                        bannerPreview.src = 'https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&w=1200&q=80';
+                    }
 
                     // Bank info
                     document.getElementById('bank-name-input').value = shop.config?.['bank.name'] || '';
@@ -227,6 +260,9 @@
                 
                 if (logoInput.files && logoInput.files[0]) {
                     formData.append('logo', logoInput.files[0]);
+                }
+                if (bannerInput.files && bannerInput.files[0]) {
+                    formData.append('banner', bannerInput.files[0]);
                 }
 
                 try {

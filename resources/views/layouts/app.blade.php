@@ -33,6 +33,28 @@
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <style>
+        /* Hide fallback text of Material Symbols icons while the web font is loading */
+        html:not(.material-symbols-loaded) .material-symbols-outlined {
+            color: transparent !important;
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: middle;
+        }
+    </style>
+    <script>
+        if (document.fonts) {
+            let fontLoadTimeout = setTimeout(function() {
+                document.documentElement.classList.add('material-symbols-loaded');
+            }, 150);
+            document.fonts.load('1em Material Symbols Outlined').then(function() {
+                clearTimeout(fontLoadTimeout);
+                document.documentElement.classList.add('material-symbols-loaded');
+            });
+        } else {
+            document.documentElement.classList.add('material-symbols-loaded');
+        }
+    </script>
 
     <script id="tailwind-config">
         tailwind.config = {

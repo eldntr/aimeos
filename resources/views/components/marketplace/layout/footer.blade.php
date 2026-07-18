@@ -50,7 +50,7 @@
     <!-- Copyright & Links -->
     <div class="w-full max-w-7xl pt-8 border-t border-outline-variant/10 flex flex-col md:flex-row justify-between items-center gap-4">
         <p class="font-['Plus_Jakarta_Sans'] text-sm font-medium text-on-surface-variant opacity-70">
-            © 2026 {{ $companyName ?? 'Reborns' }}.
+            © 2026 {{ $companyName ?? 'Reborns' }}. Powered by <a href="https://apexia.id" target="_blank" class="hover:text-primary transition-colors font-bold">Apexia</a>.
         </p>
     </div>
 </footer>

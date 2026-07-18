@@ -32,7 +32,7 @@
         }
     @endphp
 
-    <section class="max-w-6xl mx-auto px-5 sm:px-8 py-8 md:py-12 space-y-6">
+    <section class="w-full px-6 py-6 space-y-6">
         {{-- Header --}}
         <div class="flex items-center gap-3">
             <a href="{{ route('merchant.orders.index', $routeParams) }}"
@@ -40,13 +40,13 @@
                 <span class="material-symbols-outlined text-on-surface">arrow_back</span>
             </a>
             <div>
-                <div class="flex items-center gap-2">
-                    <h1 class="text-xl md:text-2xl font-extrabold tracking-tight text-on-surface">Detail Pesanan #{{ $order['id'] }}</h1>
+                <div class="flex flex-wrap items-center gap-2">
+                    <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-on-surface">Detail Pesanan #{{ $order['id'] }}</h1>
                     <span class="px-2.5 py-0.5 rounded-full text-xs font-bold {{ $statusClass }}">
                         {{ $statusLabel }}
                     </span>
                 </div>
-                <p class="text-xs text-on-surface-variant mt-0.5">Dipesan pada {{ date('d M Y, H:i', strtotime($order['date'])) }}</p>
+                <p class="text-sm text-on-surface-variant mt-0.5">Dipesan pada {{ date('d M Y, H:i', strtotime($order['date'])) }}</p>
             </div>
         </div>
 

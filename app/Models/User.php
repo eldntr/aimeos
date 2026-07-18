@@ -27,6 +27,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'ktp_url',
         'seller_status',
         'rejection_reason',
+        'avatar',
     ];
 
     /**
@@ -74,5 +75,17 @@ class User extends Authenticatable implements MustVerifyEmail
     public function bankDetail()
     {
         return $this->hasOne(SellerBankDetail::class);
+    }
+
+    /**
+     * Get the URL to the user's profile photo/avatar.
+     */
+    public function getProfilePhotoUrlAttribute(): string
+    {
+        if ($this->avatar && $this->avatar !== config('chatify.user_avatar.fallback', 'avatar.png')) {
+            $folder = config('chatify.user_avatar.folder', 'users-avatar');
+            return asset('storage/' . $folder . '/' . $this->avatar);
+        }
+        return 'https://api.dicebear.com/7.x/avataaars/svg?seed=' . $this->id;
     }
 }

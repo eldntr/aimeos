@@ -28,5 +28,7 @@ class DatabaseSeeder extends Seeder
         } else {
             $this->command->info("Admin $email already exists.");
         }
+
+        $this->call(MarketplaceSeeder::class);
     }
 }

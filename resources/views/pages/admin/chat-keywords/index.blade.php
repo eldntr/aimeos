@@ -1,5 +1,5 @@
 <x-layout.admin>
-    <section class="max-w-5xl mx-auto px-6 md:px-10 py-10 md:py-16 space-y-6">
+    <section class="w-full px-6 py-6 space-y-6">
 
         {{-- Flash Messages --}}
         @if(session('success'))

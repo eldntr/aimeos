@@ -26,7 +26,7 @@
 <!-- Toast Notification Container -->
 <div id="toast-container" class="fixed top-5 right-5 z-[9999] flex flex-col gap-3 pointer-events-none"></div>
 
-<main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 space-y-8 bg-surface">
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 bg-surface">
     <!-- Top Card: Profile Summary -->
     <section class="bg-surface-container-low p-6 md:p-8 rounded-3xl shadow-[0_18px_48px_rgba(47,47,46,0.08)] flex flex-col sm:flex-row items-center gap-6">
         <div class="relative w-24 h-24 shrink-0">
@@ -606,12 +606,40 @@
         avatarInput.click();
     };
 
-    avatarInput.addEventListener('change', () => {
+    avatarInput.addEventListener('change', async () => {
         if (avatarInput.files && avatarInput.files[0]) {
             const file = avatarInput.files[0];
-            const url = URL.createObjectURL(file);
-            document.getElementById('profile-avatar').src = url;
-            showToast('Foto profil berhasil diperbarui secara lokal!');
+            
+            const localUrl = URL.createObjectURL(file);
+            document.getElementById('profile-avatar').src = localUrl;
+            
+            const formData = new FormData();
+            formData.append('avatar', file);
+            
+            try {
+                const response = await fetch('{{ route("profile.avatar.update") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    body: formData
+                });
+                
+                const result = await response.json();
+                if (response.ok) {
+                    document.getElementById('profile-avatar').src = result.url;
+                    showToast('Foto profil berhasil diperbarui!');
+                    
+                    // Update header/sidebar avatars
+                    const avatars = document.querySelectorAll('img[alt="Profile"], img[alt="Foto profil"]');
+                    avatars.forEach(img => img.src = result.url);
+                } else {
+                    showToast(result.message || 'Gagal memperbarui foto profil.', 'error');
+                }
+            } catch (error) {
+                console.error(error);
+                showToast('Gagal mengunggah foto profil.', 'error');
+            }
         }
     });
 

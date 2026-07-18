@@ -78,6 +78,7 @@ class SellerProfileController extends Controller
         $request->validate([
             'name' => 'nullable|string|max:255',
             'logo' => 'nullable|image|max:5120',
+            'banner' => 'nullable|image|max:5120',
             'address' => 'nullable|string',
         ]);
 
@@ -103,6 +104,15 @@ class SellerProfileController extends Controller
                 $logoUrl = $fileService->uploadFile($request->file('logo'));
                 $fileService->triggerCompression();
                 $site->setLogo($logoUrl);
+            }
+
+            if ($request->hasFile('banner')) {
+                $fileService = new \App\Services\FileServerService();
+                $bannerUrl = $fileService->uploadFile($request->file('banner'));
+                $fileService->triggerCompression();
+                $config = $site->getConfig();
+                $config['banner'] = $bannerUrl;
+                $site->setConfig($config);
             }
 
             if ($request->has('address')) {

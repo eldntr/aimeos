@@ -53,6 +53,45 @@ class ProfileController extends Controller
     }
 
     /**
+     * Update the user's profile avatar.
+     */
+    public function updateAvatar(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $request->validate([
+            'avatar' => ['required', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+        ]);
+
+        $user = $request->user();
+        
+        if ($request->hasFile('avatar')) {
+            $file = $request->file('avatar');
+            
+            $filename = md5(uniqid()) . '.' . $file->getClientOriginalExtension();
+            $folder = config('chatify.user_avatar.folder', 'users-avatar');
+            
+            // Store under storage/users-avatar
+            $file->storeAs($folder, $filename, 'public');
+            
+            // Delete old avatar if not default
+            if ($user->avatar && $user->avatar !== config('chatify.user_avatar.fallback', 'avatar.png')) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($folder . '/' . $user->avatar);
+            }
+            
+            $user->avatar = $filename;
+            $user->save();
+            
+            $url = asset('storage/' . $folder . '/' . $filename);
+            
+            return response()->json([
+                'message' => 'Foto profil berhasil diperbarui.',
+                'url' => $url,
+            ]);
+        }
+
+        return response()->json(['message' => 'Gagal mengunggah foto.'], 400);
+    }
+
+    /**
      * Delete the user's account.
      */
     public function destroy(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse

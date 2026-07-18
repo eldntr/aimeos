@@ -1,5 +1,5 @@
 <x-layout.admin>
-    <section class="max-w-7xl mx-auto px-6 md:px-10 pt-4 pb-8 space-y-6" x-data="adminDashboard()">
+    <section class="w-full px-6 py-6 space-y-6" x-data="adminDashboard()">
         <!-- Notification Toast -->
         <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-3 px-6 py-4 rounded-2xl bg-on-surface text-surface shadow-2xl max-w-md">
             <span class="material-symbols-outlined text-primary text-xl" id="toast-icon">info</span>
@@ -458,8 +458,71 @@
                 </form>
             </div>
         </div>
+        <!-- ================= USER REPORTS MODERATION TAB ================= -->
+        <div id="view-user-reports" class="tab-view hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl font-extrabold tracking-tight text-on-surface">Laporan Kendala Pelanggan</h1>
+                    <p class="text-xs text-on-surface-variant mt-1">Kelola dan tanggapi tiket support, keluhan bug, serta laporan keamanan dari pengguna.</p>
+                </div>
+            </div>
+
+            <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/10 shadow-[0_12px_36px_rgba(47,47,46,0.04)] overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-surface-container-low border-b border-outline-variant/10 text-on-surface-variant font-extrabold">
+                                <th class="px-6 py-4">Tiket / Tanggal</th>
+                                <th class="px-6 py-4">Pengirim</th>
+                                <th class="px-6 py-4">Kategori</th>
+                                <th class="px-6 py-4">Subjek & Detail Kendala</th>
+                                <th class="px-6 py-4">Status</th>
+                                <th class="px-6 py-4 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-reports-table-body" class="divide-y divide-outline-variant/5">
+                            <!-- Dynamically loaded -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
 
         <!-- ================= DIALOG MODALS ================= -->
+        <!-- User Report Reply Modal (NEW!) -->
+        <div id="user-report-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 opacity-0 pointer-events-none transition-all duration-300">
+            <div class="bg-surface-container-lowest w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl transform scale-95 transition-all duration-300" id="user-report-modal-card">
+                <div class="p-6 border-b border-outline-variant/20 flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-on-surface">Tanggapi Laporan Kendala</h3>
+                    <button onclick="closeUserReportModal()" class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant"><span class="material-symbols-outlined text-lg">close</span></button>
+                </div>
+                <form id="user-report-reply-form" onsubmit="submitUserReportReply(event)">
+                    <input type="hidden" id="reply-report-id" name="report_id" />
+                    <div class="p-6 space-y-4">
+                        <div class="bg-neutral-50 p-4 rounded-2xl border border-neutral-100 space-y-1">
+                            <p class="text-[10px] font-black text-neutral-400 uppercase" id="reply-report-meta"></p>
+                            <h4 class="text-sm font-bold text-on-surface" id="reply-report-subject"></h4>
+                            <p class="text-xs text-neutral-600 leading-relaxed mt-1" id="reply-report-description"></p>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-bold text-on-surface">Tanggapan / Solusi Admin <span class="text-error">*</span></label>
+                            <textarea id="reply-admin-text" name="admin_reply" rows="4" required class="w-full text-xs px-4 py-3 rounded-xl border border-neutral-200 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-neutral-400" placeholder="Ketik tanggapan bantuan atau solusi di sini..."></textarea>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-bold text-on-surface">Status Laporan <span class="text-error">*</span></label>
+                            <select id="reply-report-status" name="status" required class="w-full text-xs px-4 py-3 rounded-xl border border-neutral-200 bg-white focus:outline-none focus:border-primary transition-all">
+                                <option value="processed">Processed (Sedang Ditangani)</option>
+                                <option value="resolved">Resolved (Selesai/Tuntas)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="p-6 bg-surface-container-low border-t border-outline-variant/10 flex justify-end gap-3">
+                        <button type="button" onclick="closeUserReportModal()" class="px-5 py-2.5 rounded-full border border-neutral-200 hover:bg-neutral-50 text-neutral-600 text-xs font-bold transition-all">Batal</button>
+                        <button type="submit" class="px-5 py-2.5 rounded-full bg-primary hover:opacity-90 text-white text-xs font-bold shadow-md transition-all">Kirim Tanggapan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
         <!-- Dispute Evidence inspect modal (NEW!) -->
         <div id="dispute-evidence-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 opacity-0 pointer-events-none transition-all duration-300">
             <div class="bg-surface-container-lowest w-full max-w-xl rounded-3xl overflow-hidden shadow-2xl transform scale-95 transition-all duration-300" id="dispute-evidence-modal-card">
@@ -646,6 +709,8 @@
                 loadWithdrawals();
             } else if (tabId === 'reviews') {
                 loadReviews();
+            } else if (tabId === 'user-reports') {
+                loadUserReports();
             }
         }
 
@@ -1944,6 +2009,155 @@
                     loadReviews();
                 } else {
                     showToast(result.message || 'Gagal mengubah status ulasan.', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Error koneksi.', 'error');
+            }
+        }
+        // ================= USER REPORTS & SUPPORT TICKETS =================
+        let userReportsList = [];
+
+        async function loadUserReports() {
+            const tableBody = document.getElementById('user-reports-table-body');
+            if (!tableBody) return;
+
+            tableBody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-on-surface-variant/70"><div class="flex items-center justify-center gap-2"><span class="animate-spin material-symbols-outlined text-lg">sync</span><span>Memuat laporan kendala...</span></div></td></tr>`;
+
+            try {
+                const response = await fetch('/api/admin/user-reports');
+                const result = await response.json();
+                if (response.ok && result.status === 'success') {
+                    userReportsList = result.data || [];
+                    renderUserReportsTable();
+                } else {
+                    tableBody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-rose-600 font-bold">Gagal memuat laporan kendala.</td></tr>`;
+                }
+            } catch (err) {
+                console.error(err);
+                tableBody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-rose-600 font-bold">Terjadi kesalahan jaringan.</td></tr>`;
+            }
+        }
+
+        function renderUserReportsTable() {
+            const tableBody = document.getElementById('user-reports-table-body');
+            if (!tableBody) return;
+
+            tableBody.innerHTML = '';
+
+            if (userReportsList.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-on-surface-variant/60 font-semibold">Tidak ada laporan kendala masuk.</td></tr>`;
+                return;
+            }
+
+            userReportsList.forEach(report => {
+                const date = new Date(report.created_at).toLocaleDateString('id-ID', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                const statusBadge = report.status === 'pending'
+                    ? `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/50">PENDING</span>`
+                    : report.status === 'processed'
+                    ? `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/50">PROCESSED</span>`
+                    : `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/50">RESOLVED</span>`;
+
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-surface-container-low transition-colors duration-150 border-b border-outline-variant/5';
+                
+                const senderName = report.name || 'Guest';
+                const senderEmail = report.email || '-';
+                const userBadge = report.user_id 
+                    ? `<span class="px-1.5 py-0.5 rounded text-[8px] bg-primary/10 text-primary font-bold ml-1">USER</span>`
+                    : `<span class="px-1.5 py-0.5 rounded text-[8px] bg-neutral-100 text-neutral-600 font-bold ml-1">GUEST</span>`;
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 font-semibold text-on-surface">
+                        <div>#TKT-${report.id}</div>
+                        <div class="text-[10px] text-on-surface-variant/75 mt-0.5">${date}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="font-bold flex items-center">${senderName} ${userBadge}</div>
+                        <div class="text-[10px] text-on-surface-variant/75 mt-0.5">${senderEmail}</div>
+                    </td>
+                    <td class="px-6 py-4"><span class="px-2 py-0.5 rounded-md bg-surface-container font-extrabold uppercase text-[9px]">${report.category}</span></td>
+                    <td class="px-6 py-4 max-w-sm">
+                        <div class="font-bold text-on-surface mb-1">${report.subject}</div>
+                        <p class="text-neutral-500 font-medium leading-relaxed whitespace-pre-wrap">${report.description}</p>
+                        ${report.admin_reply ? `
+                        <div class="mt-2 bg-primary/5 border border-primary/10 rounded-lg p-2 space-y-1">
+                            <div class="text-[9px] font-black text-primary uppercase">Balasan Admin:</div>
+                            <p class="text-neutral-700 italic font-semibold">"${report.admin_reply}"</p>
+                        </div>
+                        ` : ''}
+                    </td>
+                    <td class="px-6 py-4">${statusBadge}</td>
+                    <td class="px-6 py-4 text-center">
+                        <button onclick="openUserReportModal(${report.id})" class="px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm hover:opacity-90 transition-opacity">
+                            Tanggapi
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function openUserReportModal(id) {
+            const report = userReportsList.find(r => r.id === id);
+            if (!report) return;
+
+            document.getElementById('reply-report-id').value = report.id;
+            document.getElementById('reply-report-meta').innerText = `Tiket: #TKT-${report.id} | Pengirim: ${report.name || 'Guest'} (${report.email || '-'})`;
+            document.getElementById('reply-report-subject').innerText = report.subject;
+            document.getElementById('reply-report-description').innerText = report.description;
+            document.getElementById('reply-admin-text').value = report.admin_reply || '';
+            document.getElementById('reply-report-status').value = report.status === 'pending' ? 'processed' : report.status;
+
+            const modal = document.getElementById('user-report-modal');
+            const modalClass = document.getElementById('user-report-modal-card');
+            
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modalClass.classList.remove('scale-95');
+            modalClass.classList.add('scale-100');
+        }
+
+        function closeUserReportModal() {
+            const modal = document.getElementById('user-report-modal');
+            const modalClass = document.getElementById('user-report-modal-card');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modalClass.classList.remove('scale-100');
+            modalClass.classList.add('scale-95');
+        }
+
+        async function submitUserReportReply(e) {
+            e.preventDefault();
+            const id = document.getElementById('reply-report-id').value;
+            const reply = document.getElementById('reply-admin-text').value;
+            const status = document.getElementById('reply-report-status').value;
+
+            try {
+                const response = await fetch(`/api/admin/user-reports/${id}/reply`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        admin_reply: reply,
+                        status: status
+                    })
+                });
+                const result = await response.json();
+                if (response.ok && result.status === 'success') {
+                    showToast(result.message || 'Tanggapan berhasil dikirim!');
+                    closeUserReportModal();
+                    loadUserReports();
+                } else {
+                    showToast(result.message || 'Gagal mengirim tanggapan.', 'error');
                 }
             } catch (err) {
                 console.error(err);

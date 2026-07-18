@@ -10,7 +10,7 @@
         <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(171,45,0,0.03),_transparent_50%)]"></div>
     </div>
 
-    <div class="max-w-[1120px] mx-auto px-6 lg:px-8 pt-10 pb-24 space-y-12">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8 pt-6 pb-12 space-y-6">
         <div class="space-y-8">
             <a href="{{ route('landing') }}" class="group inline-flex items-center gap-2 text-sm font-medium text-on-surface-variant hover:text-primary transition-colors">
                 <span class="material-symbols-outlined text-lg group-hover:-translate-x-1 transition-transform">arrow_back</span>

@@ -68,6 +68,7 @@ class ProductController extends Controller
             'variants' => ['sometimes', 'array'],
             'variants.*.code' => ['required_with:variants', 'string', 'max:64'],
             'variants.*.label' => ['required_with:variants', 'string', 'max:255'],
+            'stock' => ['sometimes', 'integer', 'min:0'],
         ]);
 
         $context = $this->getSellerContext();
@@ -217,13 +218,14 @@ class ProductController extends Controller
             'variants' => ['sometimes', 'array'],
             'variants.*.code' => ['required_with:variants', 'string', 'max:64'],
             'variants.*.label' => ['required_with:variants', 'string', 'max:255'],
+            'stock' => ['sometimes', 'integer', 'min:0'],
         ]);
 
         $context = $this->getSellerContext();
         $manager = \Aimeos\MShop::create($context, 'product');
 
         try {
-            $product = $manager->get($id);
+            $product = $manager->get($id, ['media', 'price', 'catalog', 'text']);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Product not found.'], 404);
         }
@@ -239,7 +241,7 @@ class ProductController extends Controller
         if ($request->has('categories') && is_array($request->categories)) {
             // Remove existing catalog lists to replace them
             $listItems = $product->getListItems('catalog', 'default');
-            $product->deleteListItems($listItems, 'catalog');
+            $product->deleteListItems($listItems);
             
             foreach ($request->categories as $categoryId) {
                 $listItem = $this->createCatalogListItem($context, $categoryId);
@@ -273,7 +275,7 @@ class ProductController extends Controller
         // Update price
         if ($request->has('price')) {
             $listItems = $product->getListItems('price', 'default');
-            $product->deleteListItems($listItems, 'price');
+            $product->deleteListItems($listItems, true);
             
             $priceManager = \Aimeos\MShop::create($context, 'price');
             $priceItem = $priceManager->create()
@@ -292,7 +294,7 @@ class ProductController extends Controller
         // Update description
         if ($request->has('description')) {
             $listItems = $product->getListItems('text', 'default');
-            $product->deleteListItems($listItems, 'text');
+            $product->deleteListItems($listItems, true);
             
             if ($request->description) {
                 $textManager = \Aimeos\MShop::create($context, 'text');
@@ -313,7 +315,7 @@ class ProductController extends Controller
         // Update images if provided
         if ($request->hasFile('images')) {
             $listItems = $product->getListItems('media', 'default');
-            $product->deleteListItems($listItems, 'media');
+            $product->deleteListItems($listItems, true);
             
             $fileService = new \App\Services\FileServerService();
             foreach ($request->file('images') as $file) {
@@ -330,7 +332,7 @@ class ProductController extends Controller
         $saved = $manager->save($product);
         
         // Ensure stock entry exists for product
-        $this->saveStockItem($context, $saved->getId());
+        $this->saveStockItem($context, $saved->getId(), $request->input('stock'));
         
         // Add new variants if provided (does not delete existing variants to prevent data loss)
         if ($saved->getType() === 'select' && $request->has('variants') && is_array($request->variants)) {
@@ -395,11 +397,17 @@ class ProductController extends Controller
             foreach ($product->getListItems('media', 'default') as $listItem) {
                 if ($mediaItem = $listItem->getRefItem()) {
                     $images[] = [
+                        'id' => $mediaItem->getId(),
                         'url' => $mediaItem->getUrl(),
                         'preview' => $mediaItem->getPreview(),
+                        'position' => $listItem->getPosition(),
                     ];
                 }
             }
+            // Sort by position ascending
+            usort($images, function($a, $b) {
+                return $a['position'] <=> $b['position'];
+            });
         } catch (\Exception $e) {
             // ignore if not loaded
         }
@@ -449,6 +457,19 @@ class ProductController extends Controller
             // ignore if not loaded
         }
 
+        $stockLevel = 0;
+        try {
+            $stockManager = \Aimeos\MShop::create($product->getContext(), 'stock');
+            $filter = $stockManager->filter();
+            $filter->add($filter->compare('==', 'stock.productid', $product->getId()));
+            $stocks = $stockManager->search($filter);
+            if ($stockItem = $stocks->first()) {
+                $stockLevel = $stockItem->getStockLevel();
+            }
+        } catch (\Exception $e) {
+            // ignore
+        }
+
         return [
             'id'          => $product->getId(),
             'code'        => $product->getCode(),
@@ -465,6 +486,7 @@ class ProductController extends Controller
             'priceRaw'    => $priceRaw,
             'categories'  => $categoryIds,
             'description' => $description,
+            'stock'       => $stockLevel,
             'rating'      => '-',
         ];
     }
@@ -720,10 +742,45 @@ class ProductController extends Controller
         }
     }
 
+    public function reorderImages(Request $request, string $id): \Illuminate\Http\JsonResponse
+    {
+        $request->validate([
+            'image_ids' => 'required|array',
+            'image_ids.*' => 'string'
+        ]);
+
+        $context = $this->getSellerContext();
+        $manager = \Aimeos\MShop::create($context, 'product');
+        
+        $manager->begin();
+        try {
+            $product = $manager->get($id, ['media']);
+            $listItems = $product->getListItems('media', 'default');
+            
+            $idMap = [];
+            foreach ($listItems as $item) {
+                $idMap[$item->getRefId()] = $item;
+            }
+            
+            foreach ($request->image_ids as $pos => $mediaId) {
+                if (isset($idMap[$mediaId])) {
+                    $idMap[$mediaId]->setPosition($pos);
+                }
+            }
+            
+            $manager->save($product);
+            $manager->commit();
+            return response()->json(['message' => 'Urutan gambar berhasil diperbarui.']);
+        } catch (\Exception $e) {
+            $manager->rollback();
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
     /**
      * Create or update a stock entry to ensure product has stock (null = unlimited stock)
      */
-    private function saveStockItem(\Aimeos\MShop\Context\Item\Iface $context, string $productId, ?int $stockLevel = null): void
+    private function saveStockItem(\Aimeos\MShop\ContextIface $context, string $productId, ?int $stockLevel = null): void
     {
         try {
             $stockManager = \Aimeos\MShop::create($context, 'stock');

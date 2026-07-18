@@ -65,7 +65,7 @@ class ProductController extends Controller
             if (is_string($ids)) {
                 $ids = explode(',', $ids);
             }
-            $filter->add($filter->compare('in', 'product.id', $ids));
+            $filter->add($filter->compare('==', 'product.id', $ids));
         }
 
         if ($search) {
@@ -148,6 +148,8 @@ class ProductController extends Controller
                 'image'    => $images[0]['url'] ?? null,
                 'prices'   => $prices,
                 'price'    => $priceLabel,
+                'rating'   => $product->getRating(),
+                'ratings'  => $product->getRatings(),
                 'shop_name' => $siteDetails['name'],
                 'shop_code' => $siteDetails['code'],
             ];
@@ -228,7 +230,7 @@ class ProductController extends Controller
         // 3. Fetch product again inside its native site context to resolve correct media, prices, etc.
         try {
             $manager = \Aimeos\MShop::create($context, 'product');
-            $product = $manager->get($id, ['media', 'price', 'catalog', 'text']);
+            $product = $manager->get($id, ['media', 'price', 'catalog', 'text', 'product']);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Product not found.'], 404);
         }
@@ -269,6 +271,52 @@ class ProductController extends Controller
             }
         }
 
+        // Fetch variants if this is a select product
+        $variants = [];
+        foreach ($product->getListItems('product', 'default') as $listItem) {
+            try {
+                $variantProd = $manager->get($listItem->getRefId(), ['media', 'price']);
+                
+                $varImages = [];
+                foreach ($variantProd->getListItems('media', 'default') as $varMediaListItem) {
+                    if ($varMediaItem = $varMediaListItem->getRefItem()) {
+                        $varImages[] = [
+                            'url' => $varMediaItem->getUrl(),
+                            'preview' => $varMediaItem->getPreview(),
+                        ];
+                    }
+                }
+                
+                $varPrices = [];
+                foreach ($variantProd->getListItems('price', 'default') as $varPriceListItem) {
+                    if ($varPriceItem = $varPriceListItem->getRefItem()) {
+                        $varPrices[] = [
+                            'value' => $varPriceItem->getValue(),
+                            'currency' => $varPriceItem->getCurrencyId(),
+                        ];
+                    }
+                }
+                
+                $varPriceLabel = null;
+                if (!empty($varPrices)) {
+                    $firstVarPrice = $varPrices[0];
+                    $varPriceLabel = number_format($firstVarPrice['value'], 0, ',', '.') . ' ' . strtoupper($firstVarPrice['currency']);
+                }
+
+                $variants[] = [
+                    'id' => $variantProd->getId(),
+                    'code' => $variantProd->getCode(),
+                    'label' => $variantProd->getLabel(),
+                    'price' => $varPriceLabel,
+                    'priceRaw' => !empty($varPrices) ? $varPrices[0]['value'] : 0,
+                    'images' => $varImages,
+                    'image' => $varImages[0]['url'] ?? null,
+                ];
+            } catch (\Exception $e) {
+                // skip
+            }
+        }
+
         return response()->json([
             'data' => [
                 'id'          => $product->getId(),
@@ -282,9 +330,12 @@ class ProductController extends Controller
                 'image'       => $images[0]['url'] ?? null,
                 'prices'      => $prices,
                 'price'       => $priceLabel,
+                'rating'      => $product->getRating(),
+                'ratings'     => $product->getRatings(),
                 'description' => $description,
                 'shop_name'   => ($siteDetails = $this->getSiteDetailsFromSiteId($context, $product->getSiteId()))['name'],
                 'shop_code'   => $siteDetails['code'],
+                'variants'    => $variants,
             ],
         ]);
     }
@@ -343,7 +394,7 @@ class ProductController extends Controller
 
         // Fetch variant products
         $filter = $manager->filter();
-        $filter->add($filter->compare('in', 'product.id', $variantIds));
+        $filter->add($filter->compare('==', 'product.id', $variantIds));
         $filter->add($filter->compare('==', 'product.status', 1));
         
         $variantProducts = $manager->search($filter, ['price', 'media']);

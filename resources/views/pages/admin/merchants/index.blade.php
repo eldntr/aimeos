@@ -3,7 +3,7 @@
         $routeParams = request()->route('site') ? ['site' => request()->route('site')] : [];
     @endphp
 
-    <section class="max-w-6xl mx-auto px-6 md:px-10 py-10 md:py-16 space-y-6">
+    <section class="w-full px-6 py-6 space-y-6">
         <h1 class="text-2xl md:text-3xl font-extrabold text-on-surface">Pending Merchant Verifications</h1>
 
         <div class="bg-surface-container-lowest rounded-2xl shadow-[0_12px_36px_rgba(47,47,46,0.06)] overflow-hidden">

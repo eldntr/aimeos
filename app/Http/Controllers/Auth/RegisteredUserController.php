@@ -239,6 +239,9 @@ class RegisteredUserController extends Controller
 
         \Aimeos\Setup::use(new \Aimeos\Bootstrap())->context($context)->verbose('')->up($code);
 
+        // Ensure the newly created site's default locale currency is IDR instead of USD
+        \Illuminate\Support\Facades\DB::table('mshop_locale')->where('siteid', $siteId)->update(['currencyid' => 'IDR']);
+
         $user = User::where('email', $request->email)->first();
 
         if ($user) {

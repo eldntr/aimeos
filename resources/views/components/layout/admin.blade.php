@@ -80,6 +80,11 @@
                     <span>Penarikan Dana</span>
                 </a>
 
+                <a href="{{ route('admin.dashboard', ['tab' => 'user-reports'] + $routeParams) }}" class="flex items-center gap-3 px-4 py-2.5 rounded-2xl hover:bg-primary/10 hover:text-primary transition-all duration-200 {{ request('tab') == 'user-reports' && request()->routeIs('admin.dashboard') ? 'bg-primary/10 text-primary shadow-sm border-l-4 border-primary font-bold' : 'text-on-surface/80' }}">
+                    <span class="material-symbols-outlined text-lg">support_agent</span>
+                    <span>Laporan Kendala</span>
+                </a>
+
                 <a href="{{ route('admin.dashboard', ['tab' => 'reports'] + $routeParams) }}" class="flex items-center gap-3 px-4 py-2.5 rounded-2xl hover:bg-primary/10 hover:text-primary transition-all duration-200 {{ request('tab') == 'reports' && request()->routeIs('admin.dashboard') ? 'bg-primary/10 text-primary shadow-sm border-l-4 border-primary font-bold' : 'text-on-surface/80' }}">
                     <span class="material-symbols-outlined text-lg">download</span>
                     <span>Laporan & Siaran</span>

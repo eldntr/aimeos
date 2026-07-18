@@ -9,7 +9,7 @@
     $isScroll = $layout === 'scroll';
     $listClasses = $isScroll
         ? 'flex gap-6 overflow-x-auto pb-2 no-scrollbar snap-x snap-mandatory'
-        : 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 lg:gap-8';
+        : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4';
     $itemClasses = $isScroll
         ? 'shrink-0 w-[220px] sm:w-[240px] snap-start'
         : '';
@@ -25,7 +25,7 @@
         }
 
         if (!isset($product['link']) && \Illuminate\Support\Facades\Route::has('products.show')) {
-            $product['link'] = route('products.show', ['product' => $product['slug']]);
+            $product['link'] = route('products.show', ['id' => $product['id']]);
         }
 
         return $product;

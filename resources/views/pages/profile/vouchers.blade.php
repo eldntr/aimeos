@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="max-w-7xl mx-auto px-4 md:px-8 py-8 font-body">
+    <div class="max-w-7xl mx-auto px-4 md:px-8 py-6 space-y-6 font-body">
         
         <!-- Header -->
         <div class="flex items-center gap-4 mb-8">

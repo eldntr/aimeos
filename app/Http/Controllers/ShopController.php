@@ -43,6 +43,8 @@ class ShopController extends Controller
                 'code' => $site->getCode(),
                 'label' => $site->getLabel(),
                 'status' => $site->getStatus(),
+                'logo' => $site->getLogo(),
+                'config' => $site->getConfig(),
             ]
         ]);
     }

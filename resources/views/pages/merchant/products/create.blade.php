@@ -3,7 +3,7 @@
         $routeParams = request()->route('site') ? ['site' => request()->route('site')] : [];
     @endphp
 
-    <section class="max-w-6xl mx-auto px-5 sm:px-8 py-8 md:py-12 space-y-6">
+    <section class="w-full px-6 py-6 space-y-6">
         {{-- Header --}}
         <div class="flex items-center gap-3">
             <a href="{{ route('merchant.products.index', $routeParams) }}"
@@ -19,7 +19,7 @@
 
         {{-- Form --}}
         <form action="{{ route('merchant.products.store', $routeParams) }}" method="POST" enctype="multipart/form-data"
-              class="max-w-4xl bg-surface-container-lowest rounded-2xl p-6 md:p-8 border border-outline-variant/10 shadow-[0_4px_16px_rgba(47,47,46,0.04)] space-y-6">
+              class="w-full bg-surface-container-lowest rounded-2xl p-6 md:p-8 border border-outline-variant/10 shadow-[0_4px_16px_rgba(47,47,46,0.04)] space-y-6">
             @csrf
 
             {{-- Product Name & SKU --}}
@@ -45,8 +45,8 @@
                           class="w-full rounded-xl bg-surface-container-high border-none px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/30 transition-all resize-none">{{ old('description') }}</textarea>
             </div>
 
-            {{-- Price, Category & Status --}}
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {{-- Price, Category, Stock & Status --}}
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                     <label for="product-price" class="block text-sm font-bold text-on-surface mb-2">Harga (Rp) <span class="text-error">*</span></label>
                     <div class="relative">
@@ -67,6 +67,12 @@
                             </option>
                         @endforeach
                     </select>
+                </div>
+                <div>
+                    <label for="product-stock" class="block text-sm font-bold text-on-surface mb-2">Stok <span class="text-error">*</span></label>
+                    <input type="number" id="product-stock" name="stock" value="{{ old('stock', 1) }}" required min="0"
+                           placeholder="1"
+                           class="w-full rounded-xl bg-surface-container-high border-none px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/30 transition-all" />
                 </div>
                 <div>
                     <label for="product-status" class="block text-sm font-bold text-on-surface mb-2">Status Produk</label>

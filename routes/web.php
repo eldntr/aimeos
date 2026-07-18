@@ -20,6 +20,7 @@ use App\Http\Controllers\Web\AdminController;
 use App\Http\Controllers\Web\MerchantController;
 use App\Http\Controllers\Admin\ChatKeywordController;
 use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\HelpController;
 
 Route::get('/ready', function() {
     return 'OK';
@@ -50,7 +51,8 @@ Route::post('/merchant/register', [RegisteredUserController::class, 'registerSel
 Route::view('/tentang-kami', 'pages.static.about')->name('tentang-kami');
 Route::view('/cara-kerja', 'pages.static.how-it-works')->name('cara-kerja');
 Route::view('/karir', 'pages.static.career')->name('karir');
-Route::view('/help-center', 'pages.static.help-center')->name('help-center');
+Route::get('/help-center', [HelpController::class, 'index'])->name('help-center');
+Route::post('/help-center/report', [HelpController::class, 'storeReport'])->name('help-center.report');
 Route::view('/keamanan', 'pages.static.security')->name('keamanan');
 Route::view('/syarat-ketentuan', 'pages.static.terms')->name('syarat-ketentuan');
 
@@ -61,6 +63,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.avatar.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::view('/admin/dashboard', 'pages.admin.dashboard')->name('admin.dashboard');
@@ -101,9 +104,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/merchant/vouchers/create', [MerchantController::class, 'vouchersCreate'])->name('merchant.vouchers.create');
     Route::post('/merchant/vouchers', [MerchantController::class, 'vouchersStore'])->name('merchant.vouchers.store');
 
-    // Merchant Product Variants (AJAX)
     Route::post('/merchant/products/{product}/variants', [MerchantController::class, 'addVariantAJAX'])->name('merchant.products.variants.store');
     Route::delete('/merchant/products/{product}/variants/{variant_id}', [MerchantController::class, 'deleteVariantAJAX'])->name('merchant.products.variants.destroy');
+
+    // Merchant Product Images (AJAX)
+    Route::delete('/merchant/products/{product}/images/{image_id}', [MerchantController::class, 'deleteImageAJAX'])->name('merchant.products.images.destroy');
+    Route::post('/merchant/products/{product}/images/reorder', [MerchantController::class, 'reorderImagesAJAX'])->name('merchant.products.images.reorder');
+
 
     // Custom Marketplace Chat
     Route::get('/marketplace/chat/messages', [\App\Http\Controllers\MarketplaceChatController::class, 'getMessages']);

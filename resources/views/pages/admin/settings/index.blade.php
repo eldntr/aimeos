@@ -1,5 +1,5 @@
 <x-layout.admin>
-    <section class="max-w-5xl mx-auto px-6 md:px-10 py-10 md:py-16 space-y-6">
+    <section class="w-full px-6 py-6 space-y-6">
         <!-- Toast Notification -->
         <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-3 px-6 py-4 rounded-2xl bg-on-surface text-surface shadow-2xl max-w-md">
             <span class="material-symbols-outlined text-primary text-xl" id="toast-icon">info</span>
