@@ -195,20 +195,20 @@
                                     </div>
 
                                     @if($isOpenComplaint)
-                                        <form action="{{ route('merchant.orders.complaint-response', array_merge(['id' => $order['id']], $routeParams)) }}" method="POST" class="rounded-xl bg-surface-container-low p-4 space-y-3">
+                                        <form action="{{ route('merchant.orders.complaint-response', array_merge(['id' => $order['id']], $routeParams)) }}" method="POST" class="rounded-xl bg-surface-container-low p-4 space-y-3 seller-complaint-response-form">
                                             @csrf
                                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                 <div>
                                                     <label class="block text-[11px] uppercase font-bold text-outline mb-2">Tanggapan Seller</label>
-                                                    <select name="response_type" class="w-full rounded-xl bg-white border border-outline-variant/20 px-3 py-2 text-xs text-on-surface">
+                                                    <select name="response_type" class="w-full rounded-xl bg-white border border-outline-variant/20 px-3 py-2 text-xs text-on-surface complaint-response-type">
                                                         <option value="accept">Setuju solusi pembeli</option>
                                                         <option value="reject">Tolak komplain</option>
                                                         <option value="partial_refund">Tawarkan refund sebagian</option>
                                                     </select>
                                                 </div>
-                                                <div>
+                                                <div class="complaint-refund-field hidden">
                                                     <label class="block text-[11px] uppercase font-bold text-outline mb-2">Refund sebagian (%)</label>
-                                                    <input type="number" name="refund_percent" min="1" max="99" value="50" class="w-full rounded-xl bg-white border border-outline-variant/20 px-3 py-2 text-xs text-on-surface" />
+                                                    <input type="number" name="refund_percent" min="1" max="99" value="50" disabled class="w-full rounded-xl bg-white border border-outline-variant/20 px-3 py-2 text-xs text-on-surface complaint-refund-percent" />
                                                 </div>
                                             </div>
                                             <div>
@@ -305,4 +305,24 @@
             </div>
         </div>
     </section>
+
+    @push('scripts')
+        <script>
+            document.querySelectorAll('.seller-complaint-response-form').forEach((form) => {
+                const typeSelect = form.querySelector('.complaint-response-type');
+                const refundField = form.querySelector('.complaint-refund-field');
+                const refundInput = form.querySelector('.complaint-refund-percent');
+
+                const syncRefundField = () => {
+                    const shouldShow = typeSelect.value === 'partial_refund';
+                    refundField.classList.toggle('hidden', !shouldShow);
+                    refundInput.disabled = !shouldShow;
+                    refundInput.required = shouldShow;
+                };
+
+                typeSelect.addEventListener('change', syncRefundField);
+                syncRefundField();
+            });
+        </script>
+    @endpush
 </x-layout.merchant>

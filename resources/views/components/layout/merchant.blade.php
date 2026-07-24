@@ -54,7 +54,7 @@
                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150
                    {{ str_starts_with($currentRoute, 'merchant.shop') ? 'bg-primary/10 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container-low' }}">
                     <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' {{ str_starts_with($currentRoute, 'merchant.shop') ? '1' : '0' }};">storefront</span>
-                    Profil Toko & Bank
+                    Profil Toko
                 </a>
 
                 <a href="{{ route('merchant.orders.index', $routeParams) }}"
@@ -133,7 +133,7 @@
                     <a href="{{ route('merchant.shop', $routeParams) }}"
                        class="flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium {{ str_starts_with($currentRoute, 'merchant.shop') ? 'bg-primary/10 text-primary font-bold' : 'text-on-surface-variant' }}">
                         <span class="material-symbols-outlined text-xl">storefront</span>
-                        Profil Toko & Bank
+                        Profil Toko
                     </a>
                     <a href="{{ route('merchant.orders.index', $routeParams) }}"
                        class="flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium {{ str_starts_with($currentRoute, 'merchant.orders') ? 'bg-primary/10 text-primary font-bold' : 'text-on-surface-variant' }}">

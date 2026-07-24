@@ -12,6 +12,8 @@ use App\Http\Controllers\Seller\ReportController as SellerReportController;
 use App\Models\SellerWithdrawal;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class MerchantController extends Controller
 {
@@ -46,7 +48,28 @@ class MerchantController extends Controller
 
     public function store(Request $request)
     {
-        $response = app(SellerProductController::class)->store($request);
+        try {
+            $response = app(SellerProductController::class)->store($request);
+        } catch (ValidationException $e) {
+            if ($request->wantsJson()) {
+                throw $e;
+            }
+
+            return redirect()->back()->withInput()->withErrors($e->validator);
+        } catch (\Throwable $e) {
+            Log::error('Merchant product store failed before response', [
+                'user_id' => $request->user()?->id,
+                'siteid' => $request->user()?->siteid,
+                'message' => $e->getMessage(),
+                'exception' => $e,
+            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'Gagal menyimpan produk: ' . $e->getMessage()], 500);
+            }
+
+            return redirect()->back()->withInput()->withErrors(['error' => 'Gagal menyimpan produk: ' . $e->getMessage()]);
+        }
 
         if ($request->wantsJson()) {
             return $response;
@@ -63,7 +86,29 @@ class MerchantController extends Controller
 
     public function update(Request $request, $product)
     {
-        $response = app(SellerProductController::class)->update($request, $product);
+        try {
+            $response = app(SellerProductController::class)->update($request, $product);
+        } catch (ValidationException $e) {
+            if ($request->wantsJson()) {
+                throw $e;
+            }
+
+            return redirect()->back()->withInput()->withErrors($e->validator);
+        } catch (\Throwable $e) {
+            Log::error('Merchant product update failed before response', [
+                'user_id' => $request->user()?->id,
+                'siteid' => $request->user()?->siteid,
+                'product_id' => $product,
+                'message' => $e->getMessage(),
+                'exception' => $e,
+            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'Gagal memperbarui produk: ' . $e->getMessage()], 500);
+            }
+
+            return redirect()->back()->withInput()->withErrors(['error' => 'Gagal memperbarui produk: ' . $e->getMessage()]);
+        }
 
         if ($request->wantsJson()) {
             return $response;

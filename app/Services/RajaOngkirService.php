@@ -127,6 +127,35 @@ class RajaOngkirService
         return $this->calculateCost($destinationId, $weightGrams, $courier, $originId, $price);
     }
 
+    public function searchDomesticDestinations(string $search, int $limit = 10, int $offset = 0): array
+    {
+        if (empty($this->apiKey)) {
+            Log::warning('RajaOngkir destination search skipped: API key is empty.');
+            return [];
+        }
+
+        try {
+            $response = Http::withHeaders([
+                'key' => $this->apiKey,
+                'Accept' => 'application/json',
+            ])->get($this->baseUrl . '/destination/domestic-destination', [
+                'search' => $search,
+                'limit' => $limit,
+                'offset' => $offset,
+            ]);
+
+            if ($response->ok()) {
+                return $response->json('data') ?? [];
+            }
+
+            Log::warning('RajaOngkir destination search failed: ' . $response->body());
+        } catch (\Exception $e) {
+            Log::error('RajaOngkir destination search error: ' . $e->getMessage());
+        }
+
+        return [];
+    }
+
     private function normalizeKomerceCostResponse(array $payload, string $courier): array
     {
         $services = $payload['data'] ?? [];

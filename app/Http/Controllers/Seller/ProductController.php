@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
@@ -147,13 +148,9 @@ class ProductController extends Controller
             }
             
             $saved = $manager->save($product);
-
-            \Illuminate\Support\Facades\DB::table('mshop_product')
-                ->where('id', $saved->getId())
-                ->update(['weight_grams' => (int) $request->weight_grams]);
             
-            // Create stock entry for product
-            $this->saveStockItem($context, $saved->getId());
+            // Create stock entry for product using the seller input.
+            $this->saveStockItem($context, $saved->getId(), (int) $request->input('stock', 0));
             
             // Also add inverse mapping in catalog/lists for categories
             if ($request->has('categories') && is_array($request->categories)) {
@@ -187,7 +184,7 @@ class ProductController extends Controller
                     $saved->addListItem('product', $listItem);
 
                     // Create stock entry for variant product
-                    $this->saveStockItem($context, $savedVariant->getId());
+                    $this->saveStockItem($context, $savedVariant->getId(), 0);
                 }
                 $saved = $manager->save($saved); // Save again with attached variants
             }
@@ -198,10 +195,19 @@ class ProductController extends Controller
             // Trigger kompresi asinkron di file server
             $fileService->triggerCompression();
 
+            $this->syncProductWeightGrams($saved->getId(), (int) $request->weight_grams);
+
             return response()->json(['data' => $this->formatProduct($saved)], 201);
             
         } catch (\Exception $e) {
             $manager->rollback();
+            Log::error('Seller product store failed', [
+                'user_id' => $request->user()?->id,
+                'siteid' => $request->user()?->siteid,
+                'code' => $request->input('code'),
+                'message' => $e->getMessage(),
+                'exception' => $e,
+            ]);
             return response()->json(['message' => 'Gagal menyimpan produk: ' . $e->getMessage()], 500);
         }
     }
@@ -338,9 +344,7 @@ class ProductController extends Controller
         $saved = $manager->save($product);
 
         if ($request->has('weight_grams')) {
-            \Illuminate\Support\Facades\DB::table('mshop_product')
-                ->where('id', $saved->getId())
-                ->update(['weight_grams' => (int) $request->weight_grams]);
+            $this->syncProductWeightGrams($saved->getId(), (int) $request->weight_grams);
         }
         
         // Ensure stock entry exists for product
@@ -504,6 +508,30 @@ class ProductController extends Controller
                 : 1000,
             'rating'      => '-',
         ];
+    }
+
+    private function syncProductWeightGrams(string $productId, int $weightGrams): void
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('mshop_product', 'weight_grams')) {
+            return;
+        }
+
+        $attempts = 0;
+        retry:
+        try {
+            \Illuminate\Support\Facades\DB::table('mshop_product')
+                ->where('id', $productId)
+                ->update(['weight_grams' => max(1, $weightGrams)]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            $attempts++;
+            $isLockTimeout = str_contains($e->getMessage(), 'Lock wait timeout exceeded');
+            if ($isLockTimeout && $attempts < 3) {
+                usleep(250000);
+                goto retry;
+            }
+
+            throw $e;
+        }
     }
 
 

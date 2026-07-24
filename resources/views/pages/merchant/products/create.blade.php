@@ -18,7 +18,31 @@
 
 
         {{-- Form --}}
+        <div id="create-product-client-errors" class="hidden rounded-2xl border border-error/20 bg-error-container/20 px-5 py-4 text-sm text-error space-y-2">
+            <div class="flex items-center gap-2 font-extrabold">
+                <span class="material-symbols-outlined text-lg">error</span>
+                Lengkapi data produk dulu
+            </div>
+            <ul id="create-product-client-errors-list" class="list-disc pl-5 space-y-1"></ul>
+        </div>
+
+        @if ($errors->any())
+            <div class="rounded-2xl border border-error/20 bg-error-container/20 px-5 py-4 text-sm text-error space-y-2">
+                <div class="flex items-center gap-2 font-extrabold">
+                    <span class="material-symbols-outlined text-lg">error</span>
+                    Produk belum bisa disimpan
+                </div>
+                <ul class="list-disc pl-5 space-y-1">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         <form action="{{ route('merchant.products.store', $routeParams) }}" method="POST" enctype="multipart/form-data"
+              id="create-product-form"
+              novalidate
               class="w-full bg-surface-container-lowest rounded-2xl p-6 md:p-8 border border-outline-variant/10 shadow-[0_4px_16px_rgba(47,47,46,0.04)] space-y-6">
             @csrf
 
@@ -28,12 +52,14 @@
                     <label for="product-name" class="block text-sm font-bold text-on-surface mb-2">Nama Produk <span class="text-error">*</span></label>
                     <input type="text" id="product-name" name="label" value="{{ old('label', old('name')) }}" required
                            placeholder="Contoh: MacBook Air M1 2020 8/256GB Space Gray"
+                           data-label="Nama Produk"
                            class="w-full rounded-xl bg-surface-container-high border-none px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/30 transition-all" />
                 </div>
                 <div>
                     <label for="product-code" class="block text-sm font-bold text-on-surface mb-2">Kode Produk / SKU <span class="text-error">*</span></label>
                     <input type="text" id="product-code" name="code" value="{{ old('code') }}" required
                            placeholder="Contoh: MBA-M1-8256"
+                           data-label="Kode Produk / SKU"
                            class="w-full rounded-xl bg-surface-container-high border-none px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/30 transition-all" />
                 </div>
             </div>
@@ -53,6 +79,7 @@
                         <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-on-surface-variant font-semibold">Rp</span>
                         <input type="number" id="product-price" name="price" value="{{ old('price') }}" required min="0" step="1000"
                                placeholder="0"
+                               data-label="Harga"
                                class="w-full rounded-xl bg-surface-container-high border-none pl-10 pr-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/30 transition-all" />
                     </div>
                 </div>
@@ -72,12 +99,14 @@
                     <label for="product-stock" class="block text-sm font-bold text-on-surface mb-2">Stok <span class="text-error">*</span></label>
                     <input type="number" id="product-stock" name="stock" value="{{ old('stock', 1) }}" required min="0"
                            placeholder="1"
+                           data-label="Stok"
                            class="w-full rounded-xl bg-surface-container-high border-none px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/30 transition-all" />
                 </div>
                 <div>
                     <label for="product-weight" class="block text-sm font-bold text-on-surface mb-2">Berat (gram) <span class="text-error">*</span></label>
                     <input type="number" id="product-weight" name="weight_grams" value="{{ old('weight_grams', 1000) }}" required min="1"
                            placeholder="1000"
+                           data-label="Berat"
                            class="w-full rounded-xl bg-surface-container-high border-none px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/30 transition-all" />
                     <p class="text-[10px] text-on-surface-variant mt-1">Dipakai untuk hitung ongkir RajaOngkir.</p>
                 </div>
@@ -143,12 +172,14 @@
                     </label>
                     <div id="image-preview-container" class="hidden mt-3 gap-3 flex-wrap">
                     </div>
+                    <p id="image-upload-error" class="hidden mt-2 text-xs font-semibold text-error"></p>
                 </div>
             </div>
 
             {{-- Submit --}}
             <div class="flex items-center gap-3 pt-2">
                 <button type="submit"
+                        id="create-product-submit"
                         class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-full font-bold text-sm hover:opacity-90 transition-opacity shadow-[0_8px_20px_rgba(255,87,34,0.25)]">
                     <span class="material-symbols-outlined text-lg">save</span>
                     Simpan Produk
@@ -164,6 +195,8 @@
     @push('scripts')
     <script>
         let variantIndex = 1;
+        const maxImageSize = 5 * 1024 * 1024;
+        const maxImageCount = 5;
 
         function toggleVariants(checkbox) {
             const section = document.getElementById('variants-section');
@@ -204,18 +237,103 @@
             if (container.querySelectorAll('.variant-row').length > 1) {
                 row.remove();
             } else {
-                alert('Minimal harus menyertakan 1 baris varian jika opsi ini aktif.');
+                showCreateProductErrors(['Minimal harus menyertakan 1 baris varian jika opsi variasi aktif.']);
             }
+        }
+
+        function clearCreateProductErrors() {
+            document.getElementById('create-product-client-errors').classList.add('hidden');
+            document.getElementById('create-product-client-errors-list').innerHTML = '';
+            document.querySelectorAll('#create-product-form .ring-2.ring-error\\/50').forEach((field) => {
+                field.classList.remove('ring-2', 'ring-error/50', 'bg-error-container/10');
+            });
+        }
+
+        function markInvalidField(field) {
+            field.classList.add('ring-2', 'ring-error/50', 'bg-error-container/10');
+        }
+
+        function showCreateProductErrors(messages) {
+            const box = document.getElementById('create-product-client-errors');
+            const list = document.getElementById('create-product-client-errors-list');
+            list.innerHTML = messages.map(message => `<li>${message}</li>`).join('');
+            box.classList.remove('hidden');
+            box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function validateCreateProductForm() {
+            clearCreateProductErrors();
+
+            const messages = [];
+            const requiredFields = Array.from(document.querySelectorAll('#create-product-form [required]'))
+                .filter(field => !field.disabled && field.type !== 'file');
+
+            requiredFields.forEach((field) => {
+                const label = field.dataset.label || field.closest('div')?.querySelector('label')?.textContent?.replace('*', '').trim() || 'Field wajib';
+                const value = String(field.value || '').trim();
+
+                if (!value) {
+                    messages.push(`${label} wajib diisi.`);
+                    markInvalidField(field);
+                    return;
+                }
+
+                if (field.type === 'number') {
+                    const numberValue = Number(value);
+                    const min = field.min !== '' ? Number(field.min) : null;
+                    if (Number.isNaN(numberValue) || (min !== null && numberValue < min)) {
+                        messages.push(`${label} minimal ${field.min}.`);
+                        markInvalidField(field);
+                    }
+                }
+            });
+
+            const variantsEnabled = document.getElementById('has-variants').checked;
+            if (variantsEnabled) {
+                document.querySelectorAll('#variants-section input:not(:disabled)').forEach((field) => {
+                    if (!String(field.value || '').trim()) {
+                        messages.push('Kode dan nama varian wajib diisi kalau variasi aktif.');
+                        markInvalidField(field);
+                    }
+                });
+            }
+
+            return [...new Set(messages)];
         }
 
         function previewImages(input) {
             const container = document.getElementById('image-preview-container');
+            const errorEl = document.getElementById('image-upload-error');
             container.innerHTML = '';
+            errorEl.classList.add('hidden');
+            errorEl.textContent = '';
+
             if (input.files && input.files.length > 0) {
+                const files = Array.from(input.files);
+                const tooLarge = files.find(file => file.size > maxImageSize);
+
+                if (files.length > maxImageCount) {
+                    input.value = '';
+                    container.classList.add('hidden');
+                    container.classList.remove('flex');
+                    errorEl.textContent = `Maksimal ${maxImageCount} foto produk.`;
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+
+                if (tooLarge) {
+                    input.value = '';
+                    container.classList.add('hidden');
+                    container.classList.remove('flex');
+                    errorEl.textContent = `File "${tooLarge.name}" lebih dari 5MB. Pilih foto yang lebih kecil.`;
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+
                 container.classList.remove('hidden');
                 container.classList.add('flex');
                 
-                Array.from(input.files).forEach(file => {
+                files.forEach(file => {
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         const img = document.createElement('img');
@@ -230,6 +348,42 @@
                 container.classList.remove('flex');
             }
         }
+
+        document.getElementById('create-product-form').addEventListener('submit', (event) => {
+            const formErrors = validateCreateProductForm();
+            const imageInput = document.getElementById('product-image');
+            const errorEl = document.getElementById('image-upload-error');
+            const files = Array.from(imageInput.files || []);
+            const tooLarge = files.find(file => file.size > maxImageSize);
+
+            if (files.length === 0) {
+                formErrors.push('Upload minimal 1 foto produk.');
+                errorEl.textContent = 'Upload minimal 1 foto produk.';
+                errorEl.classList.remove('hidden');
+                document.getElementById('image-upload-area').classList.add('ring-2', 'ring-error/50', 'bg-error-container/10');
+            }
+
+            if (files.length > maxImageCount || tooLarge) {
+                const imageMessage = tooLarge
+                    ? `File "${tooLarge.name}" lebih dari 5MB.`
+                    : `Maksimal ${maxImageCount} foto produk.`;
+                formErrors.push(imageMessage);
+                errorEl.textContent = imageMessage;
+                errorEl.classList.remove('hidden');
+                document.getElementById('image-upload-area').classList.add('ring-2', 'ring-error/50', 'bg-error-container/10');
+            }
+
+            if (formErrors.length > 0) {
+                event.preventDefault();
+                showCreateProductErrors([...new Set(formErrors)]);
+                return;
+            }
+
+            const submit = document.getElementById('create-product-submit');
+            submit.disabled = true;
+            submit.classList.add('opacity-70', 'cursor-not-allowed');
+            submit.innerHTML = '<span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> Menyimpan...';
+        });
     </script>
     @endpush
 </x-layout.merchant>

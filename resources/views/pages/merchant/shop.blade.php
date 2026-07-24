@@ -7,9 +7,9 @@
         {{-- Header --}}
         <div>
             <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-on-surface">
-                Profil Toko & Bank
+                Profil Toko
             </h1>
-            <p class="text-sm text-on-surface-variant mt-1">Kelola identitas etalase tokomu dan rekening bank tujuan pencairan saldo.</p>
+            <p class="text-sm text-on-surface-variant mt-1">Kelola identitas etalase, alamat asal pengiriman, dan ekspedisi tokomu.</p>
         </div>
 
         {{-- Toast Container --}}
@@ -149,56 +149,6 @@
                     </button>
                 </form>
             </div>
-
-            {{-- Bank Information Card --}}
-            <div class="bg-surface-container-lowest rounded-3xl p-6 md:p-8 border border-outline-variant/10 shadow-[0_4px_16px_rgba(47,47,46,0.04)] space-y-6">
-                <h2 class="text-lg font-bold text-on-surface flex items-center gap-2">
-                    <span class="material-symbols-outlined text-primary text-xl">account_balance</span>
-                    Informasi Rekening Bank
-                </h2>
-                
-                <form id="shop-bank-form" class="space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <label class="space-y-2 block">
-                            <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Nama Bank</span>
-                            <input
-                                id="bank-name-input"
-                                type="text"
-                                placeholder="Contoh: BCA, Mandiri, BNI, BRI..."
-                                class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow font-semibold"
-                                required
-                            />
-                        </label>
-
-                        <label class="space-y-2 block">
-                            <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Nomor Rekening</span>
-                            <input
-                                id="bank-account-input"
-                                type="text"
-                                placeholder="Masukkan nomor rekening saja..."
-                                class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow font-semibold"
-                                required
-                            />
-                        </label>
-
-                        <label class="space-y-2 block md:col-span-2">
-                            <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Nama Pemilik Rekening</span>
-                            <input
-                                id="bank-owner-input"
-                                type="text"
-                                placeholder="Tulis nama pemilik rekening sesuai dengan buku tabungan..."
-                                class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow font-semibold"
-                                required
-                            />
-                        </label>
-                    </div>
-
-                    <button type="submit" id="shop-bank-submit" class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white font-bold rounded-full shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-sm">
-                        <span class="material-symbols-outlined text-lg">save</span>
-                        Simpan Rekening Bank
-                    </button>
-                </form>
-            </div>
         </div>
     </section>
 
@@ -213,7 +163,6 @@
             const bannerInput = document.getElementById('shop-banner-input');
             const bannerPreview = document.getElementById('shop-banner-preview');
             const shopProfileForm = document.getElementById('shop-profile-form');
-            const shopBankForm = document.getElementById('shop-bank-form');
             const provinceInput = document.getElementById('shop-province-input');
             const cityInput = document.getElementById('shop-city-input');
             const subdistrictInput = document.getElementById('shop-subdistrict-input');
@@ -457,11 +406,6 @@
                     } else {
                         bannerPreview.src = 'https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&w=1200&q=80';
                     }
-
-                    // Bank info
-                    document.getElementById('bank-name-input').value = shop.config?.['bank.name'] || '';
-                    document.getElementById('bank-account-input').value = shop.config?.['bank.account_number'] || '';
-                    document.getElementById('bank-owner-input').value = shop.config?.['bank.account_name'] || '';
                 } catch(e) {
                     showToast(e.message || 'Terjadi kesalahan sistem.', 'error');
                 }
@@ -517,46 +461,6 @@
                     submitBtn.innerHTML = origContent;
                 }
             });
-
-            // Update Bank details
-            shopBankForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
-                const submitBtn = document.getElementById('shop-bank-submit');
-                const origContent = submitBtn.innerHTML;
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-1"></div> Menyimpan...';
-
-                const payload = {
-                    bank_name: document.getElementById('bank-name-input').value,
-                    account_number: document.getElementById('bank-account-input').value,
-                    account_name: document.getElementById('bank-owner-input').value,
-                };
-
-                try {
-                    const res = await fetch('/api/seller/bank', {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken
-                        },
-                        body: JSON.stringify(payload)
-                    });
-                    
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data.message || 'Gagal memperbarui data bank.');
-
-                    showToast('Informasi rekening bank berhasil disimpan!');
-                    loadShopDetails();
-                } catch(e) {
-                    showToast(e.message, 'error');
-                } finally {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = origContent;
-                }
-            });
-
             // Init
             loadProvinces().then(loadShopDetails);
         })();

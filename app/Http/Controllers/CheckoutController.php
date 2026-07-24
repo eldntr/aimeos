@@ -205,9 +205,26 @@ class CheckoutController extends Controller
             if ($destinationId) {
                 return (string) $destinationId;
             }
+
+            $syncedId = $this->findOrSyncKomerceDestinationId([
+                method_exists($deliveryAddress, 'getAddress3') ? $deliveryAddress->getAddress3() : '',
+                $deliveryAddress->getCity(),
+                $deliveryAddress->getState(),
+                $deliveryAddress->getPostal(),
+            ]);
+
+            if ($syncedId) {
+                \Illuminate\Support\Facades\DB::table('mshop_order_address')
+                    ->where('id', $deliveryAddress->getId())
+                    ->update(['komerce_destination_id' => $syncedId]);
+
+                return (string) $syncedId;
+            }
         }
 
-        if (\Illuminate\Support\Facades\Schema::hasColumn('mshop_order_address', 'ro_city_id')) {
+        $usingRealRajaOngkir = !empty(config('services.rajaongkir.key'));
+
+        if (!$usingRealRajaOngkir && \Illuminate\Support\Facades\Schema::hasColumn('mshop_order_address', 'ro_city_id')) {
             $cityId = \Illuminate\Support\Facades\DB::table('mshop_order_address')
                 ->where('id', $deliveryAddress->getId())
                 ->value('ro_city_id');
@@ -215,6 +232,10 @@ class CheckoutController extends Controller
             if ($cityId) {
                 return (string) $cityId;
             }
+        }
+
+        if ($usingRealRajaOngkir && \Illuminate\Support\Facades\Schema::hasTable('komerce_destinations')) {
+            throw new \RuntimeException('Alamat tujuan belum ditemukan di destination Komerce. Coba lengkapi kelurahan/kecamatan/kota alamat, lalu ulangi cek ongkir.');
         }
 
         $cityName = trim((string) $deliveryAddress->getCity());
@@ -254,13 +275,123 @@ class CheckoutController extends Controller
             $config = is_array($decoded) ? $decoded : [];
         }
 
+        $usingRealRajaOngkir = !empty(config('services.rajaongkir.key'));
+        $originId = $config['shipping.komerce_destination_id'] ?? null;
+
+        if (!$originId && !empty($config['shipping.origin_id'])) {
+            $legacyOriginId = (string) $config['shipping.origin_id'];
+            $originIdExistsInKomerce = \Illuminate\Support\Facades\Schema::hasTable('komerce_destinations')
+                && \Illuminate\Support\Facades\DB::table('komerce_destinations')->where('id', $legacyOriginId)->exists();
+
+            if (!$usingRealRajaOngkir || $originIdExistsInKomerce) {
+                $originId = $legacyOriginId;
+            }
+        }
+
+        if (!$originId && \Illuminate\Support\Facades\Schema::hasTable('komerce_destinations')) {
+            $originId = $this->findOrSyncKomerceDestinationId([
+                $config['shipping.subdistrict'] ?? '',
+                $config['shipping.city'] ?? '',
+                $config['shipping.province'] ?? '',
+                $config['shipping.postal'] ?? '',
+                $config['address'] ?? '',
+            ]);
+
+            if ($originId && $site?->siteid) {
+                $config['shipping.komerce_destination_id'] = (string) $originId;
+                $config['shipping.origin_id'] = (string) $originId;
+                \Illuminate\Support\Facades\DB::table('mshop_locale_site')
+                    ->where('siteid', $site->siteid)
+                    ->update(['config' => json_encode($config)]);
+            }
+        }
+
         return [
             'shop_name' => $site->label ?? 'Seller',
-            'origin_id' => $config['shipping.komerce_destination_id'] ?? $config['shipping.origin_id'] ?? (
+            'origin_id' => $originId ?? (
                 \Illuminate\Support\Facades\Schema::hasTable('tb_ro_cities') ? null : '152'
             ),
             'couriers' => $this->sellerCourierCodes($site->siteid ?? null),
         ];
+    }
+
+    private function findOrSyncKomerceDestinationId(array $terms): ?string
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasTable('komerce_destinations')) {
+            return null;
+        }
+
+        $terms = array_values(array_filter(array_map(fn ($term) => trim((string) $term), $terms)));
+        if ($terms === []) {
+            return null;
+        }
+
+        $search = implode(' ', array_slice($terms, 0, 4));
+        $local = \Illuminate\Support\Facades\DB::table('komerce_destinations')
+            ->where(function ($query) use ($terms) {
+                foreach ($terms as $term) {
+                    $query->where('label', 'like', '%' . $term . '%');
+                }
+            })
+            ->orderBy('id')
+            ->first(['id']);
+
+        if ($local) {
+            return (string) $local->id;
+        }
+
+        $rows = (new \App\Services\RajaOngkirService())->searchDomesticDestinations($search, 10, 0);
+        $first = $rows[0] ?? null;
+        if (!is_array($first)) {
+            return null;
+        }
+
+        return $this->storeKomerceDestination($first);
+    }
+
+    private function storeKomerceDestination(array $row): ?string
+    {
+        $id = $row['id'] ?? $row['destination_id'] ?? null;
+        if (!$id) {
+            return null;
+        }
+
+        $provinceName = (string) ($row['province_name'] ?? $row['province'] ?? '');
+        $cityName = (string) ($row['city_name'] ?? $row['city'] ?? $row['regency_name'] ?? '');
+        $districtName = (string) ($row['district_name'] ?? $row['district'] ?? '');
+        $subdistrictName = (string) ($row['subdistrict_name'] ?? $row['subdistrict'] ?? $row['village_name'] ?? $row['name'] ?? '');
+        $zipCode = $row['zip_code'] ?? $row['zip'] ?? $row['postal_code'] ?? null;
+        $label = (string) ($row['label'] ?? implode(', ', array_filter([$subdistrictName, $districtName, $cityName, $provinceName, $zipCode])));
+
+        \Illuminate\Support\Facades\DB::table('komerce_destinations')->upsert([[
+            'id' => (int) $id,
+            'province_id' => $row['province_id'] ?? null,
+            'province_name' => $provinceName,
+            'city_id' => $row['city_id'] ?? null,
+            'city_name' => $cityName,
+            'district_id' => $row['district_id'] ?? null,
+            'district_name' => $districtName,
+            'subdistrict_name' => $subdistrictName,
+            'zip_code' => $zipCode ?: null,
+            'label' => $label,
+            'synced_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]], ['id'], [
+            'province_id',
+            'province_name',
+            'city_id',
+            'city_name',
+            'district_id',
+            'district_name',
+            'subdistrict_name',
+            'zip_code',
+            'label',
+            'synced_at',
+            'updated_at',
+        ]);
+
+        return (string) $id;
     }
 
     private function sellerCourierCodes(?string $siteid): array

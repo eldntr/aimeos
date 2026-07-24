@@ -474,7 +474,7 @@ class MarketplaceController extends Controller
         if (isset($product['id'])) {
             $soldCount = \DB::table('mshop_order_product')->where('prodid', $product['id'])->sum('quantity');
             $stockItem = \DB::table('mshop_stock')->where('prodid', $product['id'])->first();
-            $stockCount = $stockItem ? $stockItem->stocklevel : 0;
+            $stockCount = $stockItem ? (int) ($stockItem->stocklevel ?? 0) : 0;
             $totalStock = $soldCount + $stockCount;
             $soldPercent = $totalStock > 0 ? min(99, round(($soldCount / $totalStock) * 100)) : 0;
             $isAlmostSold = $stockCount <= 2;

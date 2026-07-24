@@ -182,10 +182,10 @@
                         <div class="col-span-9 flex items-center gap-3">
                             <div class="flex items-center border border-outline-variant/30 rounded-lg overflow-hidden bg-white">
                                 <button onclick="adjustQty(-1)" class="w-8 h-8 flex items-center justify-center hover:bg-neutral-50 border-r border-outline-variant/20 text-on-surface-variant font-semibold focus:outline-none">-</button>
-                                <input type="number" id="quantity-input" value="1" min="1" max="{{ $product['stock'] ?? 5 }}" class="w-12 h-8 text-center border-none focus:ring-0 focus:outline-none text-xs font-semibold p-0" />
+                                <input type="number" id="quantity-input" value="1" min="1" max="{{ max(1, (int) ($product['stock'] ?? 0)) }}" class="w-12 h-8 text-center border-none focus:ring-0 focus:outline-none text-xs font-semibold p-0" />
                                 <button onclick="adjustQty(1)" class="w-8 h-8 flex items-center justify-center hover:bg-neutral-50 border-l border-outline-variant/20 text-on-surface-variant font-semibold focus:outline-none">+</button>
                             </div>
-                            <span>tersisa {{ $product['stock'] ?? 5 }} buah</span>
+                            <span>tersisa {{ (int) ($product['stock'] ?? 0) }} buah</span>
                         </div>
                     </div>
                 </div>
