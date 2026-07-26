@@ -82,8 +82,8 @@ class CustomerAddressController extends Controller
             'telephone' => 'required|string|max:32',
             'address1' => 'required|string|max:255', // Street address
             'address2' => 'nullable|string|max:255', // Apartment, suite, etc.
-            'city' => 'required_without:ro_city_id|nullable|string|max:255',
-            'ro_city_id' => 'required_without:city|nullable|integer|exists:tb_ro_cities,city_id',
+            'city' => 'required_without_all:ro_city_id,komerce_destination_id|nullable|string|max:255',
+            'ro_city_id' => 'required_without_all:city,komerce_destination_id|nullable|integer|exists:tb_ro_cities,city_id',
             'ro_subdistrict_id' => 'nullable|integer|exists:tb_ro_subdistricts,subdistrict_id',
             'komerce_destination_id' => 'nullable|integer|exists:komerce_destinations,id',
             'state' => 'nullable|string|max:255', // Province / State
@@ -125,8 +125,8 @@ class CustomerAddressController extends Controller
             'telephone' => 'required|string|max:32',
             'address1' => 'required|string|max:255',
             'address2' => 'nullable|string|max:255',
-            'city' => 'required_without:ro_city_id|nullable|string|max:255',
-            'ro_city_id' => 'required_without:city|nullable|integer|exists:tb_ro_cities,city_id',
+            'city' => 'required_without_all:ro_city_id,komerce_destination_id|nullable|string|max:255',
+            'ro_city_id' => 'required_without_all:city,komerce_destination_id|nullable|integer|exists:tb_ro_cities,city_id',
             'ro_subdistrict_id' => 'nullable|integer|exists:tb_ro_subdistricts,subdistrict_id',
             'komerce_destination_id' => 'nullable|integer|exists:komerce_destinations,id',
             'state' => 'nullable|string|max:255',
@@ -195,15 +195,53 @@ class CustomerAddressController extends Controller
     {
         $komerce = $this->resolveKomerceDestination($request);
 
+        if ($komerce) {
+            $subdistrictRecord = DB::table('tb_ro_subdistricts')
+                ->where('komerce_destination_id', $komerce['id'])
+                ->first();
+            if ($subdistrictRecord) {
+                $cityRecord = DB::table('tb_ro_cities')
+                    ->join('tb_ro_provinces', 'tb_ro_cities.province_id', '=', 'tb_ro_provinces.province_id')
+                    ->where('tb_ro_cities.city_id', $subdistrictRecord->city_id)
+                    ->first([
+                        'tb_ro_cities.city_id',
+                        'tb_ro_cities.city_name',
+                        'tb_ro_cities.postal_code',
+                        'tb_ro_provinces.province_name'
+                    ]);
+                if ($cityRecord) {
+                    return [
+                        'city_id' => (int) $cityRecord->city_id,
+                        'city_name' => $komerce['city_name'] ?: $cityRecord->city_name,
+                        'province_name' => $komerce['province_name'] ?: $cityRecord->province_name,
+                        'postal_code' => $komerce['zip_code'] ?: $cityRecord->postal_code,
+                        'subdistrict_id' => (int) $subdistrictRecord->subdistrict_id,
+                        'subdistrict_name' => $komerce['subdistrict_name'] ?: $subdistrictRecord->subdistrict_name,
+                        'komerce_destination_id' => (int) $komerce['id'],
+                    ];
+                }
+            }
+            
+            return [
+                'city_id' => $komerce['city_id'] ?? null,
+                'city_name' => $komerce['city_name'],
+                'province_name' => $komerce['province_name'],
+                'postal_code' => $komerce['zip_code'],
+                'subdistrict_id' => $komerce['district_id'] ?? null,
+                'subdistrict_name' => $komerce['subdistrict_name'] ?? $komerce['district_name'],
+                'komerce_destination_id' => (int) $komerce['id'],
+            ];
+        }
+
         if (!Schema::hasTable('tb_ro_cities') || !Schema::hasTable('tb_ro_provinces')) {
             return [
                 'city_id' => null,
-                'city_name' => $komerce['city_name'] ?? (string) $request->city,
-                'province_name' => $komerce['province_name'] ?? (string) $request->state,
-                'postal_code' => $komerce['zip_code'] ?? (string) $request->postal,
+                'city_name' => (string) $request->city,
+                'province_name' => (string) $request->state,
+                'postal_code' => (string) $request->postal,
                 'subdistrict_id' => null,
-                'subdistrict_name' => $komerce['subdistrict_name'] ?? null,
-                'komerce_destination_id' => $komerce['id'] ?? null,
+                'subdistrict_name' => null,
+                'komerce_destination_id' => null,
             ];
         }
 

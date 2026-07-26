@@ -14,6 +14,30 @@ class CheckoutTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        \Illuminate\Support\Facades\DB::table('mshop_locale_site')
+            ->where('siteid', '1.')
+            ->update([
+                'config' => json_encode([
+                    'shipping.komerce_destination_id' => '110',
+                    'shipping.origin_id' => '110',
+                    'shipping.city' => 'Jakarta Barat',
+                    'shipping.province' => 'DKI Jakarta',
+                    'shipping.subdistrict' => 'Grogol Petamburan',
+                    'shipping.postal' => '11470',
+                    'address' => 'Jl. Tanjung Duren Raya No. 1',
+                ])
+            ]);
+        
+        \Illuminate\Support\Facades\DB::table('seller_shipping_couriers')
+            ->where('siteid', '1.')
+            ->delete();
+        \Illuminate\Support\Facades\DB::table('seller_shipping_couriers')
+            ->insert([
+                ['siteid' => '1.', 'courier_code' => 'jne'],
+                ['siteid' => '1.', 'courier_code' => 'jnt'],
+                ['siteid' => '1.', 'courier_code' => 'sicepat'],
+            ]);
         
         $context = app('aimeos.context')->get(false);
         $siteManager = \Aimeos\MShop::create($context, 'locale/site');

@@ -517,6 +517,7 @@ class MarketplaceController extends Controller
             'shop_code' => $shopCode,
             'seller_user_id' => $sellerUserId,
             'description' => Arr::get($product, 'description') ?? ($detail ? ($product['label'] ?? 'Deskripsi produk belum tersedia.') : null),
+            'video' => Arr::get($product, 'video'),
             'badge' => Arr::get($product, 'badge'),
             'badgeType' => Arr::get($product, 'badgeType', 'success'),
             'link' => Route::has('products.show') && isset($product['id']) ? route('products.show', ['id' => $product['id']]) : null,

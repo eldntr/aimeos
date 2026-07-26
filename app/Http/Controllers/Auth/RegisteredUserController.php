@@ -236,7 +236,6 @@ class RegisteredUserController extends Controller
                 throw $ex;
             }
         }
-
         \Aimeos\Setup::use(new \Aimeos\Bootstrap())->context($context)->verbose('')->up($code);
 
         // Ensure the newly created site's default locale currency is IDR instead of USD
@@ -316,7 +315,7 @@ class RegisteredUserController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        if ($request->wantsJson()) {
+        if ($request->wantsJson() || $request->is('api/*')) {
             return response()->json([
                 'access_token' => $token,
                 'token_type' => 'Bearer',

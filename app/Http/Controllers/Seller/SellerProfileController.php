@@ -77,18 +77,25 @@ class SellerProfileController extends Controller
 
     public function updateShop(Request $request)
     {
-        $request->validate([
+        $rules = [
             'name' => 'nullable|string|max:255',
             'logo' => 'nullable|image|max:5120',
             'banner' => 'nullable|image|max:5120',
             'address' => 'nullable|string',
-            'shipping_city_id' => 'required_with:address|nullable|integer|exists:tb_ro_cities,city_id',
             'shipping_subdistrict_id' => 'nullable|integer|exists:tb_ro_subdistricts,subdistrict_id',
             'shipping_komerce_destination_id' => 'nullable|integer|exists:komerce_destinations,id',
             'shipping_postal' => 'nullable|string|max:20',
             'shipping_couriers' => 'nullable|array',
             'shipping_couriers.*' => 'string|exists:shipping_couriers,code',
-        ]);
+        ];
+        
+        if ($request->filled('address') && !$request->filled('shipping_komerce_destination_id')) {
+            $rules['shipping_city_id'] = 'required|integer|exists:tb_ro_cities,city_id';
+        } else {
+            $rules['shipping_city_id'] = 'nullable|integer|exists:tb_ro_cities,city_id';
+        }
+
+        $request->validate($rules);
 
         $user = $request->user();
         if (!$user->siteid) {
@@ -206,6 +213,44 @@ class SellerProfileController extends Controller
     {
         $komerce = $this->resolveKomerceDestination($request);
 
+        if ($komerce) {
+            $subdistrictRecord = DB::table('tb_ro_subdistricts')
+                ->where('komerce_destination_id', $komerce['id'])
+                ->first();
+            if ($subdistrictRecord) {
+                $cityRecord = DB::table('tb_ro_cities')
+                    ->join('tb_ro_provinces', 'tb_ro_cities.province_id', '=', 'tb_ro_provinces.province_id')
+                    ->where('tb_ro_cities.city_id', $subdistrictRecord->city_id)
+                    ->first([
+                        'tb_ro_cities.city_id',
+                        'tb_ro_cities.city_name',
+                        'tb_ro_cities.postal_code',
+                        'tb_ro_provinces.province_name'
+                    ]);
+                if ($cityRecord) {
+                    return [
+                        'city_id' => (int) $cityRecord->city_id,
+                        'city_name' => $komerce['city_name'] ?: $cityRecord->city_name,
+                        'province_name' => $komerce['province_name'] ?: $cityRecord->province_name,
+                        'postal_code' => $komerce['zip_code'] ?: $cityRecord->postal_code,
+                        'subdistrict_id' => (int) $subdistrictRecord->subdistrict_id,
+                        'subdistrict_name' => $komerce['subdistrict_name'] ?: $subdistrictRecord->subdistrict_name,
+                        'komerce_destination_id' => (int) $komerce['id'],
+                    ];
+                }
+            }
+            
+            return [
+                'city_id' => $komerce['city_id'] ?? null,
+                'city_name' => $komerce['city_name'],
+                'province_name' => $komerce['province_name'],
+                'postal_code' => $komerce['zip_code'],
+                'subdistrict_id' => $komerce['district_id'] ?? null,
+                'subdistrict_name' => $komerce['subdistrict_name'] ?? $komerce['district_name'],
+                'komerce_destination_id' => (int) $komerce['id'],
+            ];
+        }
+
         $city = DB::table('tb_ro_cities')
             ->join('tb_ro_provinces', 'tb_ro_cities.province_id', '=', 'tb_ro_provinces.province_id')
             ->where('tb_ro_cities.city_id', (int) $request->shipping_city_id)
@@ -215,6 +260,10 @@ class SellerProfileController extends Controller
                 'tb_ro_cities.postal_code',
                 'tb_ro_provinces.province_name',
             ]);
+
+        if (!$city) {
+            abort(422, 'Pilih kota/kabupaten asal dari daftar lokasi RajaOngkir.');
+        }
 
         $subdistrict = null;
         if ($request->filled('shipping_subdistrict_id')) {

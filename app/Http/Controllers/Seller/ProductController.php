@@ -62,9 +62,8 @@ class ProductController extends Controller
             'price'  => ['sometimes', 'numeric', 'min:0'],
             'weight_grams' => ['required', 'integer', 'min:1', 'max:1000000'],
             'description' => ['sometimes', 'string'],
-            'images' => ['required', 'array', 'min:1', 'max:5'],
             'images.*' => ['file', 'mimes:jpeg,png,jpg,webp', 'max:5120'], // Max 5MB
-            'video' => ['sometimes', 'file', 'mimes:mp4,webm', 'max:51200'], // Max 50MB
+            'video' => ['sometimes', 'nullable', 'file', 'mimes:mp4,mov,webm', 'max:102400'], // Max 100MB
             'categories' => ['sometimes', 'array'],
             'categories.*' => ['string'],
             'variants' => ['sometimes', 'array'],
@@ -97,15 +96,7 @@ class ProductController extends Controller
                 }
             }
             
-            if ($request->hasFile('video')) {
-                $file = $request->file('video');
-                $mediaUrl = $fileService->uploadFile($file);
-                
-                $mediaItem = $this->createMediaItem($context, $mediaUrl, $file->getMimeType());
-                $listItem = $this->createListItem($context, $mediaItem->getId());
-                
-                $product->addListItem('media', $listItem);
-            }
+            // Video is saved after product is saved to ensure product ID exists
             
             // Add categories
             if ($request->has('categories') && is_array($request->categories)) {
@@ -148,6 +139,15 @@ class ProductController extends Controller
             }
             
             $saved = $manager->save($product);
+
+            if ($request->hasFile('video')) {
+                $file = $request->file('video');
+                $path = $file->store('products', 'public');
+                $videoPath = 'storage/' . $path;
+                \Illuminate\Support\Facades\DB::table('mshop_product')
+                    ->where('id', $saved->getId())
+                    ->update(['video' => $videoPath]);
+            }
             
             // Create stock entry for product using the seller input.
             $this->saveStockItem($context, $saved->getId(), (int) $request->input('stock', 0));
@@ -225,6 +225,8 @@ class ProductController extends Controller
             'description' => ['sometimes', 'string'],
             'images' => ['sometimes', 'array', 'max:5'],
             'images.*' => ['file', 'mimes:jpeg,png,jpg,webp', 'max:5120'], // Max 5MB
+            'video' => ['sometimes', 'nullable', 'file', 'mimes:mp4,mov,webm', 'max:102400'], // Max 100MB
+            'delete_video' => ['sometimes', 'integer', 'in:0,1'],
             'categories' => ['sometimes', 'array'],
             'categories.*' => ['string'],
             'variants' => ['sometimes', 'array'],
@@ -343,6 +345,26 @@ class ProductController extends Controller
 
         $saved = $manager->save($product);
 
+        $oldVideo = \Illuminate\Support\Facades\DB::table('mshop_product')->where('id', $saved->getId())->value('video');
+        if ($request->input('delete_video') == 1 || $request->hasFile('video')) {
+            if ($oldVideo) {
+                $oldFilePath = str_replace('storage/', '', $oldVideo);
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($oldFilePath);
+                \Illuminate\Support\Facades\DB::table('mshop_product')
+                    ->where('id', $saved->getId())
+                    ->update(['video' => null]);
+            }
+        }
+
+        if ($request->hasFile('video')) {
+            $file = $request->file('video');
+            $path = $file->store('products', 'public');
+            $videoPath = 'storage/' . $path;
+            \Illuminate\Support\Facades\DB::table('mshop_product')
+                ->where('id', $saved->getId())
+                ->update(['video' => $videoPath]);
+        }
+
         if ($request->has('weight_grams')) {
             $this->syncProductWeightGrams($saved->getId(), (int) $request->weight_grams);
         }
@@ -382,6 +404,13 @@ class ProductController extends Controller
 
         try {
             $manager->get($id); // ensures it exists within this site context
+
+            // Delete video from storage if exists
+            $oldVideo = \Illuminate\Support\Facades\DB::table('mshop_product')->where('id', $id)->value('video');
+            if ($oldVideo) {
+                $oldFilePath = str_replace('storage/', '', $oldVideo);
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($oldFilePath);
+            }
 
             // Remove inverse mappings in catalog/lists
             try {
@@ -507,6 +536,7 @@ class ProductController extends Controller
                 ? (int) (\Illuminate\Support\Facades\DB::table('mshop_product')->where('id', $product->getId())->value('weight_grams') ?: 1000)
                 : 1000,
             'rating'      => '-',
+            'video'       => \Illuminate\Support\Facades\DB::table('mshop_product')->where('id', $product->getId())->value('video'),
         ];
     }
 

@@ -46,6 +46,9 @@
                 <!-- Large Main Image -->
                 <div class="w-full aspect-square border border-outline-variant/10 flex items-center justify-center p-2 relative overflow-hidden bg-white group rounded-xl">
                     <img id="main-product-image" src="{{ $product['image'] ?? 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=1200&q=80' }}" alt="{{ $product['name'] ?? 'Produk' }}" class="max-w-full max-h-full object-contain transition-transform duration-300 group-hover:scale-105" onerror="handleProductImageError(this)" />
+                    @if(!empty($product['video']))
+                        <video id="main-product-video" src="{{ asset($product['video']) }}" controls class="hidden w-full h-full object-contain rounded-lg"></video>
+                    @endif
                     @if(!empty($product['discount_percent']))
                         <div class="absolute top-3 right-3 bg-primary text-white text-[10px] font-black px-2 py-0.5 rounded shadow-sm">
                             {{ $product['discount_percent'] }}% OFF
@@ -55,14 +58,21 @@
 
                 <!-- Thumbnails List -->
                 <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar justify-start">
+                    @if(!empty($product['video']))
+                        <button onclick="showVideo()" class="shrink-0 w-16 h-16 border border-outline-variant/20 hover:border-primary transition-all p-0.5 bg-black/5 rounded-lg flex flex-col items-center justify-center relative focus:outline-none">
+                            <span class="material-symbols-outlined text-primary text-2xl">play_circle</span>
+                            <span class="text-[9px] text-primary font-bold mt-0.5">Video</span>
+                        </button>
+                    @endif
+
                     @if (!empty($product['images']))
                         @foreach ($product['images'] as $img)
-                            <button onclick="changeMainImage('{{ $img['url'] }}')" class="shrink-0 w-16 h-16 border border-outline-variant/20 hover:border-primary transition-all p-0.5 bg-white rounded-lg flex items-center justify-center">
+                            <button onclick="showImage('{{ $img['url'] }}')" class="shrink-0 w-16 h-16 border border-outline-variant/20 hover:border-primary transition-all p-0.5 bg-white rounded-lg flex items-center justify-center focus:outline-none">
                                 <img src="{{ $img['url'] }}" alt="Thumbnail" class="max-w-full max-h-full object-contain" onerror="handleProductImageError(this)" />
                             </button>
                         @endforeach
                     @else
-                        <button class="shrink-0 w-16 h-16 border border-primary p-0.5 bg-white rounded-lg flex items-center justify-center">
+                        <button onclick="showImage('{{ $product['image'] ?? 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=1200&q=80' }}')" class="shrink-0 w-16 h-16 border border-primary p-0.5 bg-white rounded-lg flex items-center justify-center focus:outline-none">
                             <img src="{{ $product['image'] ?? 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=1200&q=80' }}" alt="Thumbnail" class="max-w-full max-h-full object-contain" onerror="handleProductImageError(this)" />
                         </button>
                     @endif
@@ -387,8 +397,31 @@
 
 @push('scripts')
 <script>
+    function showVideo() {
+        const video = document.getElementById('main-product-video');
+        const img = document.getElementById('main-product-image');
+        if (video && img) {
+            img.classList.add('hidden');
+            video.classList.remove('hidden');
+            video.play().catch(e => console.log('Auto-play blocked or failed:', e));
+        }
+    }
+
+    function showImage(url) {
+        const video = document.getElementById('main-product-video');
+        const img = document.getElementById('main-product-image');
+        if (img) {
+            img.src = url;
+            img.classList.remove('hidden');
+        }
+        if (video) {
+            video.classList.add('hidden');
+            video.pause();
+        }
+    }
+
     function changeMainImage(url) {
-        document.getElementById('main-product-image').src = url;
+        showImage(url);
     }
 
     function showAllReviews() {

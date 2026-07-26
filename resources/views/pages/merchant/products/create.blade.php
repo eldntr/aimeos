@@ -176,6 +176,30 @@
                 </div>
             </div>
 
+            {{-- Video Upload --}}
+            <div>
+                <label class="block text-sm font-bold text-on-surface mb-2">Video Produk (Opsional)</label>
+                <div class="relative">
+                    <input type="file" id="product-video" name="video" accept="video/mp4,video/quicktime,video/webm"
+                           class="hidden" onchange="previewVideo(this)" />
+                    <label for="product-video"
+                           class="flex flex-col items-center justify-center w-full h-40 rounded-xl border-2 border-dashed border-outline-variant/30 bg-surface-container-high/50 cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-all duration-200"
+                           id="video-upload-area">
+                        <span class="material-symbols-outlined text-3xl text-outline/40 mb-2">video_library</span>
+                        <p class="text-sm font-semibold text-on-surface-variant">Klik untuk upload video</p>
+                        <p class="text-xs text-outline mt-1">MP4, MOV, WEBM — Maks 100MB</p>
+                    </label>
+                    <div id="video-preview-container" class="hidden mt-3 max-w-xs">
+                        <video id="video-preview-player" controls class="w-full rounded-xl border border-outline-variant/20 max-h-48"></video>
+                        <button type="button" onclick="removeVideoSelection()"
+                                class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-error/10 hover:bg-error/15 text-error text-xs font-bold rounded-full transition-colors">
+                            <span class="material-symbols-outlined text-sm">close</span> Hapus Pilihan Video
+                        </button>
+                    </div>
+                    <p id="video-upload-error" class="hidden mt-2 text-xs font-semibold text-error"></p>
+                </div>
+            </div>
+
             {{-- Submit --}}
             <div class="flex items-center gap-3 pt-2">
                 <button type="submit"
@@ -349,6 +373,61 @@
             }
         }
 
+        const maxVideoSize = 100 * 1024 * 1024; // 100MB
+
+        function previewVideo(input) {
+            const container = document.getElementById('video-preview-container');
+            const player = document.getElementById('video-preview-player');
+            const errorEl = document.getElementById('video-upload-error');
+            const area = document.getElementById('video-upload-area');
+            
+            errorEl.classList.add('hidden');
+            errorEl.textContent = '';
+            area.classList.remove('ring-2', 'ring-error/50', 'bg-error-container/10');
+
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                
+                if (file.size > maxVideoSize) {
+                    input.value = '';
+                    container.classList.add('hidden');
+                    errorEl.textContent = 'Ukuran video maksimal 100MB.';
+                    errorEl.classList.remove('hidden');
+                    area.classList.add('ring-2', 'ring-error/50', 'bg-error-container/10');
+                    return;
+                }
+
+                const allowedTypes = ['video/mp4', 'video/quicktime', 'video/webm'];
+                if (!allowedTypes.includes(file.type)) {
+                    input.value = '';
+                    container.classList.add('hidden');
+                    errorEl.textContent = 'Format video harus MP4, MOV, atau WEBM.';
+                    errorEl.classList.remove('hidden');
+                    area.classList.add('ring-2', 'ring-error/50', 'bg-error-container/10');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    player.src = e.target.result;
+                    container.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                container.classList.add('hidden');
+                player.src = '';
+            }
+        }
+
+        function removeVideoSelection() {
+            const input = document.getElementById('product-video');
+            const container = document.getElementById('video-preview-container');
+            const player = document.getElementById('video-preview-player');
+            input.value = '';
+            container.classList.add('hidden');
+            player.src = '';
+        }
+
         document.getElementById('create-product-form').addEventListener('submit', (event) => {
             const formErrors = validateCreateProductForm();
             const imageInput = document.getElementById('product-image');
@@ -371,6 +450,18 @@
                 errorEl.textContent = imageMessage;
                 errorEl.classList.remove('hidden');
                 document.getElementById('image-upload-area').classList.add('ring-2', 'ring-error/50', 'bg-error-container/10');
+            }
+
+            const videoInput = document.getElementById('product-video');
+            const videoFile = videoInput.files[0];
+            if (videoFile) {
+                if (videoFile.size > maxVideoSize) {
+                    formErrors.push('Ukuran video melebihi 100MB.');
+                }
+                const allowedTypes = ['video/mp4', 'video/quicktime', 'video/webm'];
+                if (!allowedTypes.includes(videoFile.type)) {
+                    formErrors.push('Format video tidak didukung (harus MP4, MOV, atau WEBM).');
+                }
             }
 
             if (formErrors.length > 0) {

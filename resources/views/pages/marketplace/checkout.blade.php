@@ -256,44 +256,54 @@
                 <input name="address2" type="text" placeholder="RT 03/RW 05, Kel. Kemayoran"
                     class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow" />
             </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <label class="space-y-1.5 block">
-                    <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Provinsi *</span>
-                    <select id="address-province-input" required
-                        class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow">
-                        <option value="">Pilih provinsi</option>
-                    </select>
-                </label>
-                <label class="space-y-1.5 block">
-                    <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Kota/Kabupaten *</span>
-                    <select name="ro_city_id" id="address-city-input" required
-                        class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow">
-                        <option value="">Pilih kota/kabupaten</option>
-                    </select>
-                </label>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <label class="space-y-1.5 block">
-                    <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Kecamatan</span>
-                    <select name="ro_subdistrict_id" id="address-subdistrict-input"
-                        class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow">
-                        <option value="">Pilih kecamatan</option>
-                    </select>
-                </label>
-                <label class="space-y-1.5 block">
-                    <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Kode Pos</span>
-                    <input name="postal" id="address-postal-input" type="text" placeholder="Terisi otomatis"
-                        class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow" />
-                </label>
-            </div>
             <label class="space-y-1.5 block">
-                <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Kelurahan/Desa RajaOngkir Komerce</span>
-                <input id="address-komerce-search-input" type="search" placeholder="Cari kelurahan, kecamatan, kota, atau kode pos..."
+                <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Cari Lokasi / Kelurahan / Kecamatan / Kota *</span>
+                <input id="address-komerce-search-input" type="search" placeholder="Ketik kelurahan, kecamatan, atau kota..."
                     class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow" autocomplete="off" />
                 <input type="hidden" name="komerce_destination_id" id="address-komerce-destination-id-input" />
                 <div id="address-komerce-results" class="hidden rounded-2xl border border-outline-variant/20 bg-surface-container-lowest shadow-lg overflow-hidden"></div>
                 <p id="address-komerce-selected-label" class="text-[11px] text-primary font-semibold"></p>
             </label>
+
+            <!-- Manual Fields Toggle -->
+            <div id="address-manual-fields-toggle" class="flex items-center justify-between text-xs font-bold text-primary cursor-pointer hover:underline py-1 mt-2">
+                <span>Atau isi lokasi secara manual jika tidak ditemukan</span>
+                <span class="material-symbols-outlined text-sm">keyboard_arrow_down</span>
+            </div>
+
+            <!-- Manual Location Fields -->
+            <div id="address-manual-fields-container" class="hidden space-y-4 border-l-2 border-primary/10 pl-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label class="space-y-1.5 block">
+                        <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Provinsi *</span>
+                        <select id="address-province-input"
+                            class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow">
+                            <option value="">Pilih provinsi</option>
+                        </select>
+                    </label>
+                    <label class="space-y-1.5 block">
+                        <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Kota/Kabupaten *</span>
+                        <select name="ro_city_id" id="address-city-input"
+                            class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow">
+                            <option value="">Pilih kota/kabupaten</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label class="space-y-1.5 block">
+                        <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Kecamatan</span>
+                        <select name="ro_subdistrict_id" id="address-subdistrict-input"
+                            class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow">
+                            <option value="">Pilih kecamatan</option>
+                        </select>
+                    </label>
+                    <label class="space-y-1.5 block">
+                        <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Kode Pos</span>
+                        <input name="postal" id="address-postal-input" type="text" placeholder="Terisi otomatis"
+                            class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow" />
+                    </label>
+                </div>
+            </div>
             <div id="add-address-error" class="hidden text-xs text-error font-semibold bg-error-container/20 px-4 py-2 rounded-full"></div>
         </form>
         <div class="px-6 pb-6 flex gap-3">
@@ -633,6 +643,21 @@
         document.getElementById('add-address-error').classList.add('hidden');
     }
 
+    // Manual fields toggle
+    document.getElementById('address-manual-fields-toggle')?.addEventListener('click', () => {
+        const container = document.getElementById('address-manual-fields-container');
+        const icon = document.querySelector('#address-manual-fields-toggle span:last-child');
+        const isHidden = container.classList.contains('hidden');
+        if (isHidden) {
+            container.classList.remove('hidden');
+            icon.textContent = 'keyboard_arrow_up';
+            loadAddressProvinces();
+        } else {
+            container.classList.add('hidden');
+            icon.textContent = 'keyboard_arrow_down';
+        }
+    });
+
     document.getElementById('address-province-input')?.addEventListener('change', (event) => {
         loadAddressCities(event.target.value);
     });
@@ -649,6 +674,16 @@
         const btn = document.getElementById('save-address-btn');
         const fd = new FormData(form);
         const payload = Object.fromEntries(fd.entries());
+        
+        // Validate that either Komerce location is chosen or manual fields are filled
+        const komerceId = document.getElementById('address-komerce-destination-id-input').value;
+        const cityVal = document.getElementById('address-city-input').value;
+        if (!komerceId && !cityVal) {
+            errorEl.textContent = 'Cari lokasi RajaOngkir atau isi lokasi secara manual.';
+            errorEl.classList.remove('hidden');
+            return;
+        }
+
         btn.disabled = true;
         btn.textContent = 'Menyimpan...';
         errorEl.classList.add('hidden');

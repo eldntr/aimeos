@@ -130,6 +130,13 @@ class ProductController extends Controller
                 }
             }
             
+            // Delete associated video from storage if exists
+            $oldVideo = \Illuminate\Support\Facades\DB::table('mshop_product')->where('id', $id)->value('video');
+            if ($oldVideo) {
+                $oldFilePath = str_replace('storage/', '', $oldVideo);
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($oldFilePath);
+            }
+
             $manager->delete($item);
             $manager->commit();
             

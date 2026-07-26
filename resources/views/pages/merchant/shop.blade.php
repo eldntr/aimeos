@@ -78,59 +78,67 @@
                             ></textarea>
                         </label>
 
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <label class="space-y-2 block">
-                                <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Provinsi Asal</span>
-                                <select
-                                    id="shop-province-input"
-                                    class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow font-semibold"
-                                    required
-                                >
-                                    <option value="">Pilih provinsi</option>
-                                </select>
-                            </label>
-                            <label class="space-y-2 block">
-                                <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Kota/Kabupaten Asal</span>
-                                <select
-                                    id="shop-city-input"
-                                    class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow font-semibold"
-                                    required
-                                >
-                                    <option value="">Pilih kota/kabupaten</option>
-                                </select>
-                            </label>
-                            <label class="space-y-2 block">
-                                <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Kecamatan Asal</span>
-                                <select
-                                    id="shop-subdistrict-input"
-                                    class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow font-semibold"
-                                >
-                                    <option value="">Pilih kecamatan</option>
-                                </select>
-                            </label>
-                        </div>
-                        <label class="space-y-2 block max-w-sm">
-                            <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Kode Pos Asal</span>
-                            <input
-                                id="shop-postal-input"
-                                type="text"
-                                class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow font-semibold"
-                                placeholder="Terisi otomatis dari kota, bisa disesuaikan"
-                            />
-                        </label>
                         <label class="space-y-2 block">
-                            <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Kelurahan/Desa RajaOngkir Komerce</span>
+                            <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Cari Lokasi / Kelurahan / Kecamatan / Kota Asal *</span>
                             <input
                                 id="shop-komerce-search-input"
                                 type="search"
                                 class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow font-semibold"
-                                placeholder="Cari kelurahan, kecamatan, kota, atau kode pos..."
+                                placeholder="Ketik kelurahan, kecamatan, atau kota asal..."
                                 autocomplete="off"
                             />
                             <input type="hidden" id="shop-komerce-destination-id-input" />
                             <div id="shop-komerce-results" class="hidden rounded-2xl border border-outline-variant/20 bg-surface-container-lowest shadow-lg overflow-hidden"></div>
                             <p id="shop-komerce-selected-label" class="text-[11px] text-primary font-semibold"></p>
                         </label>
+
+                        <!-- Manual Fields Toggle -->
+                        <div id="shop-manual-fields-toggle" class="flex items-center justify-between text-xs font-bold text-primary cursor-pointer hover:underline py-1 mt-2">
+                            <span>Atau isi lokasi secara manual jika tidak ditemukan</span>
+                            <span class="material-symbols-outlined text-sm">keyboard_arrow_down</span>
+                        </div>
+
+                        <!-- Manual Location Fields -->
+                        <div id="shop-manual-fields-container" class="hidden space-y-4 border-l-2 border-primary/10 pl-3">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <label class="space-y-2 block">
+                                    <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Provinsi Asal</span>
+                                    <select
+                                        id="shop-province-input"
+                                        class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow font-semibold"
+                                    >
+                                        <option value="">Pilih provinsi</option>
+                                    </select>
+                                </label>
+                                <label class="space-y-2 block">
+                                    <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Kota/Kabupaten Asal</span>
+                                    <select
+                                        id="shop-city-input"
+                                        class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow font-semibold"
+                                    >
+                                        <option value="">Pilih kota/kabupaten</option>
+                                    </select>
+                                </label>
+                                <label class="space-y-2 block">
+                                    <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Kecamatan Asal</span>
+                                    <select
+                                        id="shop-subdistrict-input"
+                                        class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow font-semibold"
+                                    >
+                                        <option value="">Pilih kecamatan</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <label class="space-y-2 block max-w-sm">
+                                <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Kode Pos Asal</span>
+                                <input
+                                    id="shop-postal-input"
+                                    type="text"
+                                    class="w-full rounded-full bg-surface-container-high border-none px-5 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/40 transition-shadow font-semibold"
+                                    placeholder="Terisi otomatis dari kota, bisa disesuaikan"
+                                />
+                            </label>
+                        </div>
 
                         <div class="space-y-3">
                             <div>
@@ -354,6 +362,20 @@
                 komerceResults.classList.add('hidden');
             });
 
+            // Manual fields toggle
+            document.getElementById('shop-manual-fields-toggle')?.addEventListener('click', () => {
+                const container = document.getElementById('shop-manual-fields-container');
+                const icon = document.querySelector('#shop-manual-fields-toggle span:last-child');
+                const isHidden = container.classList.contains('hidden');
+                if (isHidden) {
+                    container.classList.remove('hidden');
+                    icon.textContent = 'keyboard_arrow_up';
+                } else {
+                    container.classList.add('hidden');
+                    icon.textContent = 'keyboard_arrow_down';
+                }
+            });
+
             // Load Shop Details
             async function loadShopDetails() {
                 try {
@@ -415,6 +437,13 @@
             shopProfileForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 
+                const komerceId = komerceDestinationInput.value;
+                const cityVal = cityInput.value;
+                if (!komerceId && !cityVal) {
+                    showToast('Cari lokasi RajaOngkir atau isi lokasi secara manual.', 'error');
+                    return;
+                }
+
                 const submitBtn = document.getElementById('shop-profile-submit');
                 const origContent = submitBtn.innerHTML;
                 submitBtn.disabled = true;

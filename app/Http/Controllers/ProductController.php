@@ -29,6 +29,9 @@ class ProductController extends Controller
             try {
                 $site = $siteManager->find($siteCodeQuery);
             } catch (\Exception $ex) {
+                if ($request->has('site')) {
+                    throw $ex;
+                }
                 $siteCodeQuery = 'default';
                 $site = $siteManager->find($siteCodeQuery);
             }
@@ -152,6 +155,7 @@ class ProductController extends Controller
                 'ratings'  => $product->getRatings(),
                 'shop_name' => $siteDetails['name'],
                 'shop_code' => $siteDetails['code'],
+                'video'     => \Illuminate\Support\Facades\DB::table('mshop_product')->where('id', $product->getId())->value('video'),
             ];
         }
 
@@ -336,6 +340,7 @@ class ProductController extends Controller
                 'shop_name'   => ($siteDetails = $this->getSiteDetailsFromSiteId($context, $product->getSiteId()))['name'],
                 'shop_code'   => $siteDetails['code'],
                 'variants'    => $variants,
+                'video'       => \Illuminate\Support\Facades\DB::table('mshop_product')->where('id', $product->getId())->value('video'),
             ],
         ]);
     }
