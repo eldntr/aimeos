@@ -6,6 +6,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Aimeos\MShop\Order\Item\Base as OrderBase;
 
+/**
+ * Class CartController
+ *
+ * Handles cart controller operations for the application.
+ */
 class CartController extends Controller
 {
     /**

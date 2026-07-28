@@ -6,8 +6,16 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\UserReport;
 
+/**
+ * Class UserReportModerationController
+ *
+ * Handles user report moderation controller operations for the application.
+ */
 class UserReportModerationController extends Controller
 {
+    /**
+     * Display a listing of the resource.
+     */
     public function index()
     {
         $reports = UserReport::with('user')->latest()->get();
@@ -17,6 +25,9 @@ class UserReportModerationController extends Controller
         ]);
     }
 
+    /**
+     * Reply.
+     */
     public function reply(Request $request, $id)
     {
         $request->validate([

@@ -10,20 +10,34 @@ use Aimeos\MShop\Order\Item\Base;
 use App\Models\SellerWithdrawal;
 use App\Models\User;
 
+/**
+ * Class WalletController
+ *
+ * Handles wallet controller operations for the application.
+ */
 class WalletController extends Controller
 {
     use HasSellerContext;
 
+    /**
+     * Get commission rate.
+     */
     private function getCommissionRate(): float
     {
         return (float) \App\Models\SystemSetting::getVal('platform_commission', 5.0);
     }
 
+    /**
+     * Get seller share.
+     */
     private function getSellerShare(float $grossAmount): float
     {
         return $grossAmount - (($grossAmount * $this->getCommissionRate()) / 100);
     }
 
+    /**
+     * Get completed seller order rows.
+     */
     private function getCompletedSellerOrderRows(string $siteid)
     {
         return \DB::table('mshop_order')
@@ -44,6 +58,9 @@ class WalletController extends Controller
             ->get();
     }
 
+    /**
+     * Get completed seller revenue.
+     */
     private function getCompletedSellerRevenue(string $siteid): float
     {
         return $this->getCompletedSellerOrderRows($siteid)
@@ -53,6 +70,9 @@ class WalletController extends Controller
             });
     }
 
+    /**
+     * Get admin refund percent.
+     */
     private function getAdminRefundPercent(string $orderId): float
     {
         $responses = \DB::table('mshop_review')

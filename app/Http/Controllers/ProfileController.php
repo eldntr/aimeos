@@ -9,6 +9,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
 
+/**
+ * Class ProfileController
+ *
+ * Handles profile controller operations for the application.
+ */
 class ProfileController extends Controller
 {
     /**

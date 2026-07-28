@@ -6,8 +6,16 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
 
+/**
+ * Class UserController
+ *
+ * Handles user controller operations for the application.
+ */
 class UserController extends Controller
 {
+    /**
+     * Display a listing of the resource.
+     */
     public function index(Request $request)
     {
         $query = User::query();
@@ -40,6 +48,9 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Update status.
+     */
     public function updateStatus(Request $request, $id)
     {
         $request->validate([

@@ -10,6 +10,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
+/**
+ * Class AuthenticatedSessionController
+ *
+ * Handles authenticated session controller operations for the application.
+ */
 class AuthenticatedSessionController extends Controller
 {
     /**

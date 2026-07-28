@@ -6,6 +6,11 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Class SellerProfileController
+ *
+ * Handles seller profile controller operations for the application.
+ */
 class SellerProfileController extends Controller
 {
     /**
@@ -34,12 +39,18 @@ class SellerProfileController extends Controller
 
         return response()->json(['message' => 'KTP re-uploaded successfully. Your status is now pending review.']);
     }
+    /**
+     * Get numeric site id.
+     */
     protected function getNumericSiteId($siteid)
     {
         $parts = array_filter(explode('.', trim($siteid, '.')));
         return end($parts);
     }
 
+    /**
+     * Get seller context.
+     */
     protected function getSellerContext()
     {
         $context = app('aimeos.context')->get(false);
@@ -53,6 +64,9 @@ class SellerProfileController extends Controller
         return $context;
     }
 
+    /**
+     * Get shop.
+     */
     public function getShop(Request $request)
     {
         $user = $request->user();
@@ -75,6 +89,9 @@ class SellerProfileController extends Controller
         ]);
     }
 
+    /**
+     * Update shop.
+     */
     public function updateShop(Request $request)
     {
         $rules = [
@@ -167,6 +184,9 @@ class SellerProfileController extends Controller
         }
     }
 
+    /**
+     * Update bank.
+     */
     public function updateBank(Request $request)
     {
         $request->validate([
@@ -209,6 +229,9 @@ class SellerProfileController extends Controller
         }
     }
 
+    /**
+     * Resolve shipping location.
+     */
     private function resolveShippingLocation(Request $request): array
     {
         $komerce = $this->resolveKomerceDestination($request);
@@ -284,6 +307,9 @@ class SellerProfileController extends Controller
         ];
     }
 
+    /**
+     * Resolve komerce destination.
+     */
     private function resolveKomerceDestination(Request $request): ?array
     {
         if (!$request->filled('shipping_komerce_destination_id') || !\Illuminate\Support\Facades\Schema::hasTable('komerce_destinations')) {
@@ -297,6 +323,9 @@ class SellerProfileController extends Controller
         return $destination ? (array) $destination : null;
     }
 
+    /**
+     * Enabled courier codes.
+     */
     private function enabledCourierCodes(string $siteid): array
     {
         if (!\Illuminate\Support\Facades\Schema::hasTable('seller_shipping_couriers')) {
@@ -310,6 +339,9 @@ class SellerProfileController extends Controller
             ->all();
     }
 
+    /**
+     * Sync seller couriers.
+     */
     private function syncSellerCouriers(string $siteid, array $codes): void
     {
         if (!\Illuminate\Support\Facades\Schema::hasTable('seller_shipping_couriers')) {

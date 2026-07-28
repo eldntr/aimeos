@@ -8,6 +8,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 use Illuminate\View\View;
 
+/**
+ * Class PasswordResetLinkController
+ *
+ * Handles password reset link controller operations for the application.
+ */
 class PasswordResetLinkController extends Controller
 {
     /**

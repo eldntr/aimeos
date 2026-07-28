@@ -7,8 +7,16 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+/**
+ * Class CustomerAddressController
+ *
+ * Handles customer address controller operations for the application.
+ */
 class CustomerAddressController extends Controller
 {
+    /**
+     * Get context.
+     */
     private function getContext()
     {
         $context = app('aimeos.context')->get(false);
@@ -31,11 +39,17 @@ class CustomerAddressController extends Controller
         return $context;
     }
 
+    /**
+     * Get address manager.
+     */
     private function getAddressManager()
     {
         return \Aimeos\MShop::create($this->getContext(), 'customer/address');
     }
 
+    /**
+     * Display a listing of the resource.
+     */
     public function index(Request $request)
     {
         $manager = $this->getAddressManager();
@@ -74,6 +88,9 @@ class CustomerAddressController extends Controller
         ]);
     }
 
+    /**
+     * Store a newly created resource in storage.
+     */
     public function store(Request $request)
     {
         $request->validate([
@@ -117,6 +134,9 @@ class CustomerAddressController extends Controller
         ], 201);
     }
 
+    /**
+     * Update the specified resource in storage.
+     */
     public function update(Request $request, $id)
     {
         $request->validate([
@@ -169,6 +189,9 @@ class CustomerAddressController extends Controller
         }
     }
 
+    /**
+     * Remove the specified resource from storage.
+     */
     public function destroy(Request $request, $id)
     {
         $manager = $this->getAddressManager();
@@ -191,6 +214,9 @@ class CustomerAddressController extends Controller
         }
     }
 
+    /**
+     * Resolve raja ongkir location.
+     */
     private function resolveRajaOngkirLocation(Request $request): array
     {
         $komerce = $this->resolveKomerceDestination($request);
@@ -286,6 +312,9 @@ class CustomerAddressController extends Controller
         ];
     }
 
+    /**
+     * Resolve komerce destination.
+     */
     private function resolveKomerceDestination(Request $request): ?array
     {
         if (!$request->filled('komerce_destination_id') || !Schema::hasTable('komerce_destinations')) {
@@ -299,6 +328,9 @@ class CustomerAddressController extends Controller
         return $destination ? (array) $destination : null;
     }
 
+    /**
+     * Sync address location ids.
+     */
     private function syncAddressLocationIds($addressId, array $location): void
     {
         if (!Schema::hasColumn('mshop_customer_address', 'ro_city_id')) {

@@ -9,8 +9,16 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Route;
 
+/**
+ * Class MarketplaceController
+ *
+ * Handles marketplace controller operations for the application.
+ */
 class MarketplaceController extends Controller
 {
+    /**
+     * Landing.
+     */
     public function landing(Request $request)
     {
         $categories = $this->loadCategories($request);
@@ -26,6 +34,9 @@ class MarketplaceController extends Controller
         ]);
     }
 
+    /**
+     * Search.
+     */
     public function search(Request $request)
     {
         $query = $request->query('search', '');
@@ -147,6 +158,9 @@ class MarketplaceController extends Controller
         ]);
     }
 
+    /**
+     * Categories.
+     */
     public function categories(Request $request)
     {
         return view('pages.marketplace.categories', [
@@ -156,6 +170,9 @@ class MarketplaceController extends Controller
         ]);
     }
 
+    /**
+     * Show category.
+     */
     public function showCategory(Request $request, string $selected_category)
     {
         $categories = $this->loadCategories($request);
@@ -205,6 +222,9 @@ class MarketplaceController extends Controller
         ]);
     }
 
+    /**
+     * Product detail.
+     */
     public function productDetail(Request $request, string $id)
     {
         $product = $this->loadProduct($request, $id);
@@ -267,6 +287,9 @@ class MarketplaceController extends Controller
         ]);
     }
 
+    /**
+     * Shop detail.
+     */
     public function shopDetail(Request $request, string $shop_code)
     {
         $response = app(\App\Http\Controllers\ShopController::class)->show($request, $shop_code);
@@ -325,6 +348,9 @@ class MarketplaceController extends Controller
         ]);
     }
 
+    /**
+     * Load categories.
+     */
     protected function loadCategories(Request $request): array
     {
         $response = app(ApiCategoryController::class)->index($request);
@@ -336,6 +362,9 @@ class MarketplaceController extends Controller
         }, $categories);
     }
 
+    /**
+     * Load banners.
+     */
     protected function loadBanners(Request $request): array
     {
         try {
@@ -357,6 +386,9 @@ class MarketplaceController extends Controller
         }
     }
 
+    /**
+     * Load products.
+     */
     protected function loadProducts(Request $request): array
     {
         $response = app(ApiProductController::class)->index($request);
@@ -368,6 +400,9 @@ class MarketplaceController extends Controller
         }, $products);
     }
 
+    /**
+     * Load products by category.
+     */
     protected function loadProductsByCategory(Request $request, string $categoryId): array
     {
         $response = app(ApiCategoryController::class)->getProducts($request, $categoryId);
@@ -379,6 +414,9 @@ class MarketplaceController extends Controller
         }, $products);
     }
 
+    /**
+     * Load product.
+     */
     protected function loadProduct(Request $request, string $id): ?array
     {
         $response = app(ApiProductController::class)->show($request, $id);
@@ -388,6 +426,9 @@ class MarketplaceController extends Controller
         return is_array($product) ? $this->formatProduct($product, true) : null;
     }
 
+    /**
+     * Load reviews.
+     */
     protected function loadReviews(string $productId): array
     {
         try {
@@ -417,6 +458,9 @@ class MarketplaceController extends Controller
         }
     }
 
+    /**
+     * Format category.
+     */
     protected function formatCategory(array $category): array
     {
         return [
@@ -430,6 +474,9 @@ class MarketplaceController extends Controller
         ];
     }
 
+    /**
+     * Format product.
+     */
     protected function formatProduct(array $product, bool $detail = false): array
     {
         $images = Arr::get($product, 'images', []);
@@ -542,6 +589,9 @@ class MarketplaceController extends Controller
         ];
     }
 
+    /**
+     * Map category icon.
+     */
     protected function mapCategoryIcon(string $label): string
     {
         $label = strtolower($label);
@@ -569,6 +619,9 @@ class MarketplaceController extends Controller
         return 'category';
     }
 
+    /**
+     * Find category.
+     */
     protected function findCategory(array $categories, string $selected_category): ?array
     {
         foreach ($categories as $category) {
@@ -587,6 +640,9 @@ class MarketplaceController extends Controller
         return null;
     }
 
+    /**
+     * Load trending products.
+     */
     protected function loadTrendingProducts(Request $request): array
     {
         try {
@@ -620,6 +676,9 @@ class MarketplaceController extends Controller
         }
     }
 
+    /**
+     * Load price dropped products.
+     */
     protected function loadPriceDroppedProducts(Request $request): array
     {
         try {

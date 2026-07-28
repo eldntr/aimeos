@@ -6,8 +6,16 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Aimeos\MShop;
 
+/**
+ * Class CategoryController
+ *
+ * Handles category controller operations for the application.
+ */
 class CategoryController extends Controller
 {
+    /**
+     * Store a newly created resource in storage.
+     */
     public function store(Request $request)
     {
         $request->validate([
@@ -65,6 +73,9 @@ class CategoryController extends Controller
         }
     }
 
+    /**
+     * Update the specified resource in storage.
+     */
     public function update(Request $request, $id)
     {
         $request->validate([
@@ -117,6 +128,9 @@ class CategoryController extends Controller
         }
     }
 
+    /**
+     * Remove the specified resource from storage.
+     */
     public function destroy($id)
     {
         $context = app('aimeos.context')->get(false);

@@ -4,6 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Class KomerceDestination
+ *
+ * Handles komerce destination operations for the application.
+ */
 class KomerceDestination extends Model
 {
     public $incrementing = false;

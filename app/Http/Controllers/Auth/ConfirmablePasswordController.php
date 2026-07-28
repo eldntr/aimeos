@@ -10,6 +10,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
+/**
+ * Class ConfirmablePasswordController
+ *
+ * Handles confirmable password controller operations for the application.
+ */
 class ConfirmablePasswordController extends Controller
 {
     /**

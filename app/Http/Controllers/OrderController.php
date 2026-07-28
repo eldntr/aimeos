@@ -7,8 +7,16 @@ use Aimeos\MShop;
 use Illuminate\Support\Facades\Log;
 use Aimeos\MShop\Order\Item\Base;
 
+/**
+ * Class OrderController
+ *
+ * Handles order controller operations for the application.
+ */
 class OrderController extends Controller
 {
+    /**
+     * Get context.
+     */
     protected function getContext()
     {
         $context = app('aimeos.context')->get(false);
@@ -31,6 +39,9 @@ class OrderController extends Controller
         return $context;
     }
 
+    /**
+     * Get product shop meta.
+     */
     private function getProductShopMeta($product): array
     {
         $vendor = method_exists($product, 'getVendor') ? trim($product->getVendor()) : '';
@@ -53,6 +64,9 @@ class OrderController extends Controller
         ];
     }
 
+    /**
+     * Get product image.
+     */
     private function getProductImage(?string $productId): ?string
     {
         if (!$productId) {
@@ -70,6 +84,9 @@ class OrderController extends Controller
         return $media->preview ?? $media->link ?? null;
     }
 
+    /**
+     * Normalize tracking number.
+     */
     private function normalizeTrackingNumber(?string $value): string
     {
         $value = preg_replace('/\s+/', '', trim((string) $value));
@@ -81,6 +98,9 @@ class OrderController extends Controller
         return preg_match('/^(?=.*\d)[A-Z0-9][A-Z0-9._-]{4,39}$/i', $value) ? strtoupper($value) : '';
     }
 
+    /**
+     * Get reviewed product ids.
+     */
     private function getReviewedProductIds(array $productIds): array
     {
         $productIds = array_values(array_filter(array_unique(array_map('strval', $productIds))));
@@ -101,6 +121,9 @@ class OrderController extends Controller
             ->all();
     }
 
+    /**
+     * Parse complaint comment.
+     */
     private function parseComplaintComment(?string $comment): array
     {
         $comment = (string) $comment;
@@ -145,6 +168,9 @@ class OrderController extends Controller
         ];
     }
 
+    /**
+     * Get resolution label.
+     */
     private function getResolutionLabel(?string $resolution, ?int $refundPercent = null): string
     {
         return match ($resolution) {
@@ -155,6 +181,9 @@ class OrderController extends Controller
         };
     }
 
+    /**
+     * Get order complaints.
+     */
     private function getOrderComplaints(string $orderId): array
     {
         return \DB::table('mshop_review')
@@ -186,6 +215,9 @@ class OrderController extends Controller
             ->all();
     }
 
+    /**
+     * Display a listing of the resource.
+     */
     public function index(Request $request)
     {
         try {
@@ -273,6 +305,9 @@ class OrderController extends Controller
         }
     }
 
+    /**
+     * Display the specified resource details.
+     */
     public function show($id)
     {
         try {
@@ -379,6 +414,9 @@ class OrderController extends Controller
         }
     }
 
+    /**
+     * Mark received.
+     */
     public function markReceived($id)
     {
         $order = \DB::table('mshop_order')

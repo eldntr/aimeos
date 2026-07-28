@@ -9,6 +9,11 @@ use Illuminate\Support\Facades\Http;
 use RuntimeException;
 use Throwable;
 
+/**
+ * Class SyncKomerceDestinations
+ *
+ * Handles sync komerce destinations operations for the application.
+ */
 class SyncKomerceDestinations extends Command
 {
     protected $signature = 'rajaongkir:sync-komerce-destinations
@@ -26,6 +31,9 @@ class SyncKomerceDestinations extends Command
     private int $requestCount = 0;
     private bool $stoppedByRequestBudget = false;
 
+    /**
+     * Handle.
+     */
     public function handle(): int
     {
         $this->baseUrl = rtrim((string) config('services.rajaongkir.base_url'), '/');
@@ -73,6 +81,9 @@ class SyncKomerceDestinations extends Command
         }
     }
 
+    /**
+     * Sync province.
+     */
     private function syncProvince(array $province): void
     {
         $provinceId = (int) $province['id'];
@@ -85,6 +96,9 @@ class SyncKomerceDestinations extends Command
         }
     }
 
+    /**
+     * Sync city.
+     */
     private function syncCity(int $provinceId, string $provinceName, array $city): void
     {
         $cityId = (int) $city['id'];
@@ -97,6 +111,9 @@ class SyncKomerceDestinations extends Command
         }
     }
 
+    /**
+     * Sync district.
+     */
     private function syncDistrict(int $provinceId, string $provinceName, int $cityId, string $cityName, array $district): void
     {
         $districtId = (int) $district['id'];
@@ -153,6 +170,9 @@ class SyncKomerceDestinations extends Command
         $this->linkLegacySubdistricts($districtName, $cityName, $rows);
     }
 
+    /**
+     * District already synced.
+     */
     private function districtAlreadySynced(int $districtId): bool
     {
         return KomerceDestination::query()
@@ -160,6 +180,9 @@ class SyncKomerceDestinations extends Command
             ->exists();
     }
 
+    /**
+     * Link legacy subdistricts.
+     */
     private function linkLegacySubdistricts(string $districtName, string $cityName, array $rows): void
     {
         if (!DB::getSchemaBuilder()->hasColumn('tb_ro_subdistricts', 'komerce_destination_id')) {
@@ -176,6 +199,9 @@ class SyncKomerceDestinations extends Command
         }
     }
 
+    /**
+     * Request.
+     */
     private function request(string $endpoint): array
     {
         if ($this->maxRequests > 0 && $this->requestCount >= $this->maxRequests) {

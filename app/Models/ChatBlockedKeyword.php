@@ -5,6 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 
+/**
+ * Class ChatBlockedKeyword
+ *
+ * Handles chat blocked keyword operations for the application.
+ */
 class ChatBlockedKeyword extends Model
 {
     protected $fillable = ['keyword', 'is_active', 'created_by'];

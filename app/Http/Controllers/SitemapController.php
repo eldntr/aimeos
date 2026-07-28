@@ -6,6 +6,11 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 
+/**
+ * Class SitemapController
+ *
+ * Handles sitemap controller operations for the application.
+ */
 class SitemapController extends Controller
 {
     /**

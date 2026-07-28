@@ -9,10 +9,18 @@ use Illuminate\Support\Facades\Log;
 use Aimeos\MShop\Order\Item\Base;
 use App\Notifications\OrderStatusUpdated;
 
+/**
+ * Class OrderController
+ *
+ * Handles order controller operations for the application.
+ */
 class OrderController extends Controller
 {
     use HasSellerContext;
 
+    /**
+     * Get order context.
+     */
     private function getOrderContext()
     {
         $context = app('aimeos.context')->get(false);
@@ -35,6 +43,9 @@ class OrderController extends Controller
         return $context;
     }
 
+    /**
+     * Get context for order.
+     */
     private function getContextForOrder(string $orderId)
     {
         $siteId = \DB::table('mshop_order')->where('id', $orderId)->value('siteid');
@@ -44,22 +55,34 @@ class OrderController extends Controller
             : $this->getOrderContext();
     }
 
+    /**
+     * Get commission rate.
+     */
     private function getCommissionRate(): float
     {
         return (float) \App\Models\SystemSetting::getVal('platform_commission', 5.0);
     }
 
+    /**
+     * Get seller share.
+     */
     private function getSellerShare(float $grossAmount): float
     {
         $commissionRate = $this->getCommissionRate();
         return $grossAmount - (($grossAmount * $commissionRate) / 100);
     }
 
+    /**
+     * Seller site id.
+     */
     private function sellerSiteId(): ?string
     {
         return auth()->user()?->siteid;
     }
 
+    /**
+     * Seller owns order.
+     */
     private function sellerOwnsOrder(string $orderId): bool
     {
         return \DB::table('mshop_order_product')
@@ -69,6 +92,9 @@ class OrderController extends Controller
             ->exists();
     }
 
+    /**
+     * Get seller order product total.
+     */
     private function getSellerOrderProductTotal(string $orderId): float
     {
         return (float) \DB::table('mshop_order_product')
@@ -79,6 +105,9 @@ class OrderController extends Controller
             ->value('total');
     }
 
+    /**
+     * Get seller order ids.
+     */
     private function getSellerOrderIds(): array
     {
         return \DB::table('mshop_order')
@@ -94,6 +123,9 @@ class OrderController extends Controller
             ->all();
     }
 
+    /**
+     * Product belongs to seller.
+     */
     private function productBelongsToSeller($product): bool
     {
         return \DB::table('mshop_product')
@@ -102,6 +134,9 @@ class OrderController extends Controller
             ->exists();
     }
 
+    /**
+     * Get product image.
+     */
     private function getProductImage(?string $productId): ?string
     {
         if (!$productId) {
@@ -119,6 +154,9 @@ class OrderController extends Controller
         return $media->preview ?? $media->link ?? null;
     }
 
+    /**
+     * Normalize tracking number.
+     */
     private function normalizeTrackingNumber(?string $value): string
     {
         $value = preg_replace('/\s+/', '', trim((string) $value));
@@ -130,6 +168,9 @@ class OrderController extends Controller
         return preg_match('/^(?=.*\d)[A-Z0-9][A-Z0-9._-]{4,39}$/i', $value) ? strtoupper($value) : '';
     }
 
+    /**
+     * Parse complaint comment.
+     */
     private function parseComplaintComment(?string $comment): array
     {
         $comment = (string) $comment;
@@ -174,6 +215,9 @@ class OrderController extends Controller
         ];
     }
 
+    /**
+     * Get resolution label.
+     */
     private function getResolutionLabel(?string $resolution, ?int $refundPercent = null): string
     {
         return match ($resolution) {
@@ -184,6 +228,9 @@ class OrderController extends Controller
         };
     }
 
+    /**
+     * Get order complaints.
+     */
     private function getOrderComplaints(string $orderId): array
     {
         return \DB::table('mshop_review')
@@ -216,6 +263,9 @@ class OrderController extends Controller
             ->all();
     }
 
+    /**
+     * Display a listing of the resource.
+     */
     public function index(Request $request)
     {
         try {
@@ -265,6 +315,9 @@ class OrderController extends Controller
         }
     }
 
+    /**
+     * Display the specified resource details.
+     */
     public function show(Request $request, $id)
     {
         try {
@@ -352,6 +405,9 @@ class OrderController extends Controller
         }
     }
 
+    /**
+     * Update status.
+     */
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
@@ -418,6 +474,9 @@ class OrderController extends Controller
         }
     }
 
+    /**
+     * Respond complaint.
+     */
     public function respondComplaint(Request $request, $id)
     {
         $request->validate([
@@ -470,6 +529,9 @@ class OrderController extends Controller
         }
     }
 
+    /**
+     * Request pickup.
+     */
     public function requestPickup(Request $request, $id)
     {
         try {

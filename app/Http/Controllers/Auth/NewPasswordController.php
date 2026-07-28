@@ -12,6 +12,11 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
 
+/**
+ * Class NewPasswordController
+ *
+ * Handles new password controller operations for the application.
+ */
 class NewPasswordController extends Controller
 {
     /**

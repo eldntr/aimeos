@@ -8,8 +8,16 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Aimeos\MShop\Order\Item\Base;
 
+/**
+ * Class DashboardController
+ *
+ * Handles dashboard controller operations for the application.
+ */
 class DashboardController extends Controller
 {
+    /**
+     * Get stats.
+     */
     public function getStats(Request $request)
     {
         // Total Users

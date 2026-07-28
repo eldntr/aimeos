@@ -4,6 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Class WalletLedger
+ *
+ * Handles wallet ledger operations for the application.
+ */
 class WalletLedger extends Model
 {
     protected $fillable = [

@@ -9,6 +9,11 @@ use Illuminate\Support\Facades\Log;
 use Aimeos\MShop\Order\Item\Base;
 use Carbon\Carbon;
 
+/**
+ * Class ReportController
+ *
+ * Handles report controller operations for the application.
+ */
 class ReportController extends Controller
 {
     use HasSellerContext;
@@ -165,6 +170,9 @@ class ReportController extends Controller
         }
     }
 
+    /**
+     * Get payment status text.
+     */
     private function getPaymentStatusText($code)
     {
         switch ($code) {
@@ -178,6 +186,9 @@ class ReportController extends Controller
         }
     }
 
+    /**
+     * Get delivery status text.
+     */
     private function getDeliveryStatusText($code)
     {
         switch ($code) {

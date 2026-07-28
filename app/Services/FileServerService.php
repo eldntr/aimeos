@@ -5,6 +5,11 @@ namespace App\Services;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 
+/**
+ * Class FileServerService
+ *
+ * Handles file server service operations for the application.
+ */
 class FileServerService
 {
     /**

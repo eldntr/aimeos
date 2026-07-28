@@ -6,8 +6,16 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Aimeos\MShop\Order\Item\Base as OrderBase;
 
+/**
+ * Class CheckoutController
+ *
+ * Handles checkout controller operations for the application.
+ */
 class CheckoutController extends Controller
 {
+    /**
+     * Get context with locale.
+     */
     private function getContextWithLocale()
     {
         $context = app('aimeos.context')->get(false);
@@ -70,6 +78,9 @@ class CheckoutController extends Controller
         return $orderId ? \Aimeos\MShop::create($context, 'order')->get($orderId, ['order/product']) : null;
     }
 
+    /**
+     * Get basket controller.
+     */
     private function getBasketController()
     {
         $context = $this->getContextWithLocale();
@@ -110,6 +121,9 @@ class CheckoutController extends Controller
         return \Aimeos\Controller\Frontend::create($context, 'basket');
     }
 
+    /**
+     * Save basket.
+     */
     private function saveBasket($basketController)
     {
         $context = $this->getContextWithLocale();
@@ -149,6 +163,9 @@ class CheckoutController extends Controller
         }
     }
 
+    /**
+     * Selected positions.
+     */
     private function selectedPositions(Request $request): array
     {
         $positions = $request->input('selected_positions', []);
@@ -164,6 +181,9 @@ class CheckoutController extends Controller
         return array_values(array_unique(array_map('strval', $positions)));
     }
 
+    /**
+     * Get selected products.
+     */
     private function getSelectedProducts($order, Request $request): array
     {
         $selected = $this->selectedPositions($request);
@@ -178,6 +198,9 @@ class CheckoutController extends Controller
         return $products;
     }
 
+    /**
+     * Destination id from address.
+     */
     private function destinationIdFromAddress($deliveryAddress): string
     {
         if (!$deliveryAddress) {
@@ -262,6 +285,9 @@ class CheckoutController extends Controller
         return (string) $city->city_id;
     }
 
+    /**
+     * Get seller shipping config by product id.
+     */
     private function getSellerShippingConfigByProductId(?string $productId): array
     {
         $site = \Illuminate\Support\Facades\DB::table('mshop_product')
@@ -315,6 +341,9 @@ class CheckoutController extends Controller
         ];
     }
 
+    /**
+     * Find or sync komerce destination id.
+     */
     private function findOrSyncKomerceDestinationId(array $terms): ?string
     {
         if (!\Illuminate\Support\Facades\Schema::hasTable('komerce_destinations')) {
@@ -349,6 +378,9 @@ class CheckoutController extends Controller
         return $this->storeKomerceDestination($first);
     }
 
+    /**
+     * Store komerce destination.
+     */
     private function storeKomerceDestination(array $row): ?string
     {
         $id = $row['id'] ?? $row['destination_id'] ?? null;
@@ -394,6 +426,9 @@ class CheckoutController extends Controller
         return (string) $id;
     }
 
+    /**
+     * Seller courier codes.
+     */
     private function sellerCourierCodes(?string $siteid): array
     {
         if (!$siteid || !\Illuminate\Support\Facades\Schema::hasTable('seller_shipping_couriers')) {
@@ -412,6 +447,9 @@ class CheckoutController extends Controller
         return $codes ?: $this->defaultCourierCodes();
     }
 
+    /**
+     * Default courier codes.
+     */
     private function defaultCourierCodes(): array
     {
         if (!\Illuminate\Support\Facades\Schema::hasTable('shipping_couriers')) {
@@ -427,6 +465,9 @@ class CheckoutController extends Controller
             ->all();
     }
 
+    /**
+     * Product weight grams.
+     */
     private function productWeightGrams(?string $productId): int
     {
         if (!\Illuminate\Support\Facades\Schema::hasColumn('mshop_product', 'weight_grams')) {
@@ -436,6 +477,9 @@ class CheckoutController extends Controller
         return max(1, (int) (\Illuminate\Support\Facades\DB::table('mshop_product')->where('id', $productId)->value('weight_grams') ?: 1000));
     }
 
+    /**
+     * Grouped shipment weights.
+     */
     private function groupedShipmentWeights(array $products): array
     {
         $groups = [];
@@ -459,6 +503,9 @@ class CheckoutController extends Controller
         return array_values($groups);
     }
 
+    /**
+     * Calculate shipping options.
+     */
     private function calculateShippingOptions($order, Request $request, $deliveryAddress): array
     {
         $destinationId = $this->destinationIdFromAddress($deliveryAddress);

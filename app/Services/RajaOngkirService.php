@@ -6,11 +6,19 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 
+/**
+ * Class RajaOngkirService
+ *
+ * Handles raja ongkir service operations for the application.
+ */
 class RajaOngkirService
 {
     protected $apiKey;
     protected $baseUrl;
 
+    /**
+     * Initialize the class instance and inject dependencies.
+     */
     public function __construct()
     {
         $this->apiKey = config('services.rajaongkir.key');
@@ -133,11 +141,17 @@ class RajaOngkirService
         return [];
     }
 
+    /**
+     * Calculate domestic cost.
+     */
     public function calculateDomesticCost(string $originId, string $destinationId, int $weightGrams, string $courier = 'jne', string $price = 'lowest'): array
     {
         return $this->calculateCost($destinationId, $weightGrams, $courier, $originId, $price);
     }
 
+    /**
+     * Search domestic destinations.
+     */
     public function searchDomesticDestinations(string $search, int $limit = 10, int $offset = 0): array
     {
         if (empty($this->apiKey)) {
@@ -177,6 +191,9 @@ class RajaOngkirService
         return [];
     }
 
+    /**
+     * Normalize komerce cost response.
+     */
     private function normalizeKomerceCostResponse(array $payload, string $courier): array
     {
         $services = $payload['data'] ?? [];

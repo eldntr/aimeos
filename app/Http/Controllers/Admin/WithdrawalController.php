@@ -6,8 +6,16 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\SellerWithdrawal;
 
+/**
+ * Class WithdrawalController
+ *
+ * Handles withdrawal controller operations for the application.
+ */
 class WithdrawalController extends Controller
 {
+    /**
+     * Display a listing of the resource.
+     */
     public function index(Request $request)
     {
         $status = $request->query('status');
@@ -26,6 +34,9 @@ class WithdrawalController extends Controller
         ]);
     }
 
+    /**
+     * Approve.
+     */
     public function approve($id)
     {
         $withdrawal = SellerWithdrawal::find($id);

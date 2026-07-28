@@ -6,8 +6,16 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Aimeos\MShop;
 
+/**
+ * Class BannerController
+ *
+ * Handles banner controller operations for the application.
+ */
 class BannerController extends Controller
 {
+    /**
+     * Display a listing of the resource.
+     */
     public function index()
     {
         $context = app('aimeos.context')->get(false);
@@ -46,6 +54,9 @@ class BannerController extends Controller
         return response()->json(['data' => $banners]);
     }
 
+    /**
+     * Store a newly created resource in storage.
+     */
     public function store(Request $request)
     {
         $request->validate([
@@ -113,6 +124,9 @@ class BannerController extends Controller
         }
     }
 
+    /**
+     * Remove the specified resource from storage.
+     */
     public function destroy($id)
     {
         $context = app('aimeos.context')->get(false);

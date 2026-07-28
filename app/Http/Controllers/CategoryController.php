@@ -4,6 +4,11 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 
+/**
+ * Class CategoryController
+ *
+ * Handles category controller operations for the application.
+ */
 class CategoryController extends Controller
 {
     /**
@@ -78,6 +83,9 @@ class CategoryController extends Controller
         return response()->json(['data' => $this->formatCategoryTree($tree->getChildren())]);
     }
 
+    /**
+     * Format category tree.
+     */
     private function formatCategoryTree($tree): array
     {
         $result = [];

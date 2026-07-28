@@ -6,8 +6,16 @@ use Illuminate\Http\Request;
 use App\Models\UserReport;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * Class HelpController
+ *
+ * Handles help controller operations for the application.
+ */
 class HelpController extends Controller
 {
+    /**
+     * Display a listing of the resource.
+     */
     public function index()
     {
         $faqs = [
@@ -60,6 +68,9 @@ class HelpController extends Controller
         return view('pages.static.help-center', compact('faqs', 'reports'));
     }
 
+    /**
+     * Store report.
+     */
     public function storeReport(Request $request)
     {
         $rules = [

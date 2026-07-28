@@ -1,6 +1,14 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Web\MarketplaceController;
+use App\Http\Controllers\Web\AdminController;
+use App\Http\Controllers\Web\MerchantController;
+use App\Http\Controllers\Admin\ChatKeywordController;
+use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\HelpController;
 
 /*
 |--------------------------------------------------------------------------
@@ -13,21 +21,19 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\Auth\RegisteredUserController;
-use App\Http\Controllers\Web\MarketplaceController;
-use App\Http\Controllers\Web\AdminController;
-use App\Http\Controllers\Web\MerchantController;
-use App\Http\Controllers\Admin\ChatKeywordController;
-use App\Http\Controllers\SitemapController;
-use App\Http\Controllers\HelpController;
+/*
+|--------------------------------------------------------------------------
+| 1. Public Marketplace & Static Routes
+|--------------------------------------------------------------------------
+*/
 
+// Healthcheck & Sitemap
 Route::get('/ready', function() {
     return 'OK';
 });
-
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 
+// Marketplace Landing & Navigation
 Route::get('/', [MarketplaceController::class, 'landing'])->name('landing');
 Route::get('/home', fn() => redirect('/'))->name('aimeos_home');
 Route::get('/categories', [MarketplaceController::class, 'categories'])->name('categories');
@@ -36,19 +42,24 @@ Route::get('/products/{id}', [MarketplaceController::class, 'productDetail'])->n
 Route::get('/shops/{shop_code}', [MarketplaceController::class, 'shopDetail'])->name('shops.show');
 Route::get('/marketplace/search', [MarketplaceController::class, 'search'])->name('marketplace.search');
 
+// Temporary pages & static info
 Route::view('/welcome', 'pages.welcome')->name('welcome');
 Route::view('/design-system-demo', 'pages.design-system-demo')->name('design-system-demo');
 Route::view('/info', 'pages.marketplace.info')->name('marketplace.info');
-// Cart: primary name 'marketplace.cart', alias 'cart.index'
+
+// Cart & Checkout (URLs handled via JavaScript SPA or redirects)
 Route::get('/cart', function() { return view('pages.marketplace.cart'); })->name('marketplace.cart');
-// Checkout: primary name 'marketplace.checkout', alias 'checkout.index'
 Route::get('/checkout', function() { return view('pages.marketplace.checkout'); })->name('marketplace.checkout');
-// Route name aliases using URL aliases (prefix-free redirects so navigation route() calls work)
+
+// Route name aliases to support legacy route() helper resolutions
 Route::get('/cart-redirect', fn() => redirect('/cart'))->name('cart.index');
 Route::get('/checkout-redirect', fn() => redirect('/checkout'))->name('checkout.index');
+
+// Merchant Registration
 Route::view('/merchant/register', 'auth.merchant-register')->name('merchant.register');
 Route::post('/merchant/register', [RegisteredUserController::class, 'registerSeller'])->name('merchant.register.store');
 
+// Static Pages
 Route::view('/tentang-kami', 'pages.static.about')->name('tentang-kami');
 Route::view('/cara-kerja', 'pages.static.how-it-works')->name('cara-kerja');
 Route::view('/karir', 'pages.static.career')->name('karir');
@@ -57,16 +68,23 @@ Route::post('/help-center/report', [HelpController::class, 'storeReport'])->name
 Route::view('/keamanan', 'pages.static.security')->name('keamanan');
 Route::view('/syarat-ketentuan', 'pages.static.terms')->name('syarat-ketentuan');
 
+/*
+|--------------------------------------------------------------------------
+| 2. Protected Routes (Auth Required)
+|--------------------------------------------------------------------------
+*/
 Route::middleware(['auth', 'verified'])->group(function () {
+    
+    // Customer Dashboard & Profile
     Route::get('/dashboard', function () {
         return view('pages.dashboard');
     })->name('dashboard');
-
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.avatar.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    // Admin Dashboard & Merchant Moderation
     Route::view('/admin/dashboard', 'pages.admin.dashboard')->name('admin.dashboard');
     Route::view('/admin/settings', 'pages.admin.settings.index')->name('admin.settings.index');
     Route::get('/admin/merchants', [AdminController::class, 'merchantsIndex'])->name('admin.merchants.index');
@@ -80,6 +98,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/admin/chat-keywords/{keyword}/toggle', [ChatKeywordController::class, 'toggle'])->name('admin.chat-keywords.toggle');
     Route::delete('/admin/chat-keywords/{keyword}', [ChatKeywordController::class, 'destroy'])->name('admin.chat-keywords.destroy');
 
+    // Merchant (Seller) Dashboard & Product Management
     Route::get('/merchant/dashboard', [MerchantController::class, 'dashboard'])->name('merchant.dashboard');
     Route::view('/merchant/shop', 'pages.merchant.shop')->name('merchant.shop');
     Route::get('/merchant/products', [MerchantController::class, 'index'])->name('merchant.products.index');
@@ -90,14 +109,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/merchant/products/{product}', [MerchantController::class, 'update'])->name('merchant.products.update');
     Route::delete('/merchant/products/{product}', [MerchantController::class, 'destroy'])->name('merchant.products.destroy');
 
-    // Merchant Orders
+    // Merchant Orders Fulfillment
     Route::get('/merchant/orders', [MerchantController::class, 'ordersIndex'])->name('merchant.orders.index');
     Route::get('/merchant/orders/{id}', [MerchantController::class, 'ordersShow'])->name('merchant.orders.show');
     Route::post('/merchant/orders/{id}/status', [MerchantController::class, 'ordersUpdateStatus'])->name('merchant.orders.update-status');
     Route::post('/merchant/orders/{id}/complaint-response', [MerchantController::class, 'ordersComplaintResponse'])->name('merchant.orders.complaint-response');
     Route::post('/merchant/orders/{id}/pickup', [MerchantController::class, 'ordersRequestPickup'])->name('merchant.orders.request-pickup');
 
-    // Merchant Wallet / Earnings
+    // Merchant Wallet & Withdrawals
     Route::get('/merchant/wallet', [MerchantController::class, 'walletIndex'])->name('merchant.wallet.index');
     Route::post('/merchant/wallet/withdraw', [MerchantController::class, 'walletWithdraw'])->name('merchant.wallet.withdraw');
 
@@ -106,13 +125,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/merchant/vouchers/create', [MerchantController::class, 'vouchersCreate'])->name('merchant.vouchers.create');
     Route::post('/merchant/vouchers', [MerchantController::class, 'vouchersStore'])->name('merchant.vouchers.store');
 
+    // Merchant AJAX Operations (Product Variants & Images)
     Route::post('/merchant/products/{product}/variants', [MerchantController::class, 'addVariantAJAX'])->name('merchant.products.variants.store');
     Route::delete('/merchant/products/{product}/variants/{variant_id}', [MerchantController::class, 'deleteVariantAJAX'])->name('merchant.products.variants.destroy');
-
-    // Merchant Product Images (AJAX)
     Route::delete('/merchant/products/{product}/images/{image_id}', [MerchantController::class, 'deleteImageAJAX'])->name('merchant.products.images.destroy');
     Route::post('/merchant/products/{product}/images/reorder', [MerchantController::class, 'reorderImagesAJAX'])->name('merchant.products.images.reorder');
-
 
     // Custom Marketplace Chat
     Route::get('/marketplace/chat/messages', [\App\Http\Controllers\MarketplaceChatController::class, 'getMessages']);
@@ -124,7 +141,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('marketplace.chat');
     Route::redirect('/chatify', '/marketplace/chat');
 
-    // Custom Profile Pages
+    // Custom Customer Profile Pages
     Route::get('/profile/orders', function () {
         return view('pages.profile.orders');
     })->name('profile.orders');
@@ -135,6 +152,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return view('pages.profile.vouchers');
     })->name('profile.vouchers');
 });
+
+/*
+|--------------------------------------------------------------------------
+| 3. Aimeos Package & Fallback Routes
+|--------------------------------------------------------------------------
+|
+| Aimeos core routes are loaded and fallbacks resolved dynamically.
+|
+*/
 
 $params = [];
 $conf = ['prefix' => '', 'where' => []];
@@ -175,8 +201,19 @@ if( config( 'app.shop_multiroute' ) )
             'uses' => 'Aimeos\Shop\Controller\ResolveController@indexAction'
         ) )->where( ['locale' => '[a-z]{2}(\_[A-Z]{2})?', 'site' => '^(?!profile|login|register|logout|dashboard|forgot-password|reset-password|verify-email|confirm-password|ready)[A-Za-z0-9\.\-]+'], 'path', '.*' );
     });
-}Route::get('/log-error', function (\Illuminate\Http\Request $request) { \Illuminate\Support\Facades\Log::error('JS ERROR: ' . $request->get('msg')); return response()->json(['status' => 'ok']); });
+}
 
+// Client JavaScript Error Logger
+Route::get('/log-error', function (\Illuminate\Http\Request $request) { 
+    \Illuminate\Support\Facades\Log::error('JS ERROR: ' . $request->get('msg')); 
+    return response()->json(['status' => 'ok']); 
+});
+
+/*
+|--------------------------------------------------------------------------
+| 4. Development & Testing Helper Endpoints
+|--------------------------------------------------------------------------
+*/
 Route::get('/dev/otp', function (\Illuminate\Http\Request $request) {
     if (config('app.env') !== 'local' && config('app.env') !== 'testing') {
         abort(403, 'This endpoint is only available in local development mode.');

@@ -6,8 +6,16 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Class NotificationController
+ *
+ * Handles notification controller operations for the application.
+ */
 class NotificationController extends Controller
 {
+    /**
+     * Broadcast.
+     */
     public function broadcast(Request $request)
     {
         $request->validate([

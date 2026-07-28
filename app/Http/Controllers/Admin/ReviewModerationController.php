@@ -6,6 +6,11 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Aimeos\MShop;
 
+/**
+ * Class ReviewModerationController
+ *
+ * Handles review moderation controller operations for the application.
+ */
 class ReviewModerationController extends Controller
 {
     /**

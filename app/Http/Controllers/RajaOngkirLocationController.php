@@ -6,8 +6,16 @@ use App\Services\RajaOngkirService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Class RajaOngkirLocationController
+ *
+ * Handles raja ongkir location controller operations for the application.
+ */
 class RajaOngkirLocationController extends Controller
 {
+    /**
+     * Provinces.
+     */
     public function provinces()
     {
         return response()->json([
@@ -17,6 +25,9 @@ class RajaOngkirLocationController extends Controller
         ]);
     }
 
+    /**
+     * Cities.
+     */
     public function cities(Request $request)
     {
         $query = DB::table('tb_ro_cities')
@@ -50,6 +61,9 @@ class RajaOngkirLocationController extends Controller
         ]);
     }
 
+    /**
+     * Subdistricts.
+     */
     public function subdistricts(Request $request)
     {
         $request->validate([
@@ -64,6 +78,9 @@ class RajaOngkirLocationController extends Controller
         ]);
     }
 
+    /**
+     * Komerce destinations.
+     */
     public function komerceDestinations(Request $request)
     {
         $request->validate([
@@ -86,6 +103,9 @@ class RajaOngkirLocationController extends Controller
         return response()->json(['data' => $rows]);
     }
 
+    /**
+     * Couriers.
+     */
     public function couriers()
     {
         return response()->json([
@@ -103,6 +123,9 @@ class RajaOngkirLocationController extends Controller
         ]);
     }
 
+    /**
+     * Search local komerce destinations.
+     */
     private function searchLocalKomerceDestinations(string $keyword): \Illuminate\Support\Collection
     {
         return DB::table('komerce_destinations')
@@ -133,6 +156,9 @@ class RajaOngkirLocationController extends Controller
             ->get();
     }
 
+    /**
+     * Store komerce destination.
+     */
     private function storeKomerceDestination(array $row): void
     {
         $id = $row['id'] ?? $row['destination_id'] ?? null;

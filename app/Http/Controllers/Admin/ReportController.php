@@ -8,8 +8,16 @@ use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Aimeos\MShop\Order\Item\Base;
 
+/**
+ * Class ReportController
+ *
+ * Handles report controller operations for the application.
+ */
 class ReportController extends Controller
 {
+    /**
+     * Export.
+     */
     public function export(Request $request)
     {
         $startDate = $request->query('start_date');

@@ -7,6 +7,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
+/**
+ * Class ReviewController
+ *
+ * Handles review controller operations for the application.
+ */
 class ReviewController extends Controller
 {
     /**

@@ -8,6 +8,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Class ProductController
+ *
+ * Handles product controller operations for the application.
+ */
 class ProductController extends Controller
 {
     use HasSellerContext;
@@ -540,6 +545,9 @@ class ProductController extends Controller
         ];
     }
 
+    /**
+     * Sync product weight grams.
+     */
     private function syncProductWeightGrams(string $productId, int $weightGrams): void
     {
         if (!\Illuminate\Support\Facades\Schema::hasColumn('mshop_product', 'weight_grams')) {
@@ -565,6 +573,9 @@ class ProductController extends Controller
     }
 
 
+    /**
+     * Create media item.
+     */
     private function createMediaItem(\Aimeos\MShop\ContextIface $context, string $url, string $mimeType): \Aimeos\MShop\Media\Item\Iface
     {
         $mediaManager = \Aimeos\MShop::create($context, 'media');
@@ -578,6 +589,9 @@ class ProductController extends Controller
         return $mediaManager->save($mediaItem);
     }
 
+    /**
+     * Create list item.
+     */
     private function createListItem(\Aimeos\MShop\ContextIface $context, string $refId): \Aimeos\MShop\Common\Item\Lists\Iface
     {
         return \Aimeos\MShop::create($context, 'product/lists')->create()
@@ -586,6 +600,9 @@ class ProductController extends Controller
             ->setRefId($refId);
     }
 
+    /**
+     * Create catalog list item.
+     */
     private function createCatalogListItem(\Aimeos\MShop\ContextIface $context, string $catalogId): \Aimeos\MShop\Common\Item\Lists\Iface
     {
         return \Aimeos\MShop::create($context, 'product/lists')->create()
@@ -594,6 +611,9 @@ class ProductController extends Controller
             ->setRefId($catalogId);
     }
 
+    /**
+     * Create variant list item.
+     */
     private function createVariantListItem(\Aimeos\MShop\ContextIface $context, string $variantId): \Aimeos\MShop\Common\Item\Lists\Iface
     {
         return \Aimeos\MShop::create($context, 'product/lists')->create()
@@ -601,6 +621,9 @@ class ProductController extends Controller
             ->setType('default')
             ->setRefId($variantId);
     }
+    /**
+     * Get variants.
+     */
     public function getVariants(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
         $context = $this->getSellerContext();
@@ -628,6 +651,9 @@ class ProductController extends Controller
         return response()->json(['data' => $variants]);
     }
 
+    /**
+     * Add variant.
+     */
     public function addVariant(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
         $request->validate([
@@ -671,6 +697,9 @@ class ProductController extends Controller
         }
     }
 
+    /**
+     * Delete variant.
+     */
     public function deleteVariant(Request $request, string $id, string $variant_id): \Illuminate\Http\JsonResponse
     {
         $context = $this->getSellerContext();
@@ -708,6 +737,9 @@ class ProductController extends Controller
         }
     }
 
+    /**
+     * Get images.
+     */
     public function getImages(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
         $context = $this->getSellerContext();
@@ -739,6 +771,9 @@ class ProductController extends Controller
         return response()->json(['data' => $images]);
     }
 
+    /**
+     * Upload images.
+     */
     public function uploadImages(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
         $request->validate([
@@ -779,6 +814,9 @@ class ProductController extends Controller
         }
     }
 
+    /**
+     * Delete image.
+     */
     public function deleteImage(Request $request, string $id, string $media_id): \Illuminate\Http\JsonResponse
     {
         $context = $this->getSellerContext();
@@ -815,6 +853,9 @@ class ProductController extends Controller
         }
     }
 
+    /**
+     * Reorder images.
+     */
     public function reorderImages(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
         $request->validate([

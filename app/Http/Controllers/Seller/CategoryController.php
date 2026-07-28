@@ -6,6 +6,11 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * Class CategoryController
+ *
+ * Handles category controller operations for the application.
+ */
 class CategoryController extends Controller
 {
     use HasSellerContext;

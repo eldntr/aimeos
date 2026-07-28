@@ -7,8 +7,16 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 
+/**
+ * Class AdminController
+ *
+ * Handles admin controller operations for the application.
+ */
 class AdminController extends Controller
 {
+    /**
+     * Merchants index.
+     */
     public function merchantsIndex(Request $request)
     {
         $response = app(SellerVerificationController::class)->index();
@@ -26,6 +34,9 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * Merchant show.
+     */
     public function merchantShow(Request $request, $merchant)
     {
         $user = User::findOrFail($merchant);
@@ -43,12 +54,18 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * Approve.
+     */
     public function approve(Request $request, $merchant)
     {
         app(SellerVerificationController::class)->approve($request, $merchant);
         return back()->with('success', 'Merchant approved successfully.');
     }
 
+    /**
+     * Reject.
+     */
     public function reject(Request $request, $merchant)
     {
         app(SellerVerificationController::class)->reject($request, $merchant);

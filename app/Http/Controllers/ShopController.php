@@ -4,6 +4,11 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 
+/**
+ * Class ShopController
+ *
+ * Handles shop controller operations for the application.
+ */
 class ShopController extends Controller
 {
     /**

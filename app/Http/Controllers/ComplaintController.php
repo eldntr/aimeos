@@ -7,6 +7,11 @@ use Illuminate\Support\Facades\Auth;
 use App\Services\FileServerService;
 use Aimeos\MShop\Order\Item\Base as OrderBase;
 
+/**
+ * Class ComplaintController
+ *
+ * Handles complaint controller operations for the application.
+ */
 class ComplaintController extends Controller
 {
     /**

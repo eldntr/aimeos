@@ -5,10 +5,18 @@ namespace App\Http\Controllers\Seller;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
+/**
+ * Class VoucherController
+ *
+ * Handles voucher controller operations for the application.
+ */
 class VoucherController extends Controller
 {
     use HasSellerContext;
 
+    /**
+     * Display a listing of the resource.
+     */
     public function index(Request $request)
     {
         $context = $this->getSellerContext();
@@ -45,6 +53,9 @@ class VoucherController extends Controller
         return response()->json(['data' => $data]);
     }
 
+    /**
+     * Store a newly created resource in storage.
+     */
     public function store(Request $request)
     {
         $request->validate([

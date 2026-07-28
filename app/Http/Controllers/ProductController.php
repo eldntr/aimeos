@@ -4,6 +4,11 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 
+/**
+ * Class ProductController
+ *
+ * Handles product controller operations for the application.
+ */
 class ProductController extends Controller
 {
     /**

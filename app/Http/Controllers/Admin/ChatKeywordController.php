@@ -7,6 +7,11 @@ use App\Models\ChatBlockedKeyword;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * Class ChatKeywordController
+ *
+ * Handles chat keyword controller operations for the application.
+ */
 class ChatKeywordController extends Controller
 {
     /**

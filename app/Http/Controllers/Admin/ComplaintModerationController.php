@@ -8,6 +8,11 @@ use Illuminate\Support\Facades\DB;
 use Aimeos\MShop;
 use Aimeos\MShop\Order\Item\Base as OrderBase;
 
+/**
+ * Class ComplaintModerationController
+ *
+ * Handles complaint moderation controller operations for the application.
+ */
 class ComplaintModerationController extends Controller
 {
     /**
@@ -189,6 +194,9 @@ class ComplaintModerationController extends Controller
         }
     }
 
+    /**
+     * Get resolution label.
+     */
     private function getResolutionLabel(?string $resolution, ?int $refundPercent = null): string
     {
         return match ($resolution) {
@@ -256,6 +264,9 @@ class ComplaintModerationController extends Controller
         ]);
     }
 
+    /**
+     * Get payment status text.
+     */
     private function getPaymentStatusText($code)
     {
         switch ($code) {
@@ -269,6 +280,9 @@ class ComplaintModerationController extends Controller
         }
     }
 
+    /**
+     * Get delivery status text.
+     */
     private function getDeliveryStatusText($code)
     {
         switch ($code) {

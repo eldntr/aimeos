@@ -8,6 +8,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 
+/**
+ * Class PasswordController
+ *
+ * Handles password controller operations for the application.
+ */
 class PasswordController extends Controller
 {
     /**

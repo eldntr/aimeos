@@ -6,6 +6,11 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Aimeos\MShop;
 
+/**
+ * Class ProductController
+ *
+ * Handles product controller operations for the application.
+ */
 class ProductController extends Controller
 {
     /**

@@ -15,8 +15,16 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * Class MerchantController
+ *
+ * Handles merchant controller operations for the application.
+ */
 class MerchantController extends Controller
 {
+    /**
+     * Display a listing of the resource.
+     */
     public function index(Request $request)
     {
         $response = app(SellerProductController::class)->index($request);
@@ -28,6 +36,9 @@ class MerchantController extends Controller
         ]);
     }
 
+    /**
+     * Show the form for creating a new resource.
+     */
     public function create(Request $request)
     {
         return view('pages.merchant.products.create', [
@@ -35,6 +46,9 @@ class MerchantController extends Controller
         ]);
     }
 
+    /**
+     * Show the form for editing the specified resource.
+     */
     public function edit(Request $request, $product)
     {
         $response = app(SellerProductController::class)->show($request, $product);
@@ -46,6 +60,9 @@ class MerchantController extends Controller
         ]);
     }
 
+    /**
+     * Store a newly created resource in storage.
+     */
     public function store(Request $request)
     {
         try {
@@ -84,6 +101,9 @@ class MerchantController extends Controller
         return redirect()->route('merchant.products.index')->with('success', 'Produk berhasil ditambahkan.');
     }
 
+    /**
+     * Update the specified resource in storage.
+     */
     public function update(Request $request, $product)
     {
         try {
@@ -123,6 +143,9 @@ class MerchantController extends Controller
         return redirect()->route('merchant.products.index')->with('success', 'Produk berhasil diperbarui.');
     }
 
+    /**
+     * Remove the specified resource from storage.
+     */
     public function destroy(Request $request, $product)
     {
         $response = app(SellerProductController::class)->destroy($request, $product);
@@ -140,6 +163,9 @@ class MerchantController extends Controller
         return redirect()->route('merchant.products.index')->with('success', 'Produk berhasil dihapus.');
     }
 
+    /**
+     * Dashboard.
+     */
     public function dashboard(Request $request)
     {
         $user = auth()->user();
@@ -273,6 +299,9 @@ class MerchantController extends Controller
         ]);
     }
 
+    /**
+     * Get payment status text.
+     */
     private function getPaymentStatusText($code)
     {
         switch ($code) {
@@ -286,6 +315,9 @@ class MerchantController extends Controller
         }
     }
 
+    /**
+     * Get delivery status text.
+     */
     private function getDeliveryStatusText($code)
     {
         switch ($code) {
@@ -299,6 +331,9 @@ class MerchantController extends Controller
         }
     }
 
+    /**
+     * Load categories.
+     */
     protected function loadCategories(Request $request)
     {
         $response = app(ApiCategoryController::class)->index($request);
@@ -315,6 +350,9 @@ class MerchantController extends Controller
             ->all();
     }
 
+    /**
+     * Orders index.
+     */
     public function ordersIndex(Request $request)
     {
         $response = app(SellerOrderController::class)->index($request);
@@ -325,6 +363,9 @@ class MerchantController extends Controller
         ]);
     }
 
+    /**
+     * Orders show.
+     */
     public function ordersShow(Request $request, $id)
     {
         $response = app(SellerOrderController::class)->show($request, $id);
@@ -339,6 +380,9 @@ class MerchantController extends Controller
         ]);
     }
 
+    /**
+     * Orders update status.
+     */
     public function ordersUpdateStatus(Request $request, $id)
     {
         $response = app(SellerOrderController::class)->updateStatus($request, $id);
@@ -351,6 +395,9 @@ class MerchantController extends Controller
         return redirect()->route('merchant.orders.show', $id)->with('success', 'Status pesanan berhasil diperbarui.');
     }
 
+    /**
+     * Orders complaint response.
+     */
     public function ordersComplaintResponse(Request $request, $id)
     {
         $response = app(SellerOrderController::class)->respondComplaint($request, $id);
@@ -363,6 +410,9 @@ class MerchantController extends Controller
         return redirect()->route('merchant.orders.show', $id)->with('success', 'Tanggapan komplain berhasil dikirim.');
     }
 
+    /**
+     * Orders request pickup.
+     */
     public function ordersRequestPickup(Request $request, $id)
     {
         $response = app(SellerOrderController::class)->requestPickup($request, $id);
@@ -375,6 +425,9 @@ class MerchantController extends Controller
         return redirect()->route('merchant.orders.show', $id)->with('success', 'Permintaan pickup berhasil diajukan.');
     }
 
+    /**
+     * Wallet index.
+     */
     public function walletIndex(Request $request)
     {
         $response = app(SellerWalletController::class)->getWallet($request);
@@ -392,6 +445,9 @@ class MerchantController extends Controller
         ]);
     }
 
+    /**
+     * Wallet withdraw.
+     */
     public function walletWithdraw(Request $request)
     {
         $response = app(SellerWalletController::class)->withdraw($request);
@@ -404,6 +460,9 @@ class MerchantController extends Controller
         return redirect()->route('merchant.wallet.index')->with('success', 'Permintaan penarikan dana berhasil diajukan.');
     }
 
+    /**
+     * Vouchers index.
+     */
     public function vouchersIndex(Request $request)
     {
         $response = app(SellerVoucherController::class)->index($request);
@@ -414,11 +473,17 @@ class MerchantController extends Controller
         ]);
     }
 
+    /**
+     * Vouchers create.
+     */
     public function vouchersCreate(Request $request)
     {
         return view('pages.merchant.vouchers.create');
     }
 
+    /**
+     * Vouchers store.
+     */
     public function vouchersStore(Request $request)
     {
         $response = app(SellerVoucherController::class)->store($request);
@@ -431,24 +496,36 @@ class MerchantController extends Controller
         return redirect()->route('merchant.vouchers.index')->with('success', 'Voucher berhasil dibuat.');
     }
 
+    /**
+     * Add variant ajax.
+     */
     public function addVariantAJAX(Request $request, $id)
     {
         $response = app(SellerProductController::class)->addVariant($request, $id);
         return $response;
     }
 
+    /**
+     * Delete variant ajax.
+     */
     public function deleteVariantAJAX(Request $request, $id, $variant_id)
     {
         $response = app(SellerProductController::class)->deleteVariant($request, $id, $variant_id);
         return $response;
     }
 
+    /**
+     * Delete image ajax.
+     */
     public function deleteImageAJAX(Request $request, $id, $image_id)
     {
         $response = app(SellerProductController::class)->deleteImage($request, $id, $image_id);
         return $response;
     }
 
+    /**
+     * Reorder images ajax.
+     */
     public function reorderImagesAJAX(Request $request, $id)
     {
         $response = app(SellerProductController::class)->reorderImages($request, $id);

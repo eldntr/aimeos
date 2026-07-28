@@ -10,6 +10,11 @@ use App\Notifications\SellerSuspended;
 use App\Notifications\SellerReactivated;
 use Illuminate\Http\Request;
 
+/**
+ * Class SellerVerificationController
+ *
+ * Handles seller verification controller operations for the application.
+ */
 class SellerVerificationController extends Controller
 {
     /**

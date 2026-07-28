@@ -9,6 +9,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
+/**
+ * Class MarketplaceChatController
+ *
+ * Handles marketplace chat controller operations for the application.
+ */
 class MarketplaceChatController extends Controller
 {
     /**

@@ -6,6 +6,11 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\SystemSetting;
 
+/**
+ * Class SettingController
+ *
+ * Handles setting controller operations for the application.
+ */
 class SettingController extends Controller
 {
     /**
