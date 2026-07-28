@@ -15,6 +15,7 @@
                 alt="{{ $product['name'] ?? 'Product' }}"
                 class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                 src="{{ $product['image'] }}"
+                loading="lazy"
                 onerror="handleProductImageError(this)"
             />
             @if (!empty($product['badge']))
@@ -53,6 +54,7 @@
                 alt="{{ $product['name'] ?? 'Product' }}"
                 class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 src="{{ $product['image'] }}"
+                loading="lazy"
                 onerror="handleProductImageError(this)"
             />
             <button class="absolute z-20 top-3 right-3 bg-white/80 backdrop-blur-md w-9 h-9 flex items-center justify-center rounded-full text-on-surface hover:text-error transition-colors">

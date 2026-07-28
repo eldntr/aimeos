@@ -29,6 +29,7 @@ return [
     */
 
     'shop_multilocale' => env('SHOP_MULTILOCALE', false),
+    'shop_multiroute' => env('SHOP_MULTIROUTE', false),
 
     /*
     |--------------------------------------------------------------------------

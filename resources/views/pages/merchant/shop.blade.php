@@ -331,22 +331,28 @@
             });
 
             async function searchKomerceDestinations(keyword) {
-                const res = await fetch(`/api/rajaongkir/locations/komerce-destinations?search=${encodeURIComponent(keyword)}`, { headers: { 'Accept': 'application/json' } });
-                const body = await res.json();
-                const rows = body.data || [];
+                try {
+                    const res = await fetch(`/api/rajaongkir/locations/komerce-destinations?search=${encodeURIComponent(keyword)}`, { headers: { 'Accept': 'application/json' } });
+                    const body = await res.json();
+                    if (!res.ok) throw new Error(body.message || 'Gagal mencari lokasi.');
+                    const rows = body.data || [];
 
-                if (rows.length === 0) {
-                    komerceResults.innerHTML = '<div class="px-4 py-3 text-xs text-on-surface-variant">Belum ada data Komerce. Jalankan sync lokasi dulu.</div>';
+                    if (rows.length === 0) {
+                        komerceResults.innerHTML = '<div class="px-4 py-3 text-xs text-on-surface-variant">Belum ada data Komerce. Jalankan sync lokasi dulu.</div>';
+                        komerceResults.classList.remove('hidden');
+                        return;
+                    }
+
+                    komerceResults.innerHTML = rows.map(row => `
+                        <button type="button" class="w-full text-left px-4 py-3 hover:bg-primary/5 border-b border-outline-variant/10 last:border-0" data-id="${row.id}" data-label="${row.label}" data-postal="${row.zip_code || ''}">
+                            <span class="block text-xs font-bold text-on-surface">${row.label}</span>
+                        </button>
+                    `).join('');
                     komerceResults.classList.remove('hidden');
-                    return;
+                } catch (e) {
+                    komerceResults.innerHTML = `<div class="px-4 py-3 text-xs text-error font-semibold">${e.message}</div>`;
+                    komerceResults.classList.remove('hidden');
                 }
-
-                komerceResults.innerHTML = rows.map(row => `
-                    <button type="button" class="w-full text-left px-4 py-3 hover:bg-primary/5 border-b border-outline-variant/10 last:border-0" data-id="${row.id}" data-label="${row.label}" data-postal="${row.zip_code || ''}">
-                        <span class="block text-xs font-bold text-on-surface">${row.label}</span>
-                    </button>
-                `).join('');
-                komerceResults.classList.remove('hidden');
             }
 
             komerceResults.addEventListener('click', (event) => {

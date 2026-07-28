@@ -84,7 +84,7 @@ return array_replace_recursive( $multiroute, $multishop + [
 		'confirm' => ['prefix' => $prefix . 'shop', 'middleware' => ['web']],
 		'supplier' => ['prefix' => $prefix . 's', 'middleware' => ['web']],
 		'page' => ['prefix' => $prefix . 'p', 'middleware' => ['web']],
-		'home' => ['prefix' => $prefix, 'middleware' => ['web']],
+		'home' => false,
 		'update' => [],
 	],
 

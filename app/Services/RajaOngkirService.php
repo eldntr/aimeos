@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class RajaOngkirService
 {
@@ -100,6 +101,12 @@ class RajaOngkirService
             ];
         }
 
+        $cacheKey = 'ro_cost_' . md5($destinationId . '_' . $weightGrams . '_' . $courier . '_' . $originId . '_' . $price);
+
+        if (Cache::has($cacheKey)) {
+            return Cache::get($cacheKey);
+        }
+
         try {
             $response = Http::withHeaders([
                 'key' => $this->apiKey,
@@ -113,7 +120,11 @@ class RajaOngkirService
             ]);
 
             if ($response->ok()) {
-                return $this->normalizeKomerceCostResponse($response->json(), $courier);
+                $data = $this->normalizeKomerceCostResponse($response->json(), $courier);
+                if ($data !== []) {
+                    Cache::put($cacheKey, $data, 7200); // cache for 2 hours
+                }
+                return $data;
             }
         } catch (\Exception $e) {
             Log::error('RajaOngkir calculateCost error: ' . $e->getMessage());
@@ -134,6 +145,12 @@ class RajaOngkirService
             return [];
         }
 
+        $cacheKey = 'ro_dest_' . md5($search . '_' . $limit . '_' . $offset);
+
+        if (Cache::has($cacheKey)) {
+            return Cache::get($cacheKey);
+        }
+
         try {
             $response = Http::withHeaders([
                 'key' => $this->apiKey,
@@ -145,7 +162,11 @@ class RajaOngkirService
             ]);
 
             if ($response->ok()) {
-                return $response->json('data') ?? [];
+                $data = $response->json('data') ?? [];
+                if ($data !== []) {
+                    Cache::put($cacheKey, $data, 604800); // cache for 7 days
+                }
+                return $data;
             }
 
             Log::warning('RajaOngkir destination search failed: ' . $response->body());

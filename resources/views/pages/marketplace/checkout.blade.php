@@ -428,22 +428,28 @@
 
     async function searchAddressKomerceDestinations(keyword) {
         const results = document.getElementById('address-komerce-results');
-        const res = await fetch(`/api/rajaongkir/locations/komerce-destinations?search=${encodeURIComponent(keyword)}`, { headers: { 'Accept': 'application/json' } });
-        const body = await res.json();
-        const rows = body.data || [];
+        try {
+            const res = await fetch(`/api/rajaongkir/locations/komerce-destinations?search=${encodeURIComponent(keyword)}`, { headers: { 'Accept': 'application/json' } });
+            const body = await res.json();
+            if (!res.ok) throw new Error(body.message || 'Gagal mencari lokasi.');
+            const rows = body.data || [];
 
-        if (rows.length === 0) {
-            results.innerHTML = '<div class="px-4 py-3 text-xs text-on-surface-variant">Belum ada data Komerce. Jalankan sync lokasi dulu.</div>';
+            if (rows.length === 0) {
+                results.innerHTML = '<div class="px-4 py-3 text-xs text-on-surface-variant">Belum ada data Komerce. Jalankan sync lokasi dulu.</div>';
+                results.classList.remove('hidden');
+                return;
+            }
+
+            results.innerHTML = rows.map(row => `
+                <button type="button" class="w-full text-left px-4 py-3 hover:bg-primary/5 border-b border-outline-variant/10 last:border-0" data-id="${row.id}" data-label="${row.label}" data-postal="${row.zip_code || ''}">
+                    <span class="block text-xs font-bold text-on-surface">${row.label}</span>
+                </button>
+            `).join('');
             results.classList.remove('hidden');
-            return;
+        } catch (e) {
+            results.innerHTML = `<div class="px-4 py-3 text-xs text-error font-semibold">${e.message}</div>`;
+            results.classList.remove('hidden');
         }
-
-        results.innerHTML = rows.map(row => `
-            <button type="button" class="w-full text-left px-4 py-3 hover:bg-primary/5 border-b border-outline-variant/10 last:border-0" data-id="${row.id}" data-label="${row.label}" data-postal="${row.zip_code || ''}">
-                <span class="block text-xs font-bold text-on-surface">${row.label}</span>
-            </button>
-        `).join('');
-        results.classList.remove('hidden');
     }
 
     document.getElementById('address-komerce-results')?.addEventListener('click', (event) => {
@@ -737,6 +743,7 @@
             const qs = checkoutSelectedPositions.length ? `?selected_positions=${encodeURIComponent(checkoutSelectedPositions.join(','))}` : '';
             const res = await fetch(`/api/checkout/shipping${qs}`, { headers: { 'Accept': 'application/json' } });
             const body = await res.json();
+            if (!res.ok) throw new Error(body.message || 'Gagal memuat opsi pengiriman');
             const options = body.data || [];
             container.innerHTML = options.map(opt => `
                 <label class="flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all border-outline-variant/30 hover:border-primary/40" id="ship-card-${opt.code}">
@@ -750,7 +757,7 @@
             `).join('');
             document.getElementById('step2-action').style.display = 'block';
         } catch (e) {
-            container.innerHTML = '<p class="text-sm text-error text-center py-4">Gagal memuat opsi pengiriman</p>';
+            container.innerHTML = `<p class="text-sm text-error text-center py-4 font-semibold">${e.message}</p>`;
         }
     }
 

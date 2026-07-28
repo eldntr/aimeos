@@ -29,6 +29,7 @@ Route::get('/ready', function() {
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 
 Route::get('/', [MarketplaceController::class, 'landing'])->name('landing');
+Route::get('/home', fn() => redirect('/'))->name('aimeos_home');
 Route::get('/categories', [MarketplaceController::class, 'categories'])->name('categories');
 Route::get('/categories/{selected_category}', [MarketplaceController::class, 'showCategory'])->name('categories.show');
 Route::get('/products/{id}', [MarketplaceController::class, 'productDetail'])->name('products.show');
@@ -138,14 +139,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 $params = [];
 $conf = ['prefix' => '', 'where' => []];
 
-if( env( 'SHOP_MULTILOCALE' ) )
+if( config( 'app.shop_multilocale' ) )
 {
     $conf['prefix'] .= '{locale}';
     $conf['where']['locale'] = '[a-z]{2}(\_[A-Z]{2})?';
     $params = ['locale' => app()->getLocale()];
 }
 
-if( env( 'SHOP_MULTISHOP' ) )
+if( config( 'app.shop_multishop' ) )
 {
     $conf['prefix'] .= '/{site}';
     $conf['where']['site'] = '^(?!profile|login|register|logout|dashboard|forgot-password|reset-password|verify-email|confirm-password|ready)[A-Za-z0-9\.\-]+';
@@ -166,7 +167,7 @@ Route::group(['middleware' => ['web']], function() {
     require __DIR__.'/auth.php';
 });
 
-if( env( 'SHOP_MULTIROUTE' ) )
+if( config( 'app.shop_multiroute' ) )
 {
     Route::group( $conf + ['middleware' => ['web']], function() {
         Route::match( ['GET', 'POST'], '/{path?}', array(

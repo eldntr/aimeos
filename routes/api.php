@@ -35,11 +35,11 @@ use App\Http\Controllers\Seller\ReportController;
 */
 
 // Public routes
-Route::post('/register', [RegisteredUserController::class, 'store']);
-Route::post('/register/customer', [RegisteredUserController::class, 'registerCustomer']);
-Route::post('/register/seller', [RegisteredUserController::class, 'registerSeller']);
-Route::post('/register/admin', [RegisteredUserController::class, 'registerAdmin']);
-Route::post('/login', [AuthenticatedSessionController::class, 'store']);
+Route::post('/register', [RegisteredUserController::class, 'store'])->middleware('throttle:register');
+Route::post('/register/customer', [RegisteredUserController::class, 'registerCustomer'])->middleware('throttle:register');
+Route::post('/register/seller', [RegisteredUserController::class, 'registerSeller'])->middleware('throttle:register');
+Route::post('/register/admin', [RegisteredUserController::class, 'registerAdmin'])->middleware('throttle:register');
+Route::post('/login', [AuthenticatedSessionController::class, 'store'])->middleware('throttle:login');
 
 // Public product routes (customer browsing — no auth required)
 Route::get('/banners', [HomeController::class, 'getBanners']);
@@ -117,7 +117,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/shipping', [\App\Http\Controllers\CheckoutController::class, 'saveShipping']);
         Route::get('/payment', [\App\Http\Controllers\CheckoutController::class, 'getPaymentOptions']);
         Route::post('/payment', [\App\Http\Controllers\CheckoutController::class, 'savePayment']);
-        Route::post('/process', [\App\Http\Controllers\CheckoutController::class, 'processOrder']);
+        Route::post('/process', [\App\Http\Controllers\CheckoutController::class, 'processOrder'])->middleware('throttle:checkout_process');
     });
 
     // Seller management routes
