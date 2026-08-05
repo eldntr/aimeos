@@ -21,8 +21,14 @@ services:
             - '.:/var/www/html'
         networks:
             - sail
+            - reborns-network
         depends_on:
             - mysql
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "10m"
+                max-file: "3"
     app-setup:
         image: sail-8.4/app
         depends_on:
@@ -35,6 +41,11 @@ services:
         command: "php artisan db:seed --force"
         networks:
             - sail
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "10m"
+                max-file: "3"
     mysql:
         image: 'mysql/mysql-server:8.0'
         restart: unless-stopped
@@ -60,6 +71,15 @@ services:
                 - '-p${DB_PASSWORD}'
             retries: 3
             timeout: 5s
+        deploy:
+            resources:
+                limits:
+                    memory: 1500M
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "10m"
+                max-file: "3"
 
     mailhog:
         image: 'mailhog/mailhog:latest'
@@ -69,104 +89,17 @@ services:
             - '${FORWARD_MAILHOG_DASHBOARD_PORT:-8025}:8025'
         networks:
             - sail
-    rabbitmq:
-        image: rabbitmq:3.12-management
-        container_name: postal_rabbitmq
-        restart: always
-        environment:
-            RABBITMQ_DEFAULT_USER: postal
-            RABBITMQ_DEFAULT_PASS: postal_password
-            RABBITMQ_DEFAULT_VHOST: postal
-        volumes:
-            - rabbitmq_data:/var/lib/rabbitmq
-        ports:
-            - "5672:5672"
-            - "15672:15672"
-        networks:
-            - sail
-
-    mariadb:
-        image: mariadb:10.11
-        container_name: postal_mariadb
-        restart: always
-        environment:
-            MARIADB_ROOT_PASSWORD: postal_root_password
-            MARIADB_DATABASE: postal
-            MARIADB_USER: postal
-            MARIADB_PASSWORD: postal_password
-        volumes:
-            - mariadb_data:/var/lib/mysql
-        ports:
-            - "3307:3306"
-        networks:
-            - sail
-
-    postal-web:
-        image: ghcr.io/postalserver/postal:latest
-        container_name: postal_web
-        restart: always
-        command: postal web-server
-        depends_on:
-            - mariadb
-            - rabbitmq
-        volumes:
-            - ./docker/postal/config:/config
-        ports:
-            - "5000:5000"
-        networks:
-            - sail
-
-    postal-runner:
-        image: ghcr.io/postalserver/postal:latest
-        container_name: postal_runner
-        restart: always
-        command: postal smtp-server
-        depends_on:
-            - mariadb
-            - rabbitmq
-            - postal-web
-        volumes:
-            - ./docker/postal/config:/config
-        ports:
-            - "2525:25"
-        networks:
-            - sail
-
-    postal-worker:
-        image: ghcr.io/postalserver/postal:latest
-        container_name: postal_worker
-        restart: always
-        command: postal worker
-        depends_on:
-            - mariadb
-            - rabbitmq
-            - postal-web
-        volumes:
-            - ./docker/postal/config:/config
-        networks:
-            - sail
-
-    postal-setup:
-        image: ghcr.io/postalserver/postal:latest
-        container_name: postal_setup
-        depends_on:
-            - mariadb
-            - rabbitmq
-        volumes:
-            - ./docker/postal/config:/config
-        command: sh -c "postal initialize && postal console < /config/postal-setup.rb"
-        networks:
-            - sail
-
-
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "10m"
+                max-file: "3"
 
 networks:
     sail:
         driver: bridge
+    reborns-network:
+        external: true
 volumes:
     sail-mysql:
-        driver: local
-    rabbitmq_data:
-        driver: local
-    mariadb_data:
         driver: local
